@@ -1,0 +1,532 @@
+export const meta = {
+  id: 'api-match',
+  order: 1,
+  title: 'API Match',
+};
+
+# API Match
+
+## Scopo
+
+Questo documento definisce il contratto HTTP del router:
+
+```txt
+backend/src/routes/match.js
+```
+
+Il router espone letture di debug, history e timeline SofaScore, controllo del tracking live, analisi singola SofaScore e stato del Source Identity Gate.
+
+Le letture SofaScore di history e timeline espongono anche lo stato additivo `integrity`, calcolato in modo read-only dallo stato journal canonico.
+
+Un refactor interno non deve modificare endpoint, metodi HTTP, payload pubblici o status code senza un aggiornamento esplicito di questo contratto.
+
+## Struttura del router
+
+```txt
+backend/src/routes/
+├── match.js
+└── match/
+    ├── readResponses.js
+    ├── trackingResponses.js
+    ├── analysisResponse.js
+    └── sourceIdentityStatusResponse.js
+
+backend/src/sofa/
+└── matchHistory.js
+```
+
+| Modulo                            | Responsabilità                                                                       |
+| --------------------------------- | ------------------------------------------------------------------------------------ |
+| `match.js`                        | Registra endpoint e adatta richieste e risposte Express                              |
+| `readResponses.js`                | Costruisce risposte per debug, history, timeline SofaScore e `integrity` read-only   |
+| `trackingResponses.js`            | Valida e costruisce risposte per track, untrack e stop                               |
+| `analysisResponse.js`             | Valida URL, esegue analisi SofaScore e mappa gli errori                              |
+| `sourceIdentityStatusResponse.js` | Costruisce il payload sicuro dello stato del gate                                    |
+| `matchHistory.js`                 | Espone letture canoniche SofaScore e adapter `getMatchPersistenceIntegrity`          |
+
+## Endpoint
+
+| Metodo | Endpoint                                     | Effetto                                                            |
+| ------ | -------------------------------------------- | ------------------------------------------------------------------ |
+| `GET`  | `/api/match/debug-last`                      | Restituisce l’ultimo debug disponibile                             |
+| `GET`  | `/api/match/:eventId/history`                | Restituisce la history aggregata SofaScore con `integrity` additiva |
+| `GET`  | `/api/match/:eventId/json`                   | Restituisce la timeline SofaScore con `integrity` additiva          |
+| `GET`  | `/api/match/:eventId/source-identity-status` | Restituisce lo stato live del Source Identity Gate                 |
+| `POST` | `/api/match/track`                           | Avvia il tracking in background e crea una sessione gate           |
+| `POST` | `/api/match/untrack`                         | Ferma un match specifico e rimuove il relativo gate                |
+| `POST` | `/api/match/stop`                            | Ferma tutto il tracking live e rimuove i gate applicabili          |
+| `POST` | `/api/match/analyze`                         | Esegue un’analisi SofaScore singola                                |
+| `POST` | `/api/match/snapshot`                        | Redirect `307` verso `/api/match/analyze`                          |
+
+## Letture
+
+Gli endpoint di lettura non avviano scraper, browser, tracking o scritture.
+
+`history` e `json` espongono soltanto dati già persistiti. L’assenza di timeline o history non autorizza il router a creare dati sintetici, avviare polling, eseguire recovery o aggirare il Source Identity Gate.
+
+Le route di lettura coinvolte sono:
+
+```txt
+GET /api/match/:eventId/history
+GET /api/match/:eventId/json
+```
+
+Per queste due route, `match.js` passa a `readResponses.js` l’adapter:
+
+```txt
+getMatchPersistenceIntegrity(eventId, source = 'sofa')
+```
+
+Nel contratto Match questo adapter viene usato solo con:
+
+```txt
+source: 'sofa'
+```
+
+L’adapter:
+
+* legge lo stato journal tramite `journalStore.getPersistenceIntegrityStatus(eventId, source)`;
+* normalizza il risultato al contratto pubblico;
+* non crea directory;
+* non scrive journal;
+* non esegue recovery;
+* non accede a payload journalizzati;
+* non espone target, path locali o dettagli filesystem.
+
+## Integrity Match read-only
+
+Quando history o timeline SofaScore esistono, la risposta resta `HTTP 200` e mantiene la shape originale del documento letto.
+
+In più viene aggiunto un campo top-level:
+
+```js
+{
+  "integrity": {
+    "status": "no_known_partial | partial_persistence | recovery_failed",
+    "reason": "<string|null>",
+    "source": "sofa|null",
+    "commitId": "<string|null>",
+    "affectedDocuments": ["history", "timeline"]
+  }
+}
+```
+
+Esempio di risposta `history` riuscita:
+
+```json
+{
+  "eventId": "16305613",
+  "updates": [],
+  "integrity": {
+    "status": "no_known_partial",
+    "reason": null,
+    "source": "sofa",
+    "commitId": null,
+    "affectedDocuments": []
+  }
+}
+```
+
+Esempio di risposta `json` riuscita con persistenza incompleta nota:
+
+```json
+{
+  "eventId": "16305613",
+  "timeline": [],
+  "integrity": {
+    "status": "partial_persistence",
+    "reason": "commit_incomplete",
+    "source": "sofa",
+    "commitId": "sofa-16305613-000001",
+    "affectedDocuments": ["timeline"]
+  }
+}
+```
+
+Il documento letto viene clonato prima dell’aggiunta di `integrity`.
+
+Se il documento persistito contiene già una proprietà `integrity`, la risposta HTTP usa l’integrity calcolata dall’adapter, senza mutare l’oggetto originale.
+
+`integrity.status` usa solo questi valori pubblici:
+
+```txt
+no_known_partial
+partial_persistence
+recovery_failed
+```
+
+Input malformati, source incoerenti o risultati non canonici vengono normalizzati a un contratto pubblico sicuro. La API Match non propaga valori source diversi da:
+
+```txt
+sofa
+null
+```
+
+`affectedDocuments` può contenere solo:
+
+```txt
+history
+timeline
+```
+
+## Risorsa assente e `409 persistence_integrity`
+
+Quando la risorsa richiesta non esiste e non ci sono partial noti, il comportamento storico resta invariato.
+
+```txt
+integrity.status = no_known_partial
+→ HTTP 404 invariato
+→ body e messaggio esistenti preservati
+```
+
+Quando la risorsa richiesta non esiste ma il journal segnala persistenza incompleta nota, la risposta diventa `HTTP 409`.
+
+```txt
+integrity.status = partial_persistence
+oppure
+integrity.status = recovery_failed
+→ HTTP 409
+→ error: persistence_integrity
+→ integrity nel body
+```
+
+Payload previsto:
+
+```json
+{
+  "error": "persistence_integrity",
+  "integrity": {
+    "status": "partial_persistence",
+    "reason": "commit_incomplete",
+    "source": "sofa",
+    "commitId": "sofa-16305613-000001",
+    "affectedDocuments": ["history", "timeline"]
+  }
+}
+```
+
+La risposta `409 persistence_integrity` non espone path locali, payload journal, target, metadata journal, stack trace o dettagli filesystem.
+
+Il router non tenta recovery prima di restituire `409`.
+
+## Status Source Identity Gate
+
+```txt
+GET /api/match/:eventId/source-identity-status
+```
+
+Il gate è l’autorità live per le fasi:
+
+```txt
+collecting
+pending
+recording
+mismatch
+not-applicable
+```
+
+Risposta riuscita tipica:
+
+```json
+{
+  "ok": true,
+  "eventId": "<eventId>",
+  "active": true,
+  "phase": "pending",
+  "persistence": "buffering",
+  "sourceIdentity": {
+    "status": "pending",
+    "sofaPlayers": [],
+    "betfairRunners": [],
+    "reasons": []
+  },
+  "updatedAt": "<iso-date>"
+}
+```
+
+`sourceIdentity` può essere `null` durante `collecting` o `not-applicable`.
+
+| Condizione                      | Status | Effetto                        |
+| ------------------------------- | ------ | ------------------------------ |
+| `eventId` assente o vuoto       | `400`  | `Missing or invalid eventId`   |
+| Nessuna sessione gate leggibile | `404`  | Nessuno stato live disponibile |
+| Gate presente                   | `200`  | Payload status sicuro          |
+
+`persistence` usa esclusivamente:
+
+```txt
+buffering
+canonical
+blocked
+```
+
+`persistence` dello status Source Identity Gate è diverso da `integrity` delle letture history/json.
+
+| Campo | Ambito | Significato |
+| ----- | ------ | ----------- |
+| `persistence` | Source Identity Gate live | Stato del gate durante tracking e bootstrap cross-source |
+| `integrity` | Letture history/json | Stato read-only della persistenza canonica nota tramite journal |
+
+`stopped` è una fase di cleanup interna e non viene esposta. Dopo Stop manuale, Untrack o nuovo Start, il gate viene rimosso e l’endpoint restituisce normalmente `404`.
+
+Il payload non espone URL, payload raw, stack trace, token, cookie o percorsi locali.
+
+## Tracking
+
+`POST /api/match/track` riceve il contesto della sessione:
+
+```txt
+sofaUrl
+betfairUrl
+betfairGraphUrls
+betfairMode
+chromeProfilePath
+cdpUrl
+```
+
+I valori Betfair possono essere vuoti quando il tracking deve usare soltanto SofaScore.
+
+In modalità `cdp`, `cdpUrl` deve essere presente e non vuoto. Non viene applicato automaticamente il fallback:
+
+```txt
+http://127.0.0.1:9222
+```
+
+In assenza di un `cdpUrl` valido, il router restituisce:
+
+```txt
+400
+CDP non disponibile. Seleziona Profilo Persistent o attendi Chrome.
+```
+
+Il tracker non viene avviato.
+
+Le modifiche a `integrity` non cambiano il comportamento di `track`, `untrack`, `stop`, `analyze`, `snapshot`, `source-identity-status` o `debug-last`.
+
+### Untrack
+
+`POST /api/match/untrack` usa `eventId` e ferma soltanto il tracker richiesto. Rimuove il gate relativo a quell’evento senza modificare sessioni o timeline di altri match.
+
+### Stop globale
+
+```txt
+POST /api/match/stop
+```
+
+Lo stop è globale e idempotente.
+
+Il body è facoltativo:
+
+```json
+{}
+```
+
+oppure:
+
+```json
+{
+  "eventId": "16305613"
+}
+```
+
+Quando presente, `eventId` è soltanto informativo e viene restituito nella risposta. Lo scope resta sempre globale.
+
+Risposta prevista:
+
+```json
+{
+  "ok": true,
+  "eventId": "16305613",
+  "stopped": true,
+  "scope": "all-live-tracking"
+}
+```
+
+Con body vuoto, `eventId` restituito è `null`.
+
+Il cleanup tenta sia lo stop dei tracker sia la terminazione degli scraper Betfair figli del progetto.
+
+Lo stop non:
+
+* chiude backend, frontend o Chrome CDP;
+* cancella timeline, history o conferme Source Identity;
+* cancella journal o stato `integrity`;
+* esegue recovery;
+* cancella URL di sessione o dashboard già visibili.
+
+Rimuove invece le sessioni gate attive.
+
+Il solo percorso `mismatch` conserva temporaneamente il proprio gate terminale, così che lo status resti leggibile:
+
+```json
+{
+  "active": false,
+  "phase": "mismatch",
+  "persistence": "blocked"
+}
+```
+
+## Analisi SofaScore
+
+```txt
+POST /api/match/analyze
+```
+
+Payload richiesto:
+
+```json
+{
+  "url": "<sofascore-match-url>"
+}
+```
+
+Flusso:
+
+```txt
+URL
+→ extractEventId
+→ buildSofaAnalysis(eventId)
+→ tentativo di addSofaUpdate
+→ snapshot + localContext
+```
+
+Risposta riuscita:
+
+```json
+{
+  "snapshot": {},
+  "localContext": {}
+}
+```
+
+`snapshot` include anche il point-by-point normalizzato.
+
+`localContext` può includere:
+
+```txt
+match.pointShare
+recent
+comparison
+dataQuality
+```
+
+Una history non salvata non annulla un’analisi già riuscita.
+
+L’endpoint `analyze` non restituisce `409 persistence_integrity`: la gestione `integrity` descritta in questo documento riguarda solo le letture `GET /history` e `GET /json`.
+
+| Caso               | Status | Risposta                               |
+| ------------------ | ------ | -------------------------------------- |
+| URL assente        | `400`  | `URL mancante`                         |
+| Event ID assente   | `400`  | `URL non valido o eventId non trovato` |
+| Evento non trovato | `404`  | Errore propagato                       |
+| Blocco o `403`     | `503`  | Errore propagato                       |
+| Altro errore       | `500`  | Errore propagato                       |
+
+## Confini
+
+Il router:
+
+* non implementa calcolo point-by-point;
+* non implementa parsing scraper;
+* non persiste direttamente timeline o history;
+* non ricostruisce Source Identity;
+* non avvia acquisizione da endpoint read-only;
+* non esegue recovery journal;
+* non marca journal come recovered o failed;
+* non crea directory o file canonici durante le letture;
+* non espone payload journalizzati, target locali o dettagli filesystem;
+* non espone dati sensibili o dettagli interni del runtime.
+
+`integrity` è osservabilità read-only della persistenza, non un comando di repair e non una conferma live del Source Identity Gate.
+
+## Verifica
+
+Dalla cartella `backend/src`:
+
+```txt
+node --check routes/match.js
+node --check routes/match/readResponses.js
+node --check sofa/matchHistory.js
+
+node routes/match/readResponses.test.mjs
+node routes/match/trackingResponses.test.mjs
+node routes/match/analysisResponse.test.mjs
+node routes/match/sourceIdentityStatusResponse.test.mjs
+node sofa/matchHistory/commitJournal.test.mjs
+node sofa/matchHistory/recovery.test.mjs
+node sofa/matchHistory/sofaUpdates.test.mjs
+```
+
+Verificare almeno:
+
+```txt
+endpoint read-only
+→ nessun avvio tracking o scraper
+→ nessuna scrittura journal
+→ nessuna recovery
+
+history presente + no_known_partial
+→ HTTP 200
+→ body originale preservato
+→ integrity aggiunta
+
+timeline Sofa presente + partial_persistence
+→ HTTP 200
+→ integrity aggiunta
+→ documento persistito non mutato
+
+history assente + partial_persistence
+→ HTTP 409
+→ error persistence_integrity
+→ integrity nel body
+
+timeline assente + recovery_failed
+→ HTTP 409
+→ error persistence_integrity
+→ integrity nel body
+
+timeline assente + no_known_partial
+→ HTTP 404 invariato
+
+integrity null, undefined o malformata
+→ normalizzazione a no_known_partial sicuro
+
+documento con integrity preesistente
+→ response usa integrity calcolata
+→ documento originale immutato
+
+source non canonica
+→ non propagata nel payload pubblico
+
+track CDP senza cdpUrl
+→ 400 e nessun tracker avviato
+
+untrack
+→ stop selettivo del solo eventId richiesto
+
+stop
+→ scope globale idempotente
+→ gate rimossi secondo le regole previste
+→ Chrome, timeline, history e journal preservati
+
+mismatch
+→ status terminale ancora leggibile
+
+analyze
+→ snapshot e localContext disponibili
+→ error mapping invariato
+→ nessun 409 persistence_integrity
+```
+
+## Documenti collegati
+
+* [Confini del sistema](../architecture/01-system-boundaries.mdx)
+* [Ciclo di vita dei dati](../architecture/02-data-lifecycle.mdx)
+* [Tracking live](../modules/sofa/01-live-tracking.mdx)
+* [Contesto locale e point-by-point](../modules/sofa/02-local-context-and-point-by-point.mdx)
+* [Timeline e history](../modules/storage/01-timelines-and-history.mdx)
+* [Commit journal e recovery](../modules/storage/02-commit-journal-and-recovery.mdx)
+* [Source Identity](../modules/evidence/02-source-identity.mdx)
+* [Polling live e view model](../modules/frontend/02-live-polling-and-view-model.mdx)
+* [Validazione e rollback](../operations/04-validation-and-rollback.mdx)
+* [Selezione del contesto per API AI](../ai/01-context-selection.mdx)

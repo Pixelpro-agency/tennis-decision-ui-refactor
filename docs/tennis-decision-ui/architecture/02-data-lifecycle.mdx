@@ -1,0 +1,337 @@
+export const meta = {
+id: 'data-lifecycle',
+order: 2,
+title: 'Ciclo di vita dei dati',
+};
+
+# Ciclo di vita dei dati
+
+## Scopo
+
+Questo documento definisce come i dati live attraversano acquisizione, normalizzazione, persistenza, lettura ed Evidence.
+
+Non definisce strategie di trading, decisioni operative o causalità fra eventi di campo e movimenti di mercato.
+
+## Flusso
+
+```txt
+acquisizione separata
+  ↓
+normalizzazione
+  ↓
+Source Identity Gate in memoria
+  ├─ collecting / pending
+  │   └─ buffering: nessuna nuova scrittura canonica; timeline e history precedenti restano immutate
+  ├─ recording
+  │   └─ bootstrap SofaScore → Betfair, poi persistenza canonica journalizzata
+  ├─ mismatch
+  │   └─ tick causale scartato, tracking fermato
+  └─ not-applicable
+      └─ persistenza SofaScore normale senza Betfair
+  ↓
+commit canonico journalizzato
+  ↓
+timeline append-only + history aggregata
+  ↓
+integrity read-only
+  ↓
+lettura read-only
+  ↓
+Match Evidence Snapshot
+  ↓
+dashboard / osservazioni / replay futuro
+```
+
+## Acquisizione
+
+| Fonte     | Percorso principale                        | Output atteso                                          |
+| --------- | ------------------------------------------ | ------------------------------------------------------ |
+| SofaScore | `scraper.py` → `scrapers/sofa/`            | Dati evento, punteggio, statistiche e stato campo      |
+| Betfair   | `betfair_scraper.py` → `scrapers/betfair/` | Mercato, runner, ladder, quote, volumi e stato tecnico |
+
+Il tracking Betfair conserva metadata runtime effimeri per distinguere tentativi, successi ed errori tecnici.
+
+Questi metadata non sono dati canonici e non sostituiscono i timestamp delle timeline.
+
+SofaScore e Betfair restano flussi indipendenti.
+
+Un problema Betfair non deve impedire la raccolta SofaScore. L'assenza di Betfair deve essere rappresentata come dato mancante o non tradabile, non sostituita con dati inventati.
+
+## Normalizzazione
+
+Il backend converte gli output esterni in snapshot coerenti.
+
+```txt
+payload esterno
+→ validazione minima
+→ valori numerici e nomi normalizzati
+→ snapshot sorgente
+→ dati pronti per timeline ed Evidence
+```
+
+### Precondizione tecnica Betfair
+
+Per Betfair, il flusso ad alto livello è:
+
+```txt
+payload Betfair esterno
+→ classificazione tecnica
+→ solo se utilizzabile: normalizzazione runner e aggiornamento stato
+→ Source Identity Gate
+→ persistenza canonica autorizzata
+```
+
+Un payload tecnico incompleto non equivale a mercato Betfair concluso.
+
+Salvo l’eccezione stretta di persistenza `status-only` per logout Graph esplicito, un payload tecnico incompleto o un `regressive_sample` ordinario non modifica tick, history, timeline o baseline di mercato già esistente.
+
+Un campione Betfair tecnicamente valido può confermare lo stato runtime soltanto dopo un commit canonico riuscito o recuperato.
+
+```txt
+campione Betfair valido
+→ commit canonico journalizzato
+→ history Betfair + timeline Betfair
+→ stato runtime confermato
+```
+
+Un sample tecnico non valido può tentare il repair di un journal pending, ma non crea nuovi tick, non crea nuove row history e non modifica `marketState`.
+
+La normalizzazione può aggiungere metadati tecnici, health, qualità, motivo di soppressione o stato ladder.
+
+Non deve:
+
+* cambiare retroattivamente i tick già persistiti;
+* convertire un dato ambiguo in un fatto certo;
+* trasformare dump browser in dati di dominio;
+* produrre una decisione di strategia.
+
+## Gate Source Identity live
+
+Quando la sessione contiene un URL Betfair, soltanto i campioni Betfair classificati tecnicamente utilizzabili e normalizzati passano prima dal gate in memoria.
+
+Un payload Betfair tecnicamente incompleto resta fuori dal gate:
+
+```txt
+non aggiorna candidate o phase
+→ non causa bootstrap
+→ non autorizza persistenza
+→ non diventa mismatch
+```
+
+Il gate conserva soltanto l’ultimo campione valido SofaScore e Betfair finché l’identità non è:
+
+```txt
+aligned automaticamente
+oppure
+confermata manualmente durante pending
+```
+
+Prima di `recording` non crea, aggiorna o cancella timeline/history come workaround.
+
+La semantica completa di fasi, bootstrap, epoch e mismatch appartiene a:
+
+```txt
+modules/evidence/02-source-identity.mdx
+```
+
+## Persistenza
+
+I dati storici canonici sono salvati in:
+
+```txt
+backend/match_history/
+```
+
+| Artefatto          | Ruolo                                    |
+| ------------------ | ---------------------------------------- |
+| History aggregata  | Vista storica combinata del match        |
+| Timeline SofaScore | Sequenza append-only dei tick di campo   |
+| Timeline Betfair   | Sequenza append-only dei tick di mercato |
+
+Le conferme Source Identity sono archiviate separatamente in:
+
+```txt
+backend/source_identity_confirmations.json
+```
+
+Il record di conferma non riscrive timeline raw o history già esistenti.
+
+Quando esiste un gate attivo in fase `pending`, una conferma valida può però aprire `recording` e avviare il bootstrap dei campioni bufferizzati nell’ordine:
+
+```txt
+SofaScore
+→ Betfair
+```
+
+Il bootstrap cross-source non è una transazione filesystem unica: un tick SofaScore già scritto non viene rollbackato se la persistenza Betfair fallisce subito dopo.
+
+La persistenza canonica usa un commit logico journalizzato per coordinare history e timeline, mantenendo osservabili gli stati incompleti.
+
+```txt
+campione valido
+→ commit canonico journalizzato
+→ history + timeline
+→ integrity read-only
+```
+
+### Eccezione stretta: logout Graph
+
+Un `regressive_sample` resta normalmente escluso dalla persistenza. Esiste una sola eccezione per un logout Betfair rilevato esplicitamente dalla pagina Graph.
+
+Quando sono contemporaneamente presenti:
+
+```txt
+tick Betfair canonico precedente
+→ diagnostics.graphLoginRequired = true
+→ nessuna riga ladder prodotta dalle Graph URL
+→ sample classificato regressive_sample
+```
+
+viene aggiunto alla timeline Betfair un tick di sola transizione di stato (`status-only`).
+
+```txt
+logout Graph rilevato
+→ tick status-only append-only
+→ lettura latest
+→ runtime health red / alert
+→ popup e audio già esistenti
+```
+
+Il tick `status-only` conserva mercato e runner dell’ultimo tick canonico. Non adotta quote, volumi, ladder o Money Flow regressivi del sample rilevato e non aggiorna il baseline canonico.
+
+Espone inoltre:
+
+```txt
+graphHealth.status = auth_suspected
+diagnostics.graphLoginRequired = true
+diagnostics.statusOnlyGraphLogin = true
+```
+
+Il sample raw regressivo non viene aggiunto alla history. L’eccezione non modifica il Source Identity Gate e non classifica un’assenza rete/API come logout Graph.
+
+## Lettura read-only
+
+Di norma, gli endpoint `latest` leggono soltanto dati già persistiti.
+
+```txt
+timeline persistite
+→ payload latest o Evidence snapshot
+→ risposta HTTP
+```
+
+Le superfici di lettura possono aggiungere `integrity` in modo additivo e read-only.
+
+```txt
+no_known_partial
+partial_persistence
+recovery_failed
+```
+
+`integrity` distingue una risorsa realmente assente da una risorsa assente o degradata per persistenza incompleta nota.
+
+La lettura di `integrity` non esegue recovery, non scrive journal, non avvia tracker o scraper e non espone payload journalizzati, target locali o dettagli filesystem.
+
+Esiste un’eccezione limitata per:
+
+```txt
+GET /api/betfair/:eventId/latest
+```
+
+L’endpoint può leggere runtime Betfair in memoria soltanto per calcolare `health`.
+
+```txt
+runtime effimero
+→ calcolo health
+→ non serializzato
+→ nessuna modifica a timeline, history o tracker
+```
+
+Questa eccezione è distinta dallo status Source Identity Gate: entrambi leggono memoria runtime, ma hanno contratti e finalità differenti.
+
+Un endpoint read-only non deve:
+
+* avviare uno scraper;
+* aprire un browser;
+* aggiungere tick;
+* modificare history;
+* modificare timeline raw;
+* scrivere una conferma Source Identity.
+
+Il seguente endpoint è un’eccezione al modello “timeline persistite”: legge soltanto lo stato della sessione gate in memoria.
+
+```txt
+GET /api/match/:eventId/source-identity-status
+```
+
+Resta read-only: non avvia scraper, non scrive conferme, non aggiunge tick e non modifica timeline/history.
+
+## Match Evidence Snapshot
+
+Evidence è uno strato neutro costruito dalle timeline disponibili.
+
+```txt
+timeline SofaScore
++ timeline Betfair
++ stato Source Identity applicabile
+↓
+Match Evidence Snapshot
+```
+
+Può esporre:
+
+* dati di campo;
+* dati di mercato;
+* qualità e health;
+* identità delle fonti;
+* allineamento temporale;
+* marker SofaScore;
+* flow e ladder;
+* motivi per non operare;
+* osservazioni Market Reactions.
+
+Evidence non è una strategia e non prova causalità fra campo e mercato.
+
+Evidence può consumare `integrity` come stato read-only della persistenza.
+
+Quando esiste una persistenza incompleta nota, Evidence degrada l’uso cross-source canonico e può esporre `persistenceComplete:false`, senza trasformare il problema in Source Identity mismatch, freshness stale, graph health degradato o errore runtime scraper.
+
+Con gate in `collecting` o `pending`, `GET /api/evidence/:eventId/latest` può restituire `404` perché non esistono ancora timeline canoniche. Il frontend deve usare lo status del gate per rappresentare il live state e non costruire Evidence parziale lato client.
+
+## Replay futuro
+
+Replay e backtesting dovranno partire dalle timeline persistite.
+
+```txt
+timeline raw
+→ ricostruzione tick per tick
+→ Evidence ricalcolata
+→ analisi o confronto algoritmi
+```
+
+Il replay non deve dipendere da fetch live, browser, snapshot latest o dump di rete.
+
+## Documenti collegati
+
+* [Confini del sistema](./01-system-boundaries.mdx)
+* [Timeline e history](../modules/storage/01-timelines-and-history.mdx)
+* [Commit journal e recovery](../modules/storage/02-commit-journal-and-recovery.mdx)
+* [Tracking live](../modules/sofa/01-live-tracking.mdx)
+* [Lifecycle scraper Betfair](../modules/betfair/01-scraper-lifecycle.mdx)
+* [Validità tecnica campioni Betfair](../modules/betfair/02-technical-sample-validity.mdx)
+* [API Match](../api/01-match.mdx)
+* [API Betfair](../api/02-betfair.mdx)
+* [API Evidence](../api/03-evidence.mdx)
+* [Mappa del repository](../reference/01-repository-map.mdx)
+* [Selezione del contesto per API AI](../ai/01-context-selection.mdx)
+
+## Quando leggerlo
+
+Leggere questo documento prima di modificare:
+
+* history o timeline;
+* endpoint latest;
+* Evidence;
+* qualità dati;
+* deduplicazione;
+* atomic write;
+* replay, backtesting o export.

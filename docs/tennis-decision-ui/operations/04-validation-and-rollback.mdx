@@ -1,0 +1,969 @@
+export const meta = {
+id: 'validation-and-rollback',
+order: 4,
+title: 'Validazione e rollback',
+};
+
+# Validazione e rollback
+
+## Scopo
+
+Questo runbook definisce la sequenza minima dopo una modifica a codice o documentazione tecnica.
+
+```txt
+modifica piccola
+→ controllo statico
+→ test mirato
+→ smoke test sicuro
+→ verifica funzionale
+→ controllo integrità persistenza quando coinvolta
+→ rollback selettivo se necessario
+```
+
+## Regola principale
+
+Non verificare l’intero progetto per una modifica locale.
+
+Usare il test più vicino al modulo toccato, poi aggiungere solo i controlli necessari al confine attraversato.
+
+## Matrice di verifica
+
+| Area modificata                      | Controllo minimo                                                                                           |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Modulo Node puro                     | `node <file>.test.mjs`                                                                                     |
+| Router Node                          | `node --check`, test modulo, smoke HTTP sicuro                                                             |
+| Frontend utility                     | test `*.test.mjs` interessato                                                                              |
+| Frontend integrato                   | `npm run build`                                                                                            |
+| Polling e stato Sofa frontend        | test hook, utility connessioni, build e verifica browser 404/200                                           |
+| Betfair runtime health               | tracker test, health test, route latest test, hook test e build frontend                                   |
+| Persistenza journalizzata            | `commitId`, journal, recovery, processor Sofa/Betfair, route read-only e bootstrap backend                 |
+| API persistence integrity             | route Match/Betfair/Evidence, payload `409 persistence_integrity`, nessun side effect di recovery          |
+| Pipeline Betfair Task 2              | Due sessioni reali: Graph URL disponibili e assenti; record in `operations/07-betfair-live-validation.mdx` |
+| Money Flow dashboard non direzionale | test read model API, validazione volume, utility frontend e build                                          |
+| Wrapper o package Python             | `py_compile` o `compileall`, import mirato e unittest del modulo puro quando presente                      |
+| API HTTP                             | test modulo, test route, richiesta con input non distruttivo                                               |
+| Documentazione                       | link relativi, percorsi reali, contratti coerenti                                                          |
+| Source Identity Gate                 | test gate, tracker, route status, route Evidence e verifica live controllata                               |
+| Hardening diagnostica Betfair        | unittest redazione/config/cache, `py_compile` Python, `node --check` runner/fetch e test lifecycle         |
+| Retention cache runtime              | unittest utility cleanup, `py_compile`, dry-run JSON senza rimozione reale                                 |
+
+La validazione live Task 2 è completata con rilievi documentati.
+
+Non usare il report live per dichiarare verificati scenari non osservati: login scaduto, URL invalide, failure rete/API e mercato finished restano casi operativi distinti.
+
+Per modifiche alla persistenza journalizzata non dichiarare validato il flusso finché non sono stati coperti almeno:
+
+```txt
+commit completo
+commit partial
+recovery riuscita
+recovery_failed
+lettura read-only di integrity
+rollback senza cancellazioni cieche
+```
+
+La presenza di `partial_persistence` o `recovery_failed` è un esito di integrità della persistenza, non un errore di health, freshness, Source Identity, Graph URL, frontend o runtime scraper.
+
+## Controlli Node
+
+Esempio:
+
+```powershell
+node --check .\backend\src\routes\evidence.js
+node .\backend\src\routes\evidence\evidenceResponses.test.mjs
+node .\backend\src\routes\evidence\evidenceRoute.test.mjs
+```
+
+Per moduli senza route, eseguire il test del modulo diretto.
+
+### Controlli Betfair: validità, integrità, health e Money Flow
+
+```powershell
+Push-Location .\backend\src
+
+node sofa\betfair\processor\runnerProcessing.test.mjs
+node sofa\betfair\timeline\state.test.mjs
+node sofa\betfair\processor.test.mjs
+node sofa\betfairFetch.test.mjs
+node sofa\betfair\trackerUpdate.test.mjs
+
+node sofa\betfairHealth\tickQuality.test.mjs
+node sofa\betfairHealth\statusClassification.test.mjs
+node sofa\betfairHealth.test.mjs
+
+node routes\betfair\moneyFlowHistorySeries.test.mjs
+node routes\betfair\latestPayloadResponse.test.mjs, latestPayloadIntegrity.test.mjs, betfairJsonResponse.test.mjs, normalizeIntegrity.test.mjs
+node sofa\betfairMoneyFlowValidation.test.mjs
+
+Pop-Location
+
+Push-Location .\frontend
+
+node src\hooks\useBetfairJson.test.mjs
+node src\utils\betfairMoneyFlow.test.mjs
+npm run build
+
+Pop-Location
+```
+
+Verificare almeno:
+
+```txt
+campione tecnico
+→ polling ancora attivo
+→ nessun gate
+→ nessuna persistenza
+→ baseline invariato
+
+hasFinished esplicito
+→ stop Betfair
+→ nessun gate
+→ nessuna persistenza
+
+tick regressivo o retry identico
+→ nessuna nuova history
+→ nessuna nuova timeline
+→ baseline invariato
+
+stesso selectionId con nome aggiornato
+→ stessa serie Money Flow
+
+stesso nome con selectionId diverso
+→ nessuna continuità ereditata
+
+selectionId assente
+→ history vuota o flow soppresso
+
+latest 404 senza errore runtime
+→ health unknown
+
+latest 404 con errore tecnico runtime
+→ health yellow / DEGRADED
+
+tick recente e ladder stale
+→ health degradata senza classificare il mercato come fermo
+
+errore tecnico runtime
+→ DEGRADED senza alert login
+
+auth strutturata
+→ red / ALERT
+
+logout Graph esplicito
+→ tick status-only persistito
+→ health red / ALERT
+→ popup visuale e audio osservati
+→ login Betfair ripristinato
+→ ritorno a Connected osservato
+```
+
+La verifica logout Graph è un’osservazione live manuale. Non dichiarare PASS per lo script Node mirato del tick `status-only` e non dichiarare archiviato un payload `/latest` post-fix.
+
+
+### Controlli commit journal e recovery
+
+Per modifiche a commit journal, `commitId`, recovery, writer history/timeline o bootstrap backend:
+
+```txt
+node --check backend/src/sofa/matchHistory/commitId.js
+node --check backend/src/sofa/matchHistory/commitJournal.js
+node --check backend/src/sofa/matchHistory/recovery.js
+
+node backend/src/sofa/matchHistory/commitId.test.mjs
+node backend/src/sofa/matchHistory/commitJournal.test.mjs
+node backend/src/sofa/matchHistory/recovery.test.mjs
+```
+
+Aggiungere i test del processor interessato:
+
+```txt
+source sofa
+→ test tracker/update Sofa e writer history/timeline Sofa
+
+source betfair
+→ test processor Betfair, trackerUpdate Betfair e betfairFetch
+```
+
+Verificare almeno:
+
+```txt
+commitId filename-safe
+pending commit creato prima delle scritture canoniche
+conflitto eventId/source bloccato
+writer undefined trattato come failure
+writer non-ok trattato come failure
+target diverso dal target atteso trattato come failure
+commitId diverso dal commit atteso trattato come failure
+history completata e timeline fallita resta partial
+timeline completata e history fallita resta partial
+repair usa solo payload e target journalizzati
+repair non genera nuovo commitId
+repair non genera nuovi tick
+repair non genera nuove row history
+completed residual con target assente non viene rimosso
+completed residual con target non leggibile riapre marker incompleto
+invalidRecords diventano recovery_failed
+invalidEntries non eseguono scritture
+removeCompletedCommit solo dopo documenti completati
+payload sensibili rifiutati
+read-only integrity senza side effect
+single-process invariant preservato
+```
+
+La recovery bootstrap va validata separatamente dalle route read-only.
+
+```txt
+bootstrap backend
+→ runPendingCommitRecovery(...)
+→ app.listen solo dopo recovery bootstrap completata
+```
+
+Errori per-file non fatali non devono impedire l’avvio del backend:
+
+```txt
+retryablePending
+recoveryFailed
+alreadyRecoveryFailed
+invalidJournal
+```
+
+Una fatalità globale invece blocca l’apertura del listener.
+
+Non validare recovery manipolando manualmente history, timeline o journal reali. Usare fixture controllate e directory temporanee.
+
+### Controlli API persistence integrity
+
+Per modifiche alle superfici Match, Betfair o Evidence che espongono `integrity`:
+
+```txt
+node --check backend/src/routes/match/analysisResponse.js
+node --check backend/src/routes/evidence/evidenceResponses.js
+node --check backend/src/routes/evidence/evidenceRoute.js
+node --check backend/src/routes/betfair/latestPayload.js
+
+node backend/src/routes/match/analysisResponse.test.mjs
+node backend/src/routes/evidence/evidenceResponses.test.mjs
+node backend/src/routes/evidence/evidenceRoute.test.mjs
+node backend/src/routes/betfair/latestPayloadResponse.test.mjs && node backend/src/routes/betfair/latestPayloadIntegrity.test.mjs && node backend/src/routes/betfair/betfairJsonResponse.test.mjs && node backend/src/routes/betfair/normalizeIntegrity.test.mjs
+```
+
+Verificare almeno:
+
+```txt
+no_known_partial
+→ comportamento ordinario preservato
+
+partial_persistence
+→ payload read-only con source pubblica corretta
+→ affectedDocuments limitato a history/timeline
+→ nessun path locale
+→ nessun payload journalizzato
+→ nessuna recovery eseguita
+
+recovery_failed
+→ payload read-only con reason sicura
+→ nessun dettaglio filesystem pubblico
+→ nessuna scrittura
+
+Match API
+→ source sofa oppure null
+
+Betfair API
+→ source betfair oppure null
+
+Evidence
+→ sources.sofa.source sofa oppure null
+→ sources.betfair.source betfair oppure null
+→ persistenceComplete false quando una source canonica è incompleta
+```
+
+Un `409 persistence_integrity` non sostituisce un test di recovery. È solo la prova che la route legge e redige correttamente uno stato incompleto già noto.
+
+## Controlli Source Identity Gate
+
+```powershell
+cd .\backend\src
+
+node --check sofa\matchEvidence\sourceIdentity\builder.js
+node sofa\sourceIdentityGate.test.mjs
+node sofa\trackerUpdate.test.mjs
+node sofa\betfair\trackerUpdate.test.mjs
+node sofa\betfair\processor.test.mjs
+node sofa\matchTracker.test.mjs
+node routes\match\sourceIdentityStatusResponse.test.mjs
+node routes\evidence\evidenceResponses.test.mjs
+node routes\evidence\evidenceRoute.test.mjs
+node sofa\matchEvidence\sourceIdentity.test.mjs
+node sofa\matchEvidence\sourceIdentityConfirmation.test.mjs
+```
+
+I test di gate, tracker e route devono usare dipendenze fake per le conferme e non dipendere dal file runtime:
+
+```txt
+backend/source_identity_confirmations.json
+```
+
+Verificare anche:
+
+```txt
+almeno un runner senza candidati stretti
+→ fallback prima della valutazione dell’ambiguità
+
+runner compatibile + runner estraneo
+→ mismatch
+→ persistence blocked
+→ nessun bootstrap
+
+ambiguità senza runner estranei
+→ pending
+
+fixture Fenty
+→ pending nello status route
+```
+
+## Controlli frontend
+
+Dalla cartella `frontend/`:
+
+```bash
+npm run build
+
+node src/hooks/useMatchPolling.test.mjs
+node src/utils/sourceIdentityGatePresentation.test.mjs
+node src/utils/analysisSessionState.test.mjs
+node src/utils/liveSessionRequests.test.mjs
+node src/utils/sourceIdentityConfirmationState.test.mjs
+node src/utils/sourceIdentityControlMode.test.mjs
+node src/utils/dashboardConnections.test.mjs
+node src/utils/dashboardMatchOverview.test.mjs
+node src/utils/dashboardStats.test.mjs
+node src/utils/betfairMoneyFlow.test.mjs
+```
+
+Per una utility isolata:
+
+```bash
+node src/utils/<nome-modulo>.test.mjs
+```
+
+Non eseguire:
+
+```txt
+npm run lint
+```
+
+Il repository non contiene una configurazione ESLint. Il comando fallisce prima di analizzare il codice.
+
+Build verde non sostituisce il controllo manuale della UI interessata.
+
+La build non sostituisce la verifica della TopBar durante buffering: il caso `404` Sofa deve essere osservato in una sessione live reale.
+
+## Controlli Python
+
+```powershell
+python -m py_compile .\avvio.py .\scraper.py .\betfair_scraper.py
+python -m compileall launcher scrapers
+```
+
+Import mirato:
+
+```powershell
+python -c "from launcher.app import main; print('launcher import OK')"
+python -c "from scrapers.sofa.cli import main; print('sofa import OK')"
+python -c "from scrapers.betfair.cli import main; print('betfair import OK')"
+```
+### Validazione Graph URL Betfair
+
+```powershell
+python -m py_compile `
+  scrapers/betfair/graph_url.py `
+  scrapers/betfair/graph_url_test.py `
+  scrapers/betfair/scrape.py
+
+python -m unittest -v scrapers.betfair.graph_url_test
+```
+
+Il test deve verificare:
+
+```txt
+parser URL, inclusi query string, fragment e slash finale
+endpoint runnerChartData non supportato
+market mismatch
+selection assente
+duplicati
+assenza della chiave "None"
+```
+
+Non deve aprire Playwright, browser, rete o Betfair reale.
+
+La suite contiene 9 test unitari.
+
+Considerarla superata soltanto dopo l’esecuzione del comando con exit code `0`.
+
+Resta da validare il comportamento browser reale con URL valide, URL invalide e login Betfair.
+
+### Hardening diagnostica e configurazione Betfair
+
+Per modifiche a redazione diagnostica, configurazione Betfair, cache runtime Betfair o bridge Node/Python:
+
+```powershell
+python -m unittest -v scrapers.betfair.config_test
+python -m unittest -v scrapers.betfair.diagnostic_redaction_test
+python -m unittest -v scrapers.betfair.cache_test
+
+python -m py_compile `
+  scrapers/betfair/config.py `
+  scrapers/betfair/market_api.py `
+  scrapers/betfair/network_capture.py `
+  scrapers/betfair/diagnostic_redaction.py `
+  scrapers/betfair/scrape.py `
+  scrapers/betfair/cache.py
+
+node --check backend/src/sofa/betfair/scraperLifecycle/runner.js
+node --check backend/src/sofa/betfairFetch.js
+node backend/src/sofa/betfair/scraperLifecycle.test.mjs
+```
+
+Verificare almeno:
+
+```txt
+BETFAIR_APP_KEY da ambiente non vuoto
+→ usata
+
+BETFAIR_APP_KEY ambiente vuota o solo spazi
+→ fallback al .env
+
+BETFAIR_APP_KEY assente anche nel .env
+→ RuntimeError controllato
+
+URL con appKey o app_key
+→ valore redatto
+
+testo libero con APP_KEY, token o x-application
+→ valore redatto
+
+JSON testuale con token o x-application
+→ JSON ancora parseabile
+
+stdout Python
+→ resta JSON valido
+
+stderr Python e log Node
+→ nessun contenuto raw sensibile
+```
+
+Non usare log, dump, cache, cookie o credenziali reali come fixture.
+
+La validazione live con Chrome/CDP e Betfair reale resta separata e deve essere controllata, senza esportare o condividere payload sensibili.
+
+### Retention cache runtime offline
+
+Per modifiche a `scripts/cleanup_runtime_cache.py`:
+
+```powershell
+python -m unittest scripts.cleanup_runtime_cache_test -v
+python -m py_compile scripts/cleanup_runtime_cache.py
+python scripts/cleanup_runtime_cache.py --cache betfair --cache sofa --max-age-days 7
+```
+
+Il terzo comando deve restare un dry-run.
+
+Verificare almeno:
+
+```txt
+allow-list limitata a backend/betfair_cache e backend/scraper_cache
+→ nessun altro percorso selezionabile
+
+dry-run di default
+→ nessun file rimosso
+
+file non JSON, directory e symlink
+→ esclusi
+
+sessione attiva, lock o porte runtime occupate
+→ apply bloccato fail-closed
+
+output JSON strutturato
+→ cache selezionate, policy, file scansionati, candidati, skipped, errori e rimozioni
+```
+
+Non documentare il percorso `--apply --offline-confirmed` come validato finché non viene eseguita una sessione offline dedicata su cache reali, con lock assente e porte runtime libere.
+
+## Local Context e ritiro Momentum legacy
+
+Per modifiche a point-by-point, `localContext`, timeline SofaScore, Match Evidence o card Contesto punti, verificare senza scraping live, tracking live o browser manuale.
+
+### Controlli sintattici
+
+```powershell
+node --check .\backend\src\sofa\pointByPoint.js
+node --check .\backend\src\sofa\normalizeSnapshot.js
+node --check .\backend\src\sofa\localContext.js
+node --check .\backend\src\sofa\buildSofaAnalysis.js
+node --check .\backend\src\sofa\trackerUpdate.js
+node --check .\backend\src\sofa\matchHistory\sofaUpdates.js
+node --check .\backend\src\routes\match\analysisResponse.js
+node --check .\backend\src\sofa\matchEvidence\sofaEvidence.js
+
+node --check .\frontend\src\hooks\useMatchPolling.js
+node --check .\frontend\src\types\dashboard.js
+node --check .\frontend\src\components\matchContextViewModel.js
+```
+
+### Test mirati
+
+```powershell
+node .\backend\src\sofa\pointByPoint.test.mjs
+node .\backend\src\sofa\normalizeSnapshot.test.mjs
+node .\backend\src\sofa\localContext.test.mjs
+node .\backend\src\sofa\buildSofaAnalysis.test.mjs
+node .\backend\src\sofa\trackerUpdate.test.mjs
+node .\backend\src\sofa\matchHistory\sofaUpdates.test.mjs
+node .\backend\src\routes\match\analysisResponse.test.mjs
+node .\backend\src\sofa\matchEvidence\sofaEvidence.test.mjs
+
+node .\frontend\src\types\dashboard.test.mjs
+node .\frontend\src\components\matchContextViewModel.test.mjs
+
+Push-Location .\frontend
+npm run build
+Pop-Location
+```
+
+### Controllo legacy
+
+```powershell
+git grep -nE 'tennis-power-rankings|tennisPowerRankings|powerRankings|breakOccurred|fetchMomentum|calculateMomentum|chartPoints|LAY_LOSER|BACK_COMEBACK|CAUTION' -- backend/src scrapers frontend/src
+```
+
+L’assenza di risultati è corretta. `git grep` restituisce exit code `1` quando non trova corrispondenze.
+
+### Note operative
+
+* Non avviare tracking live, scraping live o browser manuale durante questi controlli.
+* Non modificare timeline, history, cache o file sotto `backend/match_history/`.
+* I file temporanei usati per verificare payload point-by-point restano fuori dal repository e vanno rimossi al termine.
+* La build frontend verifica consumer e sintassi JSX, ma non sostituisce la verifica live della card.
+* Questa feature non introduce migrazioni, dipendenze, store o nuovi file di persistenza; la procedura di rollback resta invariata.
+
+## Smoke test sicuri
+
+Usare input che non avviano tracking, scraper o browser.
+
+Esempi:
+
+```txt
+GET /api/test/health
+GET /api/strategy/lay-the-winner
+POST /api/test/graph-urls con URL sintetiche
+GET /api/evidence/%20/latest
+GET /api/match/%20/source-identity-status
+GET /api/match/<eventId-inesistente>/source-identity-status
+```
+
+Evitare come smoke test:
+
+```txt
+POST /api/match/stop
+POST /api/match/track
+GET /api/betfair/odds
+POST /api/betfair/login-window
+```
+
+Le route read-only che espongono `integrity` sono smoke test sicuri solo se non avviano tracking, scraper, repair o bootstrap manuale.
+
+Un payload `409 persistence_integrity` va verificato come risposta read-only. Non usare una chiamata HTTP di lettura per tentare o simulare recovery.
+
+## Verifica funzionale
+
+Dopo test e smoke test, verificare il flusso reale coinvolto.
+
+| Modifica                       | Verifica manuale                                                                                                                                                    |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tracking                       | preflight → start → aggiornamenti → stop                                                                                                                            |
+| Betfair UI                     | health → ladder → Money Flow → alert                                                                                                                                |
+| Source Identity backend        | collecting → pending reale → conferma valida → recording → bootstrap → mismatch controllato                                                                         |
+| Source Identity frontend       | shell immediata → semaforo → waiting screen → TopBar Sofa → modale → toast → ritorno al form                                                                        |
+| Validità tecnica Betfair       | errore tecnico → polling attivo, baseline invariato, gate/persistenza non chiamati; `hasFinished` reale → stop Betfair                                              |
+| Betfair runtime health         | latest con tick recente, tick stale oltre 45 secondi, ladder stale con tick recente, errore tecnico degraded senza alert, auth esplicita red e debug panel coerente |
+| Money Flow e integrità Betfair | `selectionId` coerente, serie aggiornabili, nessuna eredità per nome, retry regressivo ignorato, volume non direzionale valido                                      |
+| Persistence integrity          | commit completo, partial, recovery riuscita, recovery_failed, payload read-only e assenza di side effect da route                                                    |
+| Evidence                       | timeline → snapshot → no-trade reasons                                                                                                                              |
+| Launcher                       | CDP → backend → Vite → Ctrl+C                                                                                                                                       |
+| Contesto punti                 | match reale → punti match → ultimi tre game completati solo se verificabili → comparison descrittiva → indisponibilità senza valori fittizi                         |
+
+Per il Contesto punti, verificare su match reale:
+
+```txt
+point-by-point e statistics disponibili
+→ localContext match disponibile
+→ recent disponibile solo con tre game completati e game corrente escluso
+→ comparison soltanto quando disponibile
+→ nessun fallback 50/50, barra o percentuale inventata
+```
+
+La verifica live non è conclusa finché non sono osservati sia un caso disponibile sia un caso di indisponibilità reale.
+
+Per Source Identity frontend verificare:
+
+```txt
+Start
+→ shell immediata
+→ collecting grigio
+
+recording/aligned
+→ semaforo verde
+→ toast verde iniziale
+
+bootstrap con dashboardContentReady + dashboardData
+→ dashboard reale
+
+mismatch
+→ toast rosso
+→ ritorno al form
+→ campi preservati
+
+mismatch
+→ correzione link
+→ nuovo Start
+→ collecting
+→ aligned
+```
+
+Per pending reale verificare:
+
+```txt
+pending backend
+→ modale con soli nomi
+→ mapping uno-a-uno
+→ frase esatta
+→ POST reale
+→ recording/aligned
+→ toast verde una sola volta
+```
+
+La verifica pending richiede uno status pending reale generato dal backend.
+
+Non usare query parameter o override frontend per validare conferma, bootstrap o decline.
+
+Per il bootstrap verificare anche:
+
+```txt
+nessuna nuova timeline/history prima di recording
+→ bootstrap SofaScore prima di Betfair
+→ nessuna doppia persistenza del tick di apertura
+→ mismatch non persiste il tick causale
+→ Chrome CDP resta aperto
+→ fallimento bootstrap Betfair lascia il gate pending con errore sintetico
+```
+
+* Non modificare timeline o history per simulare l’apertura del gate.
+* Non effettuare rollback manuale del tick SofaScore nel caso di bootstrap Betfair fallito.
+
+### Verifica Sofa durante buffering
+
+```txt
+GET /api/match/:eventId/source-identity-status
+→ phase collecting oppure pending
+→ persistence buffering
+
+GET /api/match/:eventId/json
+→ 404
+```
+
+Atteso:
+
+```txt
+polling Sofa attivo
+→ Sofa: In attesa
+→ ambra
+→ nessun check
+→ tempo —
+→ nessun console.error applicativo
+```
+
+Poi:
+
+```txt
+GET /api/match/:eventId/json
+→ 200
+```
+
+Atteso:
+
+```txt
+Sofa: Connected
+```
+
+
+Non modificare timeline, history o gate per simulare questo caso.
+
+### Verifica persistence integrity
+
+Per una modifica al journal o all’esposizione pubblica di `integrity`, verificare con fixture controllate:
+
+```txt
+nessun journal noto
+→ integrity no_known_partial
+→ letture ordinarie preservate
+
+journal pending con history completata e timeline incompleta
+→ integrity partial_persistence
+→ affectedDocuments include timeline
+→ nessun path locale nel payload pubblico
+
+journal pending con timeline completata e history incompleta
+→ integrity partial_persistence
+→ affectedDocuments include history
+→ nessuna ricostruzione frontend
+
+journal recovery_failed identificabile
+→ integrity recovery_failed
+→ reason sicura
+→ nessuna recovery dalla route
+```
+
+Per il bootstrap verificare:
+
+```txt
+journal pending valido
+→ recovery bootstrap tentata
+→ complete o recovered
+→ journal rimosso solo dopo target verificati
+
+journal invalido ma identificabile
+→ recovery_failed osservabile
+→ backend avviabile se errore per-file non fatale
+
+journal non sicuro o non parsabile
+→ invalidJournal
+→ nessuna scrittura business
+```
+
+Per Betfair verificare inoltre:
+
+```txt
+sample tecnico non valido + journal pending
+→ repairOnly consentito
+→ nessun nuovo tick
+→ nessuna nuova row history
+→ nessuna mutazione marketState
+
+complete o recovered
+→ runtime state confermabile
+
+partial, failed, writer non-ok o commitId errato
+→ runtime state non confermato
+```
+
+Non creare manualmente file parziali sotto `backend/match_history/` in una sessione live. La validazione va fatta con fixture o ambiente controllato.
+
+## Launcher locale
+
+### Controlli automatici
+
+Per una modifica al launcher eseguire:
+
+```txt
+python -m py_compile launcher/app.py launcher/services.py launcher/session.py launcher/system.py
+python -m unittest discover -s launcher/tests -p "test_*.py"
+node --check backend/src/routes/match/trackingResponses.js
+npm --prefix frontend run build
+```
+
+Stato dei controlli automatici della Task A:
+
+```txt
+Implementato, da validare
+```
+
+Non dichiarare un risultato definitivo senza output verificabile del repository reale.
+
+### Verifica live
+
+Stato implementativo:
+
+```txt
+Implementato nel codice
+→ da validare in un’esecuzione locale reale
+```
+
+Registrare l’esito reale di:
+
+```txt
+python avvio.py
+→ backend avviato
+→ frontend Vite avviato
+→ browser aperto dal launcher
+```
+
+Verificare inoltre:
+
+```txt
+porta backend preferita occupata da processo esterno
+→ fallback backend su porta alternativa
+
+porta frontend preferita occupata da processo esterno
+→ fallback frontend su porta alternativa
+
+doppio avvio ravvicinato
+
+Ctrl+C
+→ arresto dei soli processi owned
+
+CDP alternativo su porta diversa da 9222
+```
+
+Durante queste verifiche non terminare manualmente processi in base alla sola porta e non chiudere Chrome/CDP esterno.
+
+Non dichiarare questi scenari verificati live senza output o osservazione dell’esecuzione reale.
+
+## Rollback
+
+Il rollback deve essere selettivo.
+
+```txt
+fermare il servizio interessato
+→ identificare il file coinvolto
+→ ripristinare solo la versione nota come funzionante
+→ eseguire controlli statici
+→ eseguire test mirati
+→ riavviare solo il servizio necessario
+→ verificare il flusso interessato
+```
+
+Per wrapper Python compatibili, `legacy/` può essere una fonte di confronto. Non ripristinare un’intera cartella se il problema riguarda un solo file.
+
+### Rollback della persistenza journalizzata
+
+Il rollback di codice che tocca journal, history o timeline non deve cancellare dati canonici per nascondere un partial.
+
+Sequenza sicura:
+
+```txt
+fermare il writer interessato
+→ preservare history, timeline e journal esistenti
+→ identificare il commitId o l'eventId coinvolto
+→ classificare lo stato come no_known_partial, partial_persistence o recovery_failed
+→ ripristinare solo il codice coinvolto
+→ rieseguire test mirati su fixture
+→ avviare bootstrap recovery controllata
+→ verificare payload read-only di integrity
+```
+
+Non fare rollback manuale tramite:
+
+```txt
+cancellazione cieca di .pending_commits
+cancellazione di timeline
+cancellazione di history
+editing manuale di completed marker
+editing manuale di commitId
+ricostruzione da runtime state
+ricostruzione da frontend
+ricostruzione da Evidence
+```
+
+Un journal `completed` residuo può essere rimosso solo dal codice di cleanup previsto e soltanto dopo verifica dei target canonici.
+
+Un journal `recovery_failed` è un dato diagnostico dell’incidente: conservarlo finché la causa non è stata capita o finché una procedura esplicita di retention non lo rimuove.
+
+### Rollback API integrity
+
+Se il problema riguarda solo payload pubblici di `integrity`, il rollback deve limitarsi a route, adapter di lettura o serializzazione HTTP.
+
+Non modificare:
+
+```txt
+history
+timeline
+journal
+commitId
+payload di recovery
+Source Identity confirmations
+```
+
+Un errore di redazione pubblica non autorizza la cancellazione del journal sottostante.
+
+## Dati da non toccare
+
+Durante verifica o rollback non modificare:
+
+```txt
+backend/match_history/
+backend/match_history/.pending_commits/
+timeline SofaScore e Betfair
+journal sidecar
+backend/source_identity_confirmations.json
+profili Chrome
+cookie
+sessioni
+segreti
+file .env
+dump utili a un incidente ancora aperto
+log utili a un incidente ancora aperto
+```
+
+Non cambiare dati raw per fare passare un test.
+
+## Invarianti
+
+* Non eseguire modifiche durante tracking live attivo.
+* Non usare endpoint distruttivi come smoke test.
+* Non chiudere Chrome CDP come parte della verifica.
+* Non sostituire test mirati con lettura log generica.
+* Non fare rollback di file non coinvolti.
+* Non dichiarare conclusa una modifica finché il flusso interessato non è stato verificato.
+* Non cancellare journal pending o recovery_failed come parte di una verifica ordinaria.
+* Non usare route read-only per eseguire recovery.
+* Non esporre payload journalizzati, path locali o dettagli filesystem in risposte pubbliche.
+* Non confermare `marketState` Betfair se il commit strutturato non è `complete` o `recovered`.
+
+Per un partial di persistenza non modificare manualmente timeline, history o journal per forzare `no_known_partial`.
+
+```txt
+preservare i dati
+→ classificare integrity
+→ correggere il codice
+→ ripetere i test mirati
+→ validare bootstrap recovery o payload read-only
+```
+
+Per un tick Betfair duplicato o regressivo non modificare manualmente timeline o history per “rimuoverlo”.
+
+```txt
+correggere il codice
+→ ripetere i test mirati
+→ rieseguire la verifica controllata
+```
+
+Per una regressione del grafico Money Flow non direzionale, il rollback riguarda soltanto i file del read model API e della UI Task 2E.
+
+Non ripristinare:
+
+```txt
+logica raw Back / Lay
+scraper
+timeline
+Graph URL
+health
+```
+
+## Documenti collegati
+
+* [Selezione del contesto per API AI](../ai/01-context-selection.mdx)
+* [Controllo tracking live](./02-live-tracking-control.mdx)
+* [Runtime locale](./01-local-runtime.mdx)
+* [Timeline e history](../modules/storage/01-timelines-and-history.mdx)
+* [Commit journal e recovery](../modules/storage/02-commit-journal-and-recovery.mdx)
+* [Mappa del repository](../reference/01-repository-map.mdx)
+* [Verifica live Source Identity](./06-source-identity-live-verification.mdx)
+* [Contesto locale e point-by-point](../modules/sofa/02-local-context-and-point-by-point.mdx)
+* [Contesto punti UI](../modules/frontend/04-match-context-ui.mdx)
+* [Validità tecnica campioni Betfair](../modules/betfair/02-technical-sample-validity.mdx)
+* [Validazione Graph URL Betfair](../modules/python/04-betfair-graph-url-validation.mdx)
+* [Diagnostica Betfair](./03-betfair-diagnostics.mdx)
+* [API Match](../api/01-match.mdx)
+* [API Betfair](../api/02-betfair.mdx)
+* [API Evidence](../api/03-evidence.mdx)
+* [Validazione live Betfair — Task 2](./07-betfair-live-validation.mdx)

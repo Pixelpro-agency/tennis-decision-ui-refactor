@@ -1,0 +1,284 @@
+export const meta = {
+id: 'context-selection',
+order: 1,
+title: 'Selezione del contesto per API AI',
+};
+
+# Selezione del contesto per API AI
+
+## Scopo
+
+Questo documento definisce il contesto da inviare a Claude o a un’altra API AI.
+
+L’obiettivo è fornire il minimo contesto sufficiente per completare un task verificabile, senza inviare l’intero repository, history, dump, cache o documentazione aggregata non necessaria.
+
+## Regola principale
+
+Ogni task deve includere soltanto:
+
+1. un obiettivo concreto;
+2. i file autorizzati alla modifica;
+3. il comando di test mirato; un file di test va incluso nei `File autorizzati` soltanto se il task richiede di modificarlo;
+4. il documento canonico del modulo;
+5. un contratto condiviso, solo quando il task attraversa un confine.
+
+Non inviare automaticamente `index.mdx`, capitoli aggregatori, un file Repomix dell’intero repository, dump di rete, cache, history del match o lockfile.
+
+Fa eccezione `fileModificati.md`: dopo una task che ha modificato file, deve essere generato localmente soltanto dai file effettivamente modificati o creati dalla task.
+
+Usare `reference/01-repository-map.mdx` solo quando serve identificare il percorso canonico, l’owner di un modulo o il punto di ingresso corretto.
+
+## Esecuzione dei test e gestione dei fallimenti
+
+Non allegare né leggere automaticamente file di test invariati.
+
+Un file di test non incluso esplicitamente nei `File autorizzati` deve essere considerato invariato: eseguire il suo comando di test mirato senza aprire, leggere, analizzare o modificare il file.
+
+Per ogni task, includere nel prompt il comando di test mirato da eseguire dopo la modifica.
+
+Se il test passa, la sezione Test del report deve contenere soltanto:
+
+* comando eseguito;
+* esito;
+* numero di test passati, se disponibile.
+
+Se il test fallisce:
+
+* non modificare né aprire file di test che non compaiono esplicitamente nei `File autorizzati`;
+* sono consentiti al massimo **tre tentativi ragionati** di correzione e riesecuzione del comando di test mirato;
+* ogni tentativo deve: formulare una causa plausibile basata sull’output del terminale e sui file o documenti già autorizzati, applicare la correzione minima consentita e rieseguire il medesimo test mirato;
+* non fare tentativi a vuoto, non allargare il contesto e non modificare file fuori dai `File autorizzati`;
+* non generare `fileModificati.md` tra un tentativo e l’altro;
+* se il test passa, completare la task e poi generare `fileModificati.md` dai soli file effettivamente modificati o creati dalla task;
+* se fallisce anche il terzo tentativo, non eseguire un quarto ciclo: se sono stati modificati file, generare `fileModificati.md` dai soli file modificati dalla task, riportare il fallimento e **interrompere la chiamata API**. Non avviare un’altra chiamata API, un altro tool o un’altra correzione per la stessa task senza una nuova istruzione esplicita dell’utente.
+
+La sezione Test del report deve contenere soltanto:
+
+* comando eseguito;
+* codice di uscita;
+* suite o test fallito;
+* messaggio di errore;
+* stack trace rilevante;
+* file e numeri di riga citati dall’errore;
+* log essenziali, troncando dump e output ripetitivi.
+
+Un file di test può essere letto o modificato soltanto quando compare esplicitamente nei `File autorizzati` perché il task richiede una modifica al test. In ogni altro caso, eseguire il comando di test, leggere soltanto l’output del terminale e, se non passa, riportare il fallimento nel report senza aprire il file di test.
+
+Non attribuire automaticamente un test fallito alla modifica: se non è disponibile un esito precedente alla patch, riportare il fallimento senza dichiararne la causa.
+
+## Pacchetti di contesto
+
+| Tipo di modifica           | Codice minimo                                                                                                                  | Documentazione minima                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Endpoint Match             | `routes/match.js`, modulo `routes/match/` interessato; comando di test mirato                                                  | `api/01-match.mdx`                                                                                  |
+| Endpoint Betfair           | `routes/betfair.js`, modulo `routes/betfair/` interessato; comando di test mirato                                              | `api/02-betfair.mdx`                                                                                |
+| Evidence o Source Identity | modulo Evidence interessato, route Evidence, hook frontend solo se necessario; comando di test mirato                          | `api/03-evidence.mdx` e documento Evidence pertinente                                               |
+| Tracking live              | `sofa/matchTracker.js`, update module interessato; comando di test mirato                                                      | `modules/sofa/01-live-tracking.mdx`                                                                 |
+| Persistenza                | `matchHistory.js`, `timelineStore.js`, sottoprogetto interessato; comando di test mirato                                       | `modules/storage/01-timelines-and-history.mdx`                                                      |
+| Scraper Betfair            | package in `scrapers/betfair/`, adattatore Node interessato; comando di test mirato; wrapper root solo se cambia CLI o runtime | `modules/python/03-betfair-scraper.mdx`                                                             |
+| Scraper SofaScore          | package in `scrapers/sofa/`, adattatore Node interessato; comando di test mirato; wrapper root solo se cambia CLI o runtime    | `modules/python/02-sofascore-scraper.mdx`                                                           |
+| Frontend                   | componente o hook interessato, utility direttamente coinvolte; comando di test mirato                                          | documento frontend pertinente                                                                       |
+| Avvio locale               | `avvio.py`, `launcher/` o script PowerShell interessato                                                                        | `operations/01-local-runtime.mdx` e, se necessario, `modules/python/01-entrypoints-and-runtime.mdx` |
+| Solo documentazione        | file MDX target e documenti direttamente collegati                                                                             | `ai/02-documentation-conventions.mdx`                                                               |
+
+Per una modifica interna a un package, non includere né modificare il wrapper Python root salvo cambiamenti espliciti a CLI, launcher o comportamento runtime.
+
+## Quando includere un contratto condiviso
+
+Aggiungere un contratto esterno al modulo solo quando la modifica può cambiare:
+
+* endpoint, payload o status HTTP;
+* argomenti CLI;
+* formato di persistenza;
+* invarianti di Evidence o Source Identity;
+* comportamento osservabile del frontend;
+* lifecycle di scraper, browser o runtime.
+
+Per un refactor interno, non aggiungere contratti che non vengono toccati.
+
+## Confini da non superare senza motivo esplicito
+
+* Non modificare il wrapper Python root quando la modifica appartiene a un package interno.
+* Non inserire logica HTTP in un modulo puro.
+* Non avviare scraper da endpoint read-only.
+* Non ricostruire Evidence nel frontend.
+* Non dedurre causalità tra campo e mercato.
+* Non usare network dump come fonte algoritmica.
+* Non modificare history o timeline per risolvere un problema di Source Identity.
+* Non cambiare payload, status HTTP o argomenti CLI durante un refactor interno non dichiarato.
+
+## fileModificati.md post-task
+
+Dopo ogni task che ha modificato almeno un file, l’agente deve generare `fileModificati.md` dalla root del repository. Questo è l’unico artefatto post-task richiesto.
+
+Non creare backup, directory con timestamp, copie dei file, manifest persistenti o file di baseline.
+
+L’agente deve includere soltanto i file effettivamente modificati o creati dalla task. Se il repository contiene modifiche preesistenti, deve escluderle; può identificarle prima della task senza creare, salvare o allegare alcun artefatto.
+
+Dopo avere eseguito il comando di test mirato, se sono stati modificati file:
+
+1. individua i soli percorsi relativi alla root del repository modificati o creati dalla task;
+2. crea `$repomixInclude` unendo tali percorsi con virgole;
+3. dalla root del repository, in Windows PowerShell, esegui questo comando:
+
+   `npx.cmd --yes repomix@latest -o fileModificati.md --style markdown --include "$repomixInclude"`
+
+4. includi un file di test soltanto se è stato effettivamente modificato;
+5. non includere mai `fileModificati.md` nella propria generazione;
+6. non apportare ulteriori modifiche al codice dopo la generazione di `fileModificati.md`.
+
+Non usare `repomix` senza `npx.cmd`. Non installare Repomix globalmente e non rifiutare la task perché Repomix non è presente nel `PATH`: `npx.cmd --yes repomix@latest` deve eseguirlo temporaneamente.
+
+Se nessun file è stato modificato, non creare né aggiornare `fileModificati.md`.
+
+Nel report finale, l’agente deve indicare soltanto:
+
+* elenco dei file effettivamente modificati;
+* percorso di `fileModificati.md`;
+* numero di file inclusi;
+* esito del comando Repomix.
+
+Non deve incollare il contenuto di `fileModificati.md` nel report. L’utente lo allegherà separatamente insieme al report per la successiva analisi.
+
+## Template per il prompt
+
+```txt
+Obiettivo: <una sola modifica verificabile>
+
+File autorizzati:
+
+* <file 1>
+* <file 2>
+
+Documentazione di riferimento:
+
+* <documento canonico del modulo>
+* <contratto condiviso, solo se necessario>
+
+Contratti da preservare:
+
+* <endpoint, payload, CLI o invarianti>
+
+Comando di test mirato:
+
+* <comando>
+
+File Repomix post-task:
+
+* Non creare backup, directory con timestamp, copie dei file, manifest persistenti o file di baseline.
+* Se servono a escludere modifiche preesistenti, identificale prima della task senza creare o salvare alcun artefatto.
+* Dopo il test, se sono stati modificati file, individua soltanto i file modificati o creati dalla task.
+* Crea `$repomixInclude` unendo con virgole i loro percorsi relativi alla root del repository.
+* Dalla root del repository, in Windows PowerShell, esegui: `npx.cmd --yes repomix@latest -o fileModificati.md --style markdown --include "$repomixInclude"`.
+* Non usare `repomix` senza `npx.cmd`, non installarlo globalmente e non rifiutare la task perché Repomix non è presente nel `PATH`.
+* Includi file di test solo se sono stati effettivamente modificati.
+* Non includere `fileModificati.md` nella propria generazione.
+* Non apportare ulteriori modifiche al codice dopo la generazione di `fileModificati.md`.
+* Se nessun file è stato modificato, non creare né aggiornare `fileModificati.md`.
+
+In caso di fallimento:
+
+* Se il file di test non compare nei File autorizzati, non aprirlo, leggerlo, analizzarlo o modificarlo.
+* Sono consentiti al massimo **tre tentativi ragionati** di correzione e riesecuzione del comando di test mirato. Ogni tentativo deve basarsi sull’output del terminale e sui file o documenti già autorizzati, applicare la correzione minima consentita e rieseguire il test.
+* Non fare tentativi a vuoto, non allargare il contesto, non modificare file fuori dai File autorizzati e non generare `fileModificati.md` tra un tentativo e l’altro.
+* Se il test passa, completa la task e, se sono stati modificati file, genera `fileModificati.md`; altrimenti non crearlo né aggiornarlo.
+* Se fallisce anche il terzo tentativo, non eseguire un quarto ciclo. Se sono stati modificati file, genera `fileModificati.md`; altrimenti non crearlo né aggiornarlo. Riporta comando, exit code, test fallito, errore, stack trace rilevante, file e righe citate, poi **interrompi la chiamata API**. Non avviare un’altra chiamata API, un altro tool o un’altra correzione per la stessa task senza una nuova istruzione esplicita dell’utente.
+
+Non modificare:
+
+* <confini espliciti>
+
+Risultato atteso:
+
+* <condizione osservabile>
+
+Report finale:
+
+* esito del comando di test;
+* elenco dei file effettivamente modificati;
+* se sono stati modificati file:
+
+  * percorso di `fileModificati.md`;
+  * numero di file inclusi;
+  * esito del comando `npx.cmd --yes repomix@latest`;
+
+* se nessun file è stato modificato:
+
+  * `Nessun fileModificati.md creato: nessun file modificato.`
+
+Non incollare il contenuto di `fileModificati.md` nel report.
+```
+
+## Esempio: Source Identity
+
+```txt
+Obiettivo:
+Correggere la validazione di una conferma manuale Source Identity.
+
+File autorizzati:
+- backend/src/sofa/matchEvidence/sourceIdentityConfirmation.js
+- backend/src/routes/evidence/evidenceResponses.js
+
+Documentazione di riferimento:
+- modules/evidence/02-source-identity.mdx
+- api/03-evidence.mdx
+
+Contratti da preservare:
+- GET evidence resta read-only sulle timeline.
+- POST confirm accetta solo identity automatica pending.
+- Le timeline raw non devono cambiare.
+
+Comando di test mirato:
+- <comando reale del test Source Identity>
+
+File Repomix post-task:
+- Dopo il test, individua i soli file effettivamente modificati o creati dalla task.
+- Crea `$repomixInclude` unendo con virgole i loro percorsi relativi alla root del repository.
+- Dalla root del repository, in Windows PowerShell, esegui: `npx.cmd --yes repomix@latest -o fileModificati.md --style markdown --include "$repomixInclude"`.
+- Non usare `repomix` senza `npx.cmd` e non installare Repomix globalmente.
+- Non includere `fileModificati.md` nella propria generazione.
+- Nel report indica solo file modificati, percorso di `fileModificati.md`, numero di file inclusi ed esito di Repomix.
+
+In caso di fallimento:
+- Non leggere né modificare il file di test, perché non è nei File autorizzati.
+- Sono consentiti al massimo **tre tentativi ragionati**: usa soltanto output del terminale, file e documentazione autorizzati; applica una correzione minima consentita e riesegui il test mirato.
+- Non generare `fileModificati.md` tra i tentativi.
+- Se il test passa, genera `fileModificati.md` dai soli file effettivamente modificati o creati dalla task.
+- Se fallisce anche il terzo tentativo, genera `fileModificati.md` solo se sono stati modificati file, riporta l’errore e **interrompi la chiamata API**. Non effettuare un quarto tentativo né un’altra chiamata API senza una nuova istruzione esplicita dell’utente.
+
+Non modificare:
+- frontend, scraper Python, match history e API non Evidence.
+
+Risultato atteso:
+- Una conferma manuale valida viene accettata senza modificare timeline raw o contratti API non Evidence.
+```
+
+## Esclusioni obbligatorie
+
+Non inviare a un’API AI:
+
+* cookie, token, password, API key o profili browser;
+* file `.env`;
+* `backend/match_history/`;
+* `backend/betfair_network_dump/`;
+* cache browser o cache runtime;
+* dump o dati generati;
+* lockfile, salvo task strettamente sulle dipendenze;
+* file in `legacy/`, salvo migrazione esplicita;
+* l’intero repository quando il task riguarda un solo modulo.
+
+## Checklist prima dell’invio
+
+```txt
+[ ] Il task riguarda un solo obiettivo.
+[ ] I file inclusi sono necessari al task.
+[ ] È presente un comando di test mirato.
+[ ] Il prompt vieta la lettura automatica dei test invariati.
+[ ] Il prompt definisce il report minimo in caso di fallimento.
+[ ] Il prompt consente al massimo tre tentativi ragionati e impone l’interruzione della chiamata API dopo il terzo fallimento.
+[ ] È presente il documento canonico del modulo.
+[ ] È presente un contratto condiviso solo se viene attraversato.
+[ ] Non sono presenti dati generati o segreti.
+[ ] Non è stato incluso un aggregatore documentale senza necessità.
+[ ] Il contesto resta leggibile in una singola chiamata API.
+```

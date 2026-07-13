@@ -1,0 +1,146 @@
+export const meta = {
+id: 'source-identity-live-verification',
+order: 6,
+title: 'Verifica live Source Identity',
+};
+
+# Verifica live Source Identity
+
+## Scopo
+
+Questo runbook registra le verifiche browser del Source Identity Gate nel frontend.
+
+Non definisce il contratto HTTP del gate, la logica backend di matching o la persistenza delle timeline.
+
+## Stato
+
+**Implementato, da validare.**
+
+Il frontend globale Source Identity è implementato.
+
+Le verifiche ancora aperte richiedono uno status `pending` prodotto dal backend.
+
+## Stato già verificato live
+
+- [x] collecting → recording automatico:
+  shell immediata, semaforo grigio, poi semaforo verde e toast verde circa 5 secondi.
+
+  La dashboard reale è comparsa dopo il bootstrap frontend: `dashboardContentReady` e `dashboardData` disponibili. Non è sbloccata direttamente da `recording/aligned`.
+
+- [x] mismatch:
+  toast rosso, ritorno al form, URL e campi preservati.
+
+- [x] mismatch → correzione link → nuovo Start → collecting → aligned nella stessa sessione browser:
+  il toast rosso precedente sparisce al nuovo Start, non resta stato mismatch nella sidebar,
+  la nuova sessione passa da grigio a verde e la dashboard torna normale.
+
+- [x] 2026-07-04:
+  → Source Identity `recording` / `canonical` / `aligned` osservato su sessione live.
+  → TopBar `Sofa: Connected` osservata con timeline disponibile.
+
+Nota osservata: nel restart dopo mismatch il toast verde non è stato osservato; il semaforo verde `aligned`
+e l’avvio della registrazione sono stati invece confermati. È un dettaglio UX non bloccante.
+
+## Stato TopBar Sofa durante buffering
+
+Questa verifica non è inclusa nei casi collecting/aligned già registrati.
+
+* [ ] Il backend comunica:
+
+  ```txt
+  phase: collecting oppure pending
+  persistence: buffering
+  ```
+
+* [ ] Con un eventId privo di timeline SofaScore preesistenti, `GET /api/match/:eventId/json` restituisce `404`.
+
+* [ ] La shell resta visibile.
+
+* [ ] La waiting screen resta visibile.
+
+* [ ] La TopBar resta visibile.
+
+* [ ] La TopBar mostra:
+
+  ```txt
+  Sofa: In attesa
+  ```
+
+  Osservazione manuale riportata; artefatto non archiviato.
+
+* [ ] Il badge è ambra, non mostra check e visualizza tempo `—`.
+
+* [ ] Il polling continua senza:
+
+  ```txt
+  SofaScore JSON polling error
+  ```
+
+* [x] Quando `GET /api/match/:eventId/json` restituisce `200`, la TopBar passa a:
+
+  ```txt
+  Sofa: Connected
+  ```
+
+## Pending reale da verificare quando disponibile
+
+Quando un pending reale coincide con una timeline Sofa non ancora materializzata, la TopBar deve restare in:
+
+```txt
+Sofa: In attesa
+```
+
+fino alla prima risposta:
+
+```txt
+GET /api/match/:eventId/json
+→ 200
+```
+
+La modale pending e il badge Sofa rappresentano aspetti distinti:
+
+```txt
+modale
+→ conferma del mapping fra fonti
+
+TopBar
+→ disponibilità corrente della timeline Sofa
+```
+
+Condizioni operative:
+
+* [ ] Il pending deriva da fonti plausibilmente correlate, non da un runner estraneo.
+
+* [ ] Un mismatch con runner estraneo non apre la modale di conferma.
+
+* [ ] Il backend comunica `phase=pending` con nomi reali.
+
+* [ ] La modale mostra solo nomi SofaScore e runner Betfair, senza URL, `marketId` o `selectionId`.
+
+* [ ] Dopo una conferma valida e un bootstrap riuscito, il refresh del gate porta a `recording/aligned`.
+
+* [ ] Se il bootstrap fallisce, il gate resta `pending` con errore sicuro; la UI non deve dichiarare conferma riuscita.
+
+* [ ] Il toast verde appare una volta per ogni transizione verso `recording/aligned` e non si ripete durante polling con phase invariata.
+
+* [ ] Decline pending chiama stop, torna al form con campi preservati e non mostra toast mismatch.
+
+## Limite noto
+
+Il bootstrap cross-source non è transazionale:
+
+```txt
+persistenza SofaScore riuscita
+→ persistenza Betfair fallita
+→ gate torna pending
+→ tick SofaScore già scritto non rollbackato
+```
+
+## Documenti collegati
+
+* [Source Identity](../modules/evidence/02-source-identity.mdx)
+* [Sessione e shell frontend](../modules/frontend/01-session-shell.mdx)
+* [Polling e view model](../modules/frontend/02-live-polling-and-view-model.mdx)
+* [UI Betfair e Market Reactions](../modules/frontend/03-betfair-and-market-reactions-ui.mdx)
+* [Controllo tracking live](./02-live-tracking-control.mdx)
+* [Validazione e rollback](./04-validation-and-rollback.mdx)

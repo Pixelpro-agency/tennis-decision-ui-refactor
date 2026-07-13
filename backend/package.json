@@ -1,0 +1,18 @@
+{
+  "name": "tennis-decision-ui-backend",
+  "version": "1.0.0",
+  "description": "Backend proxy for Tennis Decision UI",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "dev:backend": "powershell -ExecutionPolicy Bypass -File ../scripts/start-backend-dev.ps1"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "node-fetch": "^3.3.2"
+  },
+  "type": "module"
+}

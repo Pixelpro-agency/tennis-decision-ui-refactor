@@ -1,0 +1,190 @@
+export const meta = {
+id: 'live-tracking-control',
+order: 2,
+title: 'Controllo tracking live',
+};
+
+# Controllo tracking live
+
+## Scopo
+
+Questo runbook descrive cosa verificare durante una sessione live e come fermarla senza perdere dati già persistiti.
+
+Non descrive il funzionamento interno dello scheduler, del lifecycle scraper o della persistenza.
+
+## Prima dell’avvio
+
+Prima di avviare una sessione verificare:
+
+```txt
+backend disponibile
+→ Chrome CDP disponibile quando si usa modalità CDP
+→ URL SofaScore valido
+→ URL Betfair valido se previsto
+→ Graph URL valide se previste
+→ configurazione sessione coerente
+```
+
+Il tracking può funzionare con solo SofaScore.
+
+Con URL Betfair, il gate Source Identity parte normalmente in `collecting`.
+
+## Sessione attiva
+
+Durante il tracking controllare separatamente:
+
+| Area                 | Cosa osservare                                                                                                                                                                                                   |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source Identity Gate | `phase`, `persistence`, `updatedAt`, eventuale errore sintetico                                                                                                                                                  |
+| SofaScore            | Score, timestamp e timeline solo dopo persistenza autorizzata                                                                                                                                                    |
+| Betfair              | Health, timestamp ultimo tick, ladder e runner                                                                                                                                                                   |
+| Evidence             | Disponibile solo quando esistono timeline canoniche                                                                                                                                                              |
+| Money Flow           | Nuovi timestamp, punti validi e anomalie                                                                                                                                                                         |
+| Frontend             | Shell attiva, semaforo Source Identity coerente, waiting screen finché il bootstrap non ha prodotto `dashboardContentReady` e `dashboardData`; Source Identity ne determina testo e tono, non lo sblocco diretto |
+
+Un valore visibile non dimostra automaticamente che sia recente, completo o tradabile.
+
+## Verifica minima di una sessione
+
+Ordine consigliato:
+
+```txt
+event ID SofaScore corretto
+→ GET source-identity-status
+→ collecting oppure pending: nessuna nuova timeline/history della sessione corrente; eventuali file con lo stesso eventId possono essere preesistenti
+→ recording: bootstrap canonico completato e timeline disponibili
+→ not-applicable: persistenza SofaScore consentita; attendere il primo campione valido prima di richiedere la timeline
+→ health Betfair coerente, quando previsto
+→ Evidence disponibile dopo persistenza canonica
+→ aggiornamento grafici Money Flow
+```
+
+Endpoint utili:
+
+```txt
+GET /api/match/:eventId/source-identity-status
+GET /api/match/:eventId/json
+GET /api/betfair/:eventId/latest
+GET /api/betfair/:eventId/json
+GET /api/evidence/:eventId/latest
+GET /api/betfair/log
+```
+
+## Source Identity durante il live
+
+Lo stato live autoritativo è:
+
+```txt
+GET /api/match/:eventId/source-identity-status
+```
+
+| Fase             | Cosa verificare                                                                                                                                                            |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `collecting`     | Dati ancora incompleti; nessuna persistenza                                                                                                                                |
+| `pending`        | Giocatori e runner presenti; conferma manuale ammessa                                                                                                                      |
+| `recording`      | Persistenza canonica attiva                                                                                                                                                |
+| `mismatch`       | Tick causale bloccato; il callback arresta tutti i tracker attivi, preserva soltanto il gate mismatch dell’evento causale e termina gli scraper Betfair figli del progetto |
+| `not-applicable` | Sessione SofaScore senza Betfair                                                                                                                                           |
+
+La conferma manuale è ammessa solo in `pending`.
+
+```txt
+POST /api/evidence/:eventId/source-identity/confirm
+```
+
+`GET /api/evidence/:eventId/latest` può restituire `404` durante `collecting` o `pending`: non è un errore del gate.
+
+## Stop tracking
+
+Per fermare il live tracking usare il controllo Overview:
+
+```txt
+Stop Live Tracking
+```
+
+oppure:
+
+```txt
+POST /api/match/stop
+```
+
+Il comando è globale e idempotente. Il body può essere vuoto; un eventuale `eventId` è solo informativo.
+
+Durante la richiesta il frontend mostra:
+
+```txt
+Stopping live tracking...
+```
+
+Dopo una risposta positiva mostra:
+
+```txt
+Live tracking stopped
+```
+
+Flusso previsto:
+
+```txt
+stop richiesto
+→ stop tracker SofaScore e scheduler globale
+→ rimozione dei gate Source Identity attivi
+→ stop polling Betfair backend
+→ terminazione scraper Betfair figli del progetto
+→ risposta backend positiva
+→ stop polling SofaScore frontend
+→ backend e frontend restano aperti
+→ Chrome CDP resta aperto
+```
+
+Il controllo Overview ferma esplicitamente soltanto il polling SofaScore frontend.
+
+I hook Betfair, Evidence e Source Identity restano montati finché la shell resta aperta. Possono quindi continuare a leggere dati persistiti o ricevere `404` dopo lo stop, ma non riavviano il tracking backend.
+
+Lo stop non deve:
+
+* cancellare history;
+* cancellare timeline;
+* cancellare conferme Source Identity;
+* cancellare dashboard o URL di sessione;
+* chiudere Chrome CDP;
+* cancellare il profilo browser;
+* trasformare dati già mostrati in dati live.
+
+Il mismatch è un caso speciale: il gate mismatch resta leggibile finché non viene rimosso da Stop, Untrack o nuovo Start.
+
+## Chiusura completa dello stack
+
+Con il launcher già aperto, usare `Ctrl+C` nel terminale.
+
+Sequenza attesa:
+
+```txt
+Ctrl+C
+→ cleanup globale tracker e scraper Betfair figli
+→ chiusura server HTTP backend
+→ frontend chiuso se controllato dal launcher
+→ Chrome CDP lasciato aperto
+```
+
+Il backend applica lo stesso cleanup anche quando riceve `SIGINT` o `SIGTERM`.
+
+Uno shutdown duplicato viene ignorato. Se il server HTTP non chiude, resta un fallback massimo di cinque secondi prima dell’uscita del backend.
+
+## Regole operative
+
+* Non usare `POST /api/match/stop` come smoke test.
+* Non chiudere Chrome dal Task Manager come procedura normale.
+* Non trattare l’ultimo tick Betfair come aggiornamento corrente dopo timeout o health stale.
+* Non dedurre Source Identity dagli URL inseriti.
+* Non modificare history o timeline per “sistemare” una sessione.
+* Non creare manualmente timeline o history per aggirare `collecting`, `pending` o `mismatch`.
+* Non dedurre lo stato Source Identity dalla sola disponibilità di Evidence.
+
+## Documenti collegati
+
+* [Runtime locale](./01-local-runtime.mdx)
+* [Diagnostica Betfair](./03-betfair-diagnostics.mdx)
+* [API Match](../api/01-match.mdx)
+* [API Evidence](../api/03-evidence.mdx)
+* [Tracking live](../modules/sofa/01-live-tracking.mdx)
+* [Verifica live Source Identity](./06-source-identity-live-verification.mdx)

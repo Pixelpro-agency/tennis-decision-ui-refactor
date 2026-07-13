@@ -1,0 +1,76 @@
+# Dependencies
+node_modules/
+.npm/
+
+# Environment files and local secrets
+.env
+.env.*
+!.env.example
+
+# Runtime match data
+match_history/
+match history/
+
+# Python cache and test output
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.venv/
+venv/
+.coverage
+.coverage.*
+htmlcov/
+
+# Application caches and browser profiles
+.cache/
+backend/betfair_cache/
+backend/scraper_cache/
+backend/scraper_profile/
+backend/betfair_network_dump/
+
+# Local diagnostics and generated runtime data
+diag-live/
+virtual-commit-id-journal/
+*.log
+backend/login_screenshot*.png
+backend/source_identity_confirmations.json
+
+# Temporary and generated build output
+tmp/
+temp/
+dist/
+build/
+coverage/
+.vite/
+.eslintcache
+test-results/
+playwright-report/
+
+# Local assistants, editors, and working documents
+.claude/
+kilo.json
+.idea/
+.vscode/
+docs/_work/
+docs/Prompt/
+docs/percorsi.txt
+docs/planning/
+docs/legacy/
+
+# Machine-specific files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+*.before-*
+*~

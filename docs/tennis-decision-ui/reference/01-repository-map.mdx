@@ -1,0 +1,323 @@
+export const meta = {
+id: 'repository-map',
+order: 1,
+title: 'Mappa del repository',
+};
+
+# Mappa del repository
+
+## Scopo
+
+Questa è la mappa di orientamento del repository.
+
+Usarla per individuare il confine corretto prima di modificare codice o preparare contesto per un'API AI. Non contiene contratti HTTP completi, regole di dominio o dettagli di implementazione.
+
+La mappa distingue codice applicativo, dati runtime, persistenza canonica, journal sidecar, frontend, script operativi e documentazione owner.
+
+## Root
+
+```txt
+Tennis Decision UI refactor/
+├── avvio.py
+├── scraper.py
+├── betfair_scraper.py
+├── backend/
+├── frontend/
+├── launcher/
+├── scrapers/
+├── scripts/
+├── docs/
+│   └── tennis-decision-ui/
+├── legacy/
+└── package-lock.json
+```
+
+| Percorso              | Responsabilità                                                                |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `avvio.py`            | Wrapper pubblico verso `launcher.app`                                         |
+| `scraper.py`          | Wrapper pubblico verso `scrapers.sofa.cli`                                    |
+| `betfair_scraper.py`  | Wrapper pubblico verso `scrapers.betfair.cli`                                 |
+| `launcher/`           | Avvio coordinato di Chrome CDP, backend e frontend                            |
+| `scrapers/`           | Implementazione Python di SofaScore e Betfair                                 |
+| `backend/`            | Server Node, API, tracking, persistenza canonica, journal recovery ed Evidence |
+| `frontend/`           | Dashboard React/Vite                                                          |
+| `scripts/`            | Script PowerShell di avvio runtime e utility Python operative di manutenzione |
+| `docs/`               | Documentazione tecnica modulare                                               |
+| `legacy/`             | Materiale non canonico; non usarlo come riferimento primario                  |
+| `package-lock.json`   | Lockfile root; non definisce l'architettura applicativa                       |
+
+## Runtime locale
+
+```txt
+python avvio.py
+  ↓
+launcher/
+  ├─ CDP
+  │   └─ endpoint valido riusato oppure Chrome dedicato su porta libera
+  ├─ backend
+  │   └─ backend/src/server.js
+  └─ frontend
+      └─ node frontend/node_modules/vite/bin/vite.js
+  ↓
+browser aperto sull'URL frontend effettivo
+```
+
+| Porta preferita | Servizio        | Regola                                                                                                                                                                                                  |
+| --------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `9222`          | Chrome CDP      | Un endpoint valido viene riusato. Se assente, il launcher avvia Chrome dedicato su una porta libera. Chrome/CDP, riusato o avviato dall’helper, non viene registrato come owned né chiuso dal launcher. |
+| `3001`          | Backend Express | Usa `process.env.PORT`, con default `3001`; il launcher riusa solo un backend con identità Tennis Decision UI o sceglie una porta alternativa.                                                          |
+| `3000`          | Frontend Vite   | Vite viene avviato tramite Node e CLI locale su `127.0.0.1`; il launcher usa una porta alternativa se necessario.                                                                                       |
+
+Le porte sono preferite, non riservate.
+
+Il launcher non termina processi in base alla sola porta. Registra come owned soltanto backend e frontend avviati dalla sessione corrente. I processi riusati restano esterni alla ownership; Chrome/CDP, riusato o avviato dall’helper, non viene registrato come owned né chiuso dal launcher.
+
+Il launcher non è owner del journal di persistenza. Non ripara, non cancella e non compatta `pending_commits`.
+
+## Backend
+
+```txt
+backend/src/
+├── server.js
+├── routes/
+└── sofa/
+```
+
+| Area               | Percorsi principali                                                                                      | Responsabilità                                                                                                      |
+| ------------------ | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Server             | `server.js`                                                                                              | Express, CORS, router e shutdown                                                                                    |
+| API Match          | `routes/match.js`, `routes/match/`                                                                       | Track, stop, status Source Identity Gate, analisi SofaScore, history, timeline e integrity read-only                 |
+| API Betfair        | `routes/betfair.js`, `routes/betfair/`                                                                   | Latest, timeline, odds, log, login window, health e integrity read-only                                              |
+| API Evidence       | `routes/evidence.js`, `routes/evidence/`                                                                 | Evidence snapshot, Source Identity, `persistenceComplete` e no-trade reasons                                         |
+| API Strategy       | `routes/strategy.js`, `routes/strategy/`                                                                 | Lay The Winner                                                                                                      |
+| Preflight          | `routes/test.js`, `routes/test/`                                                                         | Health, CDP, URL SofaScore, URL Betfair e Graph URL                                                                 |
+| Tracking           | `sofa/matchTracker.js`, `sofa/trackerUpdate.js`, `sofa/sourceIdentityGate.js`                            | Scheduler, polling, gate Source Identity, stato live e conferma runtime dopo commit canonico                         |
+| Contesto SofaScore | `sofa/normalizeSnapshot.js`, `sofa/pointByPoint.js`, `sofa/localContext.js`, `sofa/buildSofaAnalysis.js` | Snapshot normalizzato, point-by-point e contesto descrittivo locale                                                 |
+| Betfair            | `sofa/betfairFetch.js`, `sofa/betfair/`                                                                  | Scraper lifecycle, cache, normalizzazione, esito commit strutturato, ladder, flow e bridge Node/Python sicuro       |
+| Persistenza        | `sofa/matchHistory.js`, `sofa/timelineStore.js`                                                          | History aggregata, timeline canoniche, commit logico journalizzato e recovery deterministica                         |
+| Evidence           | `sofa/matchEvidence.js`, `sofa/matchEvidence/`                                                           | Snapshot neutro, qualità dati, identity, integrity per source e no-trade reasons                                    |
+| Market Reactions   | `sofa/marketReactionEvidence.js`, moduli correlati                                                       | Osservazioni temporali senza causalità dichiarata; sospese se la persistenza cross-source non è completa             |
+
+## Persistenza canonica e journal
+
+La persistenza canonica vive sotto `backend/match_history/`.
+
+```txt
+backend/match_history/
+├── <eventId>/
+│   ├── history*.json
+│   ├── timeline*.json
+│   └── pending_commits/
+│       └── *.json
+└── ...
+```
+
+| Area                       | Regola di orientamento                                                                 |
+| -------------------------- | -------------------------------------------------------------------------------------- |
+| History aggregate          | Stato canonico aggregato; non modificare manualmente                                   |
+| Timeline append-only       | Sequenza canonica degli eventi; non modificare manualmente                             |
+| `pending_commits/`         | Journal sidecar tecnico per commit logici incompleti e recovery                        |
+| `commitId`                 | Identificatore logico del commit da propagare fra writer e recovery                     |
+| `integrity`                | Stato read-only derivato dalla persistenza incompleta nota                              |
+| `partial_persistence`      | Persistenza incompleta osservabile; non equivale a health, freshness o errore scraper   |
+| `recovery_failed`          | Recovery non riuscita osservabile; non deve essere nascosta da cleanup o diagnostica     |
+
+Le API read-only possono esporre `integrity`, ma non riparano journal, non scrivono dati canonici e non avviano tracker o scraper.
+
+La documentazione owner è:
+
+```txt
+docs/tennis-decision-ui/modules/storage/01-timelines-and-history.mdx
+docs/tennis-decision-ui/modules/storage/02-commit-journal-and-recovery.mdx
+```
+
+## Python
+
+```txt
+scrapers/
+├── sofa/
+└── betfair/
+
+launcher/
+├── config.py
+├── system.py
+├── services.py
+└── app.py
+```
+
+| Area      | Percorsi principali | Responsabilità                                                                                                 |
+| --------- | ------------------- | -------------------------------------------------------------------------------------------------------------- |
+| SofaScore | `scrapers/sofa/`    | URL, cache, browser e CLI                                                                                      |
+| Betfair   | `scrapers/betfair/` | Browser, mercato, validazione e mapping Graph URL, ladder, cache, network capture, redazione diagnostica e CLI |
+| Launcher  | `launcher/`         | Configurazione, processi, attese HTTP, avvio e shutdown                                                        |
+
+Gli entry point nella root devono restare compatibili finché sono richiamati dal backend o dalle procedure operative.
+
+Gli scraper Python non sono owner della persistenza canonica. Producono campioni o diagnostica; la decisione su commit, `repairOnly`, runtime confermato e integrity appartiene al backend.
+
+## Dati runtime, generati e sensibili
+
+| Percorso                                             | Tipo                                      | Regola di orientamento                                                                  |
+| ---------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------- |
+| `backend/match_history/`                             | Timeline canoniche, history e journal     | Non modificare o cancellare fuori da retention, replay o recovery espliciti             |
+| `backend/match_history/*/pending_commits/`           | Journal sidecar tecnico                   | Non cancellare manualmente; non includere in cleanup cache o rollback cieco             |
+| `backend/scraper_cache/`, `backend/betfair_cache/`   | Cache runtime                             | Non sono fonti canoniche; pulizia consentita solo tramite utility allow-list            |
+| `backend/scraper_profile/`                           | Profilo browser SofaScore                 | Escludere da contesto AI e condivisione                                                 |
+| `backend/betfair_network_dump/`                      | Dump diagnostici opzionali                | Redatti ma potenzialmente sensibili; non usare come input algoritmico o fonte canonica  |
+| `backend/*_debug.log`, `backend/betfair_scraper.log` | Log runtime                               | Diagnostica soltanto                                                                    |
+| `launcher/.runtime/`                                 | Lock e manifest effimeri                  | Non modificare manualmente durante una sessione attiva                                  |
+
+Per un task ristretto, escludere di default:
+
+```txt
+node_modules
+timeline e history runtime
+pending_commits
+cache
+profili browser
+dump diagnostici
+log
+lockfile e manifest runtime
+file con segreti o credenziali
+Repomix completi
+```
+
+Usare questi dati soltanto quando il task riguarda esplicitamente storage, retention, replay, diagnostica o recovery.
+
+La utility di manutenzione cache runtime è `scripts/cleanup_runtime_cache.py`. Opera solo sulle cache allow-list e non deve essere trattata come cleanup generico del repository.
+
+La utility di cleanup non deve cancellare history, timeline o `pending_commits`.
+
+## Frontend
+
+```txt
+frontend/src/
+├── App.jsx
+├── components/
+│   ├── MatchContextCard.jsx
+│   ├── matchContextViewModel.js
+│   ├── DashboardWorkspace.jsx
+│   ├── Sidebar.jsx
+│   ├── SourceIdentityGateIndicator.jsx
+│   ├── SourceIdentityGateToast.jsx
+│   ├── SourceIdentityGateWaitingScreen.jsx
+│   └── marketReactions/
+│       ├── SourceIdentityConfirmationModal.jsx
+│       └── SourceIdentityControls.jsx
+├── hooks/
+│   ├── useAnalysisSessionState.js
+│   ├── useBetfairJson.js
+│   ├── useDashboardViewModel.js
+│   ├── useMarketReactionEvidence.js
+│   ├── useMatchPolling.js
+│   └── useSourceIdentityGateStatus.js
+├── services/
+│   └── liveSessionApi.js
+├── utils/
+│   ├── sourceIdentityGatePresentation.js
+│   └── sourceIdentityGatePresentation.test.mjs
+└── types/
+```
+
+| Area                 | Percorsi principali                                                      | Responsabilità                                                                 |
+| -------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| Shell                | `App.jsx`, `DashboardWorkspace.jsx`, `Sidebar.jsx`                       | Sessione, view attiva, shell immediata e orchestrazione UI                     |
+| Source Identity live | `useSourceIdentityGateStatus.js`, `sourceIdentityGatePresentation.js`    | Polling status gate e presentazione pura                                       |
+| Source Identity UI   | indicatore, toast, waiting screen e modale                               | Rendering globale gate, conferma manuale e mismatch                            |
+| Dati live            | `useMatchPolling.js`, `useBetfairJson.js`                                | Lettura timeline SofaScore, dati Betfair, `integrity` e server status          |
+| Contesto punti       | `MatchContextCard.jsx`, `matchContextViewModel.js`, `types/dashboard.js` | Rendering descrittivo di `localContext` senza ricalcolo sportivo               |
+| Evidence             | `useMarketReactionEvidence.js`                                           | Polling snapshot Evidence, `persistenceComplete` e Market Reactions            |
+| API client           | `liveSessionApi.js`, `liveSessionRequests.js`                            | Tracking, stop, conferma reale e operazioni sessione                           |
+| View model           | `useDashboardViewModel.js`, `utils/dashboard*.js`                        | Adattamento dati backend per componenti, inclusi stati degradati read-only     |
+| Test puri            | `utils/*.test.mjs`                                                       | Contratti utility frontend                                                     |
+
+La Source Identity globale usa:
+
+```txt
+GET /api/match/:eventId/source-identity-status
+```
+
+La conferma reale usa:
+
+```txt
+POST /api/evidence/:eventId/source-identity/confirm
+```
+
+Il frontend non deve ricostruire Evidence, mapping, mismatch o stato gate dai link.
+
+Il frontend può visualizzare `integrity`, `persistenceComplete:false` o `409 persistence_integrity`, ma non legge journal, non esegue recovery, non avvia repair e non modifica `marketState`.
+
+## Documentazione owner
+
+```txt
+docs/tennis-decision-ui/
+├── architecture/
+│   ├── 01-system-boundaries.mdx
+│   └── 02-data-lifecycle.mdx
+├── modules/
+│   ├── sofa/
+│   │   └── 01-live-tracking.mdx
+│   ├── betfair/
+│   │   ├── 01-scraper-lifecycle.mdx
+│   │   └── 02-technical-sample-validity.mdx
+│   ├── storage/
+│   │   ├── 01-timelines-and-history.mdx
+│   │   └── 02-commit-journal-and-recovery.mdx
+│   ├── evidence/
+│   │   ├── 01-match-evidence-snapshot.mdx
+│   │   ├── 03-quality-flow-and-alignment.mdx
+│   │   └── 04-market-reactions.mdx
+│   └── frontend/
+│       ├── 02-live-polling-and-view-model.mdx
+│       └── 03-betfair-and-market-reactions-ui.mdx
+├── api/
+│   ├── 01-match.mdx
+│   ├── 02-betfair.mdx
+│   └── 03-evidence.mdx
+├── operations/
+│   ├── 01-local-runtime.mdx
+│   ├── 03-betfair-diagnostics.mdx
+│   ├── 04-validation-and-rollback.mdx
+│   └── 05-retention-and-cleanup.mdx
+├── reference/
+│   └── 01-repository-map.mdx
+└── roadmap/
+    └── 01-current-state.mdx
+```
+
+| Tema                         | Documento owner                                                                  |
+| ---------------------------- | --------------------------------------------------------------------------------- |
+| Lifecycle dati alto livello  | `architecture/02-data-lifecycle.mdx`                                               |
+| Timeline e history           | `modules/storage/01-timelines-and-history.mdx`                                     |
+| Commit journal e recovery    | `modules/storage/02-commit-journal-and-recovery.mdx`                               |
+| Tracking live SofaScore      | `modules/sofa/01-live-tracking.mdx`                                                |
+| Lifecycle scraper Betfair    | `modules/betfair/01-scraper-lifecycle.mdx`                                         |
+| Validità tecnica Betfair     | `modules/betfair/02-technical-sample-validity.mdx`                                 |
+| API Match                    | `api/01-match.mdx`                                                                |
+| API Betfair                  | `api/02-betfair.mdx`                                                              |
+| API Evidence                 | `api/03-evidence.mdx`                                                             |
+| Evidence snapshot            | `modules/evidence/01-match-evidence-snapshot.mdx`                                  |
+| Quality flow e alignment     | `modules/evidence/03-quality-flow-and-alignment.mdx`                               |
+| Market Reactions             | `modules/evidence/04-market-reactions.mdx`                                        |
+| Frontend polling             | `modules/frontend/02-live-polling-and-view-model.mdx`                              |
+| Frontend Betfair/Reactions   | `modules/frontend/03-betfair-and-market-reactions-ui.mdx`                          |
+| Runtime locale               | `operations/01-local-runtime.mdx`                                                  |
+| Diagnostica Betfair          | `operations/03-betfair-diagnostics.mdx`                                            |
+| Validazione e rollback       | `operations/04-validation-and-rollback.mdx`                                        |
+| Retention e cleanup          | `operations/05-retention-and-cleanup.mdx`                                          |
+| Mappa repository             | `reference/01-repository-map.mdx`                                                  |
+
+## Regole di orientamento
+
+* Modifica un endpoint: leggere il router interessato, il modulo puro estratto, il relativo test e il documento API owner.
+* Modifica polling: leggere `matchTracker.js` o l'hook frontend specifico, non l'intero progetto.
+* Modifica `localContext`: leggere `normalizeSnapshot.js`, `pointByPoint.js`, `localContext.js`, i test collegati e il consumer frontend soltanto quando cambia il rendering.
+* Modifica Source Identity frontend: leggere `App.jsx`, hook status gate, presentazione pura, componenti Source Identity, test e registro live.
+* Modifica Source Identity backend: leggere gate, Evidence, route Match, route Evidence e test collegati.
+* Modifica scraping: leggere il wrapper root, il package Python interessato e l'adattatore Node.
+* Modifica Graph URL dirette Betfair: leggere `graph_url.py`, `graph_url_test.py` e `scrape.py`; leggere `market_api.py` e `ladder.py` soltanto come contratti da preservare.
+* Modifica startup: leggere `avvio.py`, `launcher/` e gli script PowerShell.
+* Modifica persistenza canonica: leggere history, timeline, commit journal, recovery e test collegati prima delle API o del frontend.
+* Modifica `integrity` o `409 persistence_integrity`: leggere storage, API interessata, Evidence se coinvolta e frontend consumer.
+* Modifica cleanup o rollback: leggere prima retention, validation, repository map e commit journal; non trattare `pending_commits` come cache.
+* Non usare history, cache, dump, lockfile, `pending_commits` o Repomix completo come contesto iniziale per un task ristretto.

@@ -1,0 +1,187 @@
+export const meta = {
+id: 'replay-and-backtesting',
+order: 2,
+title: 'Replay e backtesting',
+};
+
+# Replay e backtesting
+
+## Stato
+
+**Pianificato, non implementato.**
+
+I moduli, endpoint e CLI descritti qui non esistono ancora.
+
+## Scopo
+
+Replay e backtesting devono ricostruire il comportamento degli algoritmi usando timeline già persistite.
+
+```txt
+timeline SofaScore + timeline Betfair
+↓
+replay ordinato nel tempo
+↓
+Evidence ricostruita tick per tick
+↓
+analisi, confronto versioni o export
+```
+
+Le fonti primarie sono le timeline canoniche persistite. Non usare payload browser raw o dump diagnostici come sostituti.
+
+## Input canonici
+
+| Input                    | Ruolo                                         |
+| ------------------------ | --------------------------------------------- |
+| Timeline SofaScore       | Eventi, score, servizio, statistiche e marker |
+| Timeline Betfair         | Prezzo, runner, book, ladder, volume e health |
+| Metadata timeline        | Event ID, giocatori, torneo e timestamp       |
+| Configurazione algoritmo | Versione e parametri espliciti                |
+| Conferme Source Identity | Da trattare come stato separato e contestuale |
+
+Non usare come input primario:
+
+```txt
+snapshot latest
+history aggregata come sostituto timeline
+network dump
+cache browser
+fetch live
+browser
+log testuali
+```
+
+## Invarianti
+
+Il replay deve:
+
+* leggere dati persistiti senza modificarli;
+* ordinare i tick tramite timestamp validi e tie-breaker deterministico documentato;
+* ricostruire Evidence senza fetch esterni;
+* rispettare active market epoch;
+* rispettare Source Identity;
+* distinguere dati mancanti da dati negativi;
+* conservare versione e configurazione dell’algoritmo;
+* permettere risultati riproducibili sullo stesso input.
+
+L’epoch Betfair deve essere calcolato al cursore storico del replay.
+
+Non usare l’active market epoch terminale dell’intera timeline per filtrare tick precedenti, perché introdurrebbe informazione futura.
+
+Il replay non deve:
+
+* aprire Chrome;
+* chiamare SofaScore o Betfair;
+* avviare scraper;
+* scrivere nuovi tick;
+* modificare history;
+* usare dump browser come fonte algoritmica;
+* dedurre causalità;
+* trasformare osservazioni in segnali operativi.
+
+## Sequenza proposta
+
+```txt
+selezione evento
+→ caricamento timeline canoniche persistite
+→ validazione metadata e timestamp
+→ costruzione stream ordinato
+→ ricostruzione snapshot progressivi
+→ calcolo Evidence con versione fissata
+→ raccolta risultati
+→ export o confronto
+```
+
+## Output atteso
+
+Ogni esecuzione dovrebbe produrre almeno:
+
+```txt
+eventId
+algorithmVersion
+configuration
+inputRange
+processedTicks
+skippedTicks
+dataQualitySummary
+sourceIdentitySummary
+evidenceSnapshots
+reasons
+startedAt
+completedAt
+```
+
+L’output deve distinguere:
+
+```txt
+dato assente
+dato stale
+tick invalido
+epoch esclusa
+identity non allineata
+calcolo riuscito
+```
+
+## Source Identity storica
+
+Source Identity è separata dalle timeline canoniche persistite.
+
+Il replay non deve consultare il gate live in memoria. Deve applicare soltanto una policy storica esplicita; quando non esiste un contesto storico applicabile, i confronti cross-source restano indisponibili con reason.
+
+Prima dell’implementazione va definito esplicitamente:
+
+```txt
+quale conferma storica è applicabile
+→ a quale fingerprint
+→ a quale epoch
+→ in quale intervallo temporale
+```
+
+Una conferma attuale non deve riscrivere il passato né rendere automaticamente validi tick storici non compatibili.
+
+## Backtesting
+
+Il backtesting deve arrivare dopo un replay affidabile.
+
+Requisiti minimi:
+
+```txt
+dataset riproducibile
+→ regole di ingresso e uscita esplicite
+→ nessuna informazione futura
+→ costi e limiti definiti
+→ risultati separati per versione algoritmo
+→ audit dei casi esclusi
+```
+
+Non costruire backtest su:
+
+* snapshot latest;
+* dati simulati presentati come live;
+* volume ambiguo classificato come direzionale;
+* causalità presunta;
+* feature non ancora validate live.
+
+## Verifica futura
+
+Test obbligatori prima dell’adozione:
+
+```txt
+nessun fetch live
+nessun browser aperto
+timeline non modificate
+stesso input → stesso risultato
+tick disordinati gestiti esplicitamente
+epoch diverse non confrontate
+identity pending blocca confronti cross-source
+tick invalidi esclusi con reason
+versione algoritmo registrata
+```
+
+## Documenti collegati
+
+* [Ciclo di vita dei dati](../architecture/02-data-lifecycle.mdx)
+* [Timeline e history](../modules/storage/01-timelines-and-history.mdx)
+* [Match Evidence Snapshot](../modules/evidence/01-match-evidence-snapshot.mdx)
+* [Source Identity](../modules/evidence/02-source-identity.mdx)
+* [Market Reactions Journal](./03-market-reactions-journal.mdx)
+* [Stato attuale e priorità](./01-current-state.mdx)

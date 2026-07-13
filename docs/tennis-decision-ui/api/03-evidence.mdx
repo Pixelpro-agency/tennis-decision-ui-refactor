@@ -1,0 +1,594 @@
+export const meta = {
+  id: 'api-evidence',
+  order: 3,
+  title: 'API Evidence',
+};
+
+# API Evidence
+
+## Scopo
+
+Questo documento definisce il contratto HTTP del router:
+
+```txt
+backend/src/routes/evidence.js
+```
+
+Il router espone il Match Evidence Snapshot e gestisce conferma e revoca della Source Identity.
+
+La lettura latest Evidence espone anche lo stato additivo `integrity`, calcolato in modo read-only dallo stato journal canonico SofaScore e Betfair.
+
+Non crea tick, non modifica history o timeline, non avvia tracking o scraper, non esegue recovery e non scrive journal.
+
+## Struttura del router
+
+```txt
+backend/src/routes/
+└── evidence.js
+
+backend/src/sofa/
+├── matchEvidence.js
+├── matchEvidence/latestMatchEvidence.js
+├── matchEvidence/evidenceBuilder.js
+├── matchEvidence/dataQuality.js
+├── matchEvidence/noTradeReasons.js
+└── matchHistory.js
+```
+
+| Modulo                     | Responsabilità                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| `evidence.js`              | Espone endpoint Evidence, conferma e revoca Source Identity                    |
+| `latestMatchEvidence.js`   | Costruisce il payload latest Evidence e legge `integrity` read-only            |
+| `evidenceBuilder.js`       | Deriva snapshot Evidence e blocca l’uso cross-source se la persistenza degrada |
+| `dataQuality.js`           | Calcola qualità dati, freshness e `persistenceComplete`                        |
+| `noTradeReasons.js`        | Deriva reason operative, inclusa la reason di persistenza incompleta           |
+| `matchHistory.js`          | Espone adapter read-only di persistence integrity                              |
+
+## Endpoint
+
+| Metodo   | Endpoint                                         | Effetto                                                                                   |
+| -------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `GET`    | `/api/evidence/:eventId/latest`                  | Costruisce lo snapshot Evidence dalle timeline persistite e aggiunge `integrity` read-only |
+| `POST`   | `/api/evidence/:eventId/source-identity/confirm` | Conferma una Source Identity tramite gate attivo o fallback persistito                    |
+| `DELETE` | `/api/evidence/:eventId/source-identity/confirm` | Revoca la conferma applicabile al contesto persistito                                     |
+
+## Validazione `eventId`
+
+Tutti gli endpoint richiedono un `eventId` stringa non vuota dopo `trim()`.
+
+Per un valore assente, vuoto o composto da soli spazi:
+
+```json
+{
+  "ok": false,
+  "error": "Missing or invalid eventId"
+}
+```
+
+Status: `400`.
+
+La validazione termina prima di leggere timeline, integrity, costruire Evidence o accedere al confirmation store.
+
+## Latest Evidence
+
+```txt
+GET /api/evidence/:eventId/latest
+```
+
+Flusso:
+
+```txt
+eventId valido
+→ lettura integrity SofaScore read-only
+→ lettura integrity Betfair read-only
+→ buildLatestMatchEvidence(eventId)
+→ snapshot Evidence
+→ risposta HTTP
+```
+
+La lettura integrity usa adapter pubblici e read-only:
+
+```txt
+getMatchPersistenceIntegrity(eventId, 'sofa')
+getMatchPersistenceIntegrity(eventId, 'betfair')
+```
+
+Evidence non importa direttamente il journal, non accede a payload journalizzati, non esegue recovery e non modifica `commitJournal.js`.
+
+Risposta riuscita:
+
+```json
+{
+  "ok": true,
+  "eventId": "<eventId>",
+  "latest": {},
+  "sources": {
+    "sofaTimelineFound": true,
+    "betfairTimelineFound": true
+  },
+  "integrity": {
+    "status": "no_known_partial",
+    "reason": null,
+    "affectedSources": [],
+    "sources": {
+      "sofa": {
+        "status": "no_known_partial",
+        "reason": null,
+        "source": "sofa",
+        "commitId": null,
+        "affectedDocuments": []
+      },
+      "betfair": {
+        "status": "no_known_partial",
+        "reason": null,
+        "source": "betfair",
+        "commitId": null,
+        "affectedDocuments": []
+      }
+    }
+  }
+}
+```
+
+`latest` contiene lo snapshot Evidence costruito dai tick disponibili.
+
+`sources` indica soltanto la presenza delle timeline persistite; non espone tick raw, cookie, token, payload browser o stato runtime completo.
+
+`integrity` indica lo stato read-only della persistenza canonica nota per SofaScore e Betfair.
+
+## Integrity Evidence read-only
+
+Il blocco top-level `integrity` usa questa forma pubblica:
+
+```js
+{
+  "integrity": {
+    "status": "no_known_partial | partial_persistence | recovery_failed",
+    "reason": "<string|null>",
+    "affectedSources": ["sofa", "betfair"],
+    "sources": {
+      "sofa": {
+        "status": "no_known_partial | partial_persistence | recovery_failed",
+        "reason": "<string|null>",
+        "source": "sofa|null",
+        "commitId": "<string|null>",
+        "affectedDocuments": ["history", "timeline"]
+      },
+      "betfair": {
+        "status": "no_known_partial | partial_persistence | recovery_failed",
+        "reason": "<string|null>",
+        "source": "betfair|null",
+        "commitId": "<string|null>",
+        "affectedDocuments": ["history", "timeline"]
+      }
+    }
+  }
+}
+```
+
+`integrity.status` aggregato segue questa priorità:
+
+```txt
+recovery_failed
+→ partial_persistence
+→ no_known_partial
+```
+
+Regole pubbliche:
+
+```txt
+affectedSources contiene solo source con partial_persistence o recovery_failed
+recovery_failed ha priorità su partial_persistence
+no_known_partial non crea affectedSources
+input integrity malformati vengono normalizzati a no_known_partial
+sources.sofa.source può essere solo sofa o null
+sources.betfair.source può essere solo betfair o null
+affectedDocuments può contenere solo history e timeline
+```
+
+La risposta Evidence non espone:
+
+```txt
+payload journalizzati
+target locali
+path filesystem
+metadata journal interni
+stack trace
+dettagli filesystem
+cookie
+token
+payload browser raw
+```
+
+`integrity` non è:
+
+```txt
+freshness
+staleness
+tick stale
+Source Identity mismatch
+Market Reactions
+Graph health
+ladder reliability
+runtime scraper
+health Betfair
+```
+
+## Status HTTP latest
+
+Il campo `integrity` è additivo e non cambia gli status HTTP storici dell’endpoint Evidence.
+
+| Condizione                                            | Status | Risposta                                                  |
+| ----------------------------------------------------- | ------ | --------------------------------------------------------- |
+| `eventId` non valido                                  | `400`  | Errore di validazione comune                              |
+| Nessuna timeline SofaScore e nessuna timeline Betfair | `404`  | `No timeline data found for this event` con `integrity`   |
+| Errore durante la costruzione dello snapshot          | `500`  | `Failed to build match evidence snapshot`                 |
+| Snapshot costruito                                    | `200`  | Wrapper `ok`, `eventId`, `latest`, `sources`, `integrity` |
+
+A differenza delle API Match e Betfair, l’endpoint Evidence latest non introduce `409 persistence_integrity`.
+
+Quando non ci sono timeline, ma esiste persistenza incompleta nota, il `404` resta un `404` e include comunque `integrity` per distinguere assenza ordinaria e persistenza degradata.
+
+Esempio sintetico:
+
+```json
+{
+  "ok": false,
+  "error": "No timeline data found for this event",
+  "integrity": {
+    "status": "partial_persistence",
+    "reason": "commit_incomplete",
+    "affectedSources": ["betfair"],
+    "sources": {
+      "sofa": {
+        "status": "no_known_partial",
+        "reason": null,
+        "source": "sofa",
+        "commitId": null,
+        "affectedDocuments": []
+      },
+      "betfair": {
+        "status": "partial_persistence",
+        "reason": "commit_incomplete",
+        "source": "betfair",
+        "commitId": "betfair-16305613-000001",
+        "affectedDocuments": ["timeline"]
+      }
+    }
+  }
+}
+```
+
+In caso di errore interno nella costruzione dello snapshot, il comportamento attuale include anche `details` con il messaggio dell’errore. Questo campo non deve diventare una dipendenza del frontend.
+
+Durante un gate attivo in fase `collecting` o `pending`, un `404` può essere previsto prima della prima persistenza canonica: i campioni del gate possono esistere soltanto in memoria.
+
+Lo stato live del gate si legge da:
+
+```txt
+GET /api/match/:eventId/source-identity-status
+```
+
+Questo endpoint resta read-only rispetto a timeline e history. Può leggere una conferma persistita per calcolare la Source Identity effective, ma non aggiunge tick, non modifica timeline raw e non scrive history.
+
+## Data quality e `persistenceComplete`
+
+Nel payload `latest`, il blocco data quality espone:
+
+```js
+{
+  "persistenceComplete": true
+}
+```
+
+oppure:
+
+```js
+{
+  "persistenceComplete": false
+}
+```
+
+Regole:
+
+```txt
+integrity.status = no_known_partial
+→ persistenceComplete:true
+
+integrity.status = partial_persistence
+integrity.status = recovery_failed
+→ persistenceComplete:false
+```
+
+Quando `persistenceComplete:false`, Evidence aggiunge la reason standard:
+
+```txt
+Persistence incomplete: canonical cross-source evidence unavailable
+```
+
+La reason viene aggiunta una sola volta e può coesistere con reason Source Identity `pending` o `mismatch`, senza duplicati.
+
+La persistence integrity non modifica:
+
+```txt
+betfairRecent
+sofaRecent
+freshness
+staleness
+latestTimestamp
+tick freshness tecnica
+```
+
+Un tick Betfair fresco resta tecnicamente fresco anche se la persistenza è incompleta.
+
+## Degradazione cross-source Evidence
+
+Quando `integrity.status` è:
+
+```txt
+partial_persistence
+recovery_failed
+```
+
+Evidence blocca l’uso cross-source canonico.
+
+Effetti sullo snapshot:
+
+```txt
+runner Betfair attribuiti
+→ []
+
+lookback Betfair attribuito
+→ non passato al builder downstream
+
+tick Betfair attribuiti a Market Reactions
+→ non passati
+
+marketReactionEvidence.available
+→ false
+
+marketReactionEvidence.summary.causalityClaimed
+→ false
+```
+
+La persistence incomplete è un blocco di usabilità cross-source, non un errore tecnico del tick.
+
+Source Identity effective resta invariata:
+
+```txt
+aligned resta aligned
+pending resta pending
+mismatch resta mismatch
+```
+
+Quindi `partial_persistence` o `recovery_failed` non trasformano Source Identity in `mismatch` e non sostituiscono le reason Source Identity esistenti.
+
+## Conferma manuale Source Identity
+
+```txt
+POST /api/evidence/:eventId/source-identity/confirm
+```
+
+Payload:
+
+```json
+{
+  "selectedPairs": [
+    {
+      "sofaPlayer": "<nome SofaScore>",
+      "betfairRunner": "<runner Betfair>"
+    }
+  ],
+  "confirmationText": "Confermo che questo mercato Betfair corrisponde alla partita SofaScore mostrata."
+}
+```
+
+Il router tenta prima la conferma tramite gate live. Usa il fallback basato sulle timeline persistite soltanto quando il gate è assente oppure non restituisce uno stato valido (`ok: false`).
+
+Se il gate restituisce `ok: true`, il router gestisce la sua fase anche quando `active` è `false`: per esempio una fase terminale `mismatch` restituisce `409` e non usa il fallback.
+
+La lettura o la presenza di `integrity` non autorizza la conferma manuale a creare timeline, riparare journal, ricostruire history o modificare lo stato di persistenza.
+
+### Conferma con gate attivo
+
+| Fase gate                    | Status                      | Effetto                                  |
+| ---------------------------- | --------------------------- | ---------------------------------------- |
+| `collecting`                 | `422`                       | Contesto insufficiente per confermare    |
+| `pending`                    | `200`, `400`, `409` o `422` | Il gate valida mapping e frase richiesta |
+| `recording`                  | `409`                       | Conferma non ammessa                     |
+| `mismatch`                   | `409`                       | Conferma non ammessa                     |
+| Altra fase attiva            | `400`                       | Conferma non valida per la fase corrente |
+| Gate assente o non leggibile | fallback                    | Usa il flusso Evidence persistito        |
+
+Una conferma gate-aware riuscita restituisce:
+
+```json
+{
+  "ok": true,
+  "eventId": "<eventId>",
+  "confirmed": true,
+  "phase": "recording",
+  "sourceIdentity": {}
+}
+```
+
+`phase` e `sourceIdentity` derivano dal risultato del gate. In condizioni normali, una conferma riuscita porta il gate in `recording`.
+
+Una conferma valida salva il record operatore e, soltanto con gate attivo, può aprire `recording` con bootstrap SofaScore → Betfair.
+
+Il bootstrap non è transazionale. Se fallisce, il gate resta `pending`, lo status live può esporre l’errore sintetico `Bootstrap persistence failed` e la conferma non restituisce successo.
+
+### Fallback senza gate
+
+Quando non esiste una sessione gate, il router usa il contesto ottenuto dalle timeline persistite.
+
+Il fallback richiede:
+
+* timeline SofaScore disponibile;
+* timeline Betfair disponibile;
+* Source Identity automatica con stato `pending`;
+* contesto completo per l’epoch Betfair attivo;
+* due associazioni uno-a-uno;
+* frase di conferma identica a quella richiesta dal backend.
+
+Risposta riuscita:
+
+```json
+{
+  "ok": true,
+  "eventId": "<eventId>",
+  "confirmed": true
+}
+```
+
+| Condizione                               | Status | Risposta                                                 |
+| ---------------------------------------- | ------ | -------------------------------------------------------- |
+| Timeline o contesto necessari assenti    | `404`  | `No timeline data found for this event`                  |
+| Source Identity automatica non `pending` | `409`  | `Automatic source identity cannot be manually confirmed` |
+| Contesto incompleto                      | `422`  | `Source identity confirmation is invalid`                |
+| Mapping o frase non validi               | `400`  | `Source identity confirmation is invalid`                |
+| Errore di persistenza                    | `500`  | `Failed to persist source identity confirmation`         |
+
+Il fallback non crea retroattivamente timeline o history e non usa `integrity` per modificare lo stato Source Identity.
+
+## Revoca
+
+```txt
+DELETE /api/evidence/:eventId/source-identity/confirm
+```
+
+La revoca opera soltanto sulla conferma applicabile al contesto persistito corrente.
+
+Non è gate-aware. Prima della prima persistenza canonica può restituire `404`, perché non esiste ancora un contesto timeline da cui ricavare la conferma applicabile.
+
+| Condizione                            | Status | Risposta                                        |
+| ------------------------------------- | ------ | ----------------------------------------------- |
+| Timeline o contesto necessari assenti | `404`  | `No timeline data found for this event`         |
+| Nessuna conferma applicabile          | `200`  | `{ ok: true, eventId, revoked: false }`         |
+| Revoca riuscita                       | `200`  | `{ ok: true, eventId, revoked: true }`          |
+| Errore lettura confirmation store     | `500`  | `Failed to read source identity confirmation`   |
+| Errore revoca                         | `500`  | `Failed to revoke source identity confirmation` |
+
+L’assenza di una conferma applicabile è idempotente e non produce effetti sulle timeline.
+
+La revoca non esegue recovery, non scrive journal e non altera `integrity`.
+
+## Confini
+
+Il router:
+
+* costruisce il contratto HTTP Evidence;
+* può leggere timeline e conferme persistite;
+* può leggere `integrity` tramite adapter read-only;
+* può delegare la conferma al gate attivo;
+* non implementa algoritmo di Source Identity;
+* non dipende direttamente dai file interni sotto `matchEvidence/sourceIdentity/`;
+* non modifica history o timeline raw;
+* non avvia scraper, browser o tracking;
+* non esegue recovery;
+* non scrive journal;
+* non espone URL, cookie, token, payload raw, target locali, path filesystem o dettagli journal interni.
+
+Lo stato automatico è ottenuto tramite:
+
+```txt
+backend/src/sofa/matchEvidence/latestMatchEvidence.js
+```
+
+I moduli pubblici per conferma e persistenza sono:
+
+```txt
+backend/src/sofa/matchEvidence/sourceIdentityConfirmation.js
+backend/src/sofa/matchEvidence/sourceIdentityConfirmationStore.js
+```
+
+Il contratto journal e recovery appartiene a:
+
+```txt
+backend/src/sofa/matchHistory/commitJournal.js
+backend/src/sofa/matchHistory/recovery.js
+```
+
+## Verifica
+
+Dalla cartella `backend/src`:
+
+```txt
+node routes/evidence/evidenceResponses.test.mjs
+node routes/evidence/evidenceRoute.test.mjs
+node sofa/matchEvidence/latestMatchEvidence.test.mjs
+node sofa/matchEvidence/evidenceBuilder.test.mjs
+node sofa/matchEvidence/dataQuality.test.mjs
+node sofa/matchEvidence/noTradeReasons.test.mjs
+node sofa/matchEvidence/persistenceIntegrity.integration.test.mjs
+node sofa/matchEvidence/sourceIdentityConfirmation.test.mjs
+```
+
+Verificare almeno:
+
+```txt
+eventId vuoto
+→ 400 prima di qualsiasi lettura
+
+gate collecting
+→ 422
+
+gate mismatch o recording
+→ 409
+
+gate pending confermabile
+→ 200 con phase e sourceIdentity
+
+fallback senza gate
+→ richiede timeline e Source Identity pending
+
+revoca senza conferma applicabile
+→ 200 con revoked false
+
+latest Evidence con no_known_partial
+→ integrity presente
+→ persistenceComplete true
+
+latest Evidence con partial_persistence SofaScore
+→ integrity.status partial_persistence
+→ affectedSources contiene sofa
+→ persistenceComplete false
+→ no-trade reason standard presente una sola volta
+
+latest Evidence con recovery_failed Betfair
+→ integrity.status recovery_failed
+→ affectedSources contiene betfair
+→ persistenceComplete false
+
+Betfair fresco con persistence incomplete
+→ betfairRecent resta true se tecnicamente fresco
+→ persistenceComplete false
+
+persistence incomplete
+→ runner Betfair attribuiti svuotati
+→ Market Reactions unavailable
+→ causalityClaimed false
+→ Source Identity effective preservata
+
+input integrity malformato
+→ normalizzato a no_known_partial
+
+latest senza timeline
+→ 404 storico preservato
+→ integrity presente se calcolabile
+```
+
+## Documenti collegati
+
+* [API Match](./01-match.mdx)
+* [API Betfair](./02-betfair.mdx)
+* [Ciclo di vita dei dati](../architecture/02-data-lifecycle.mdx)
+* [Confini del sistema](../architecture/01-system-boundaries.mdx)
+* [Snapshot Match Evidence](../modules/evidence/01-match-evidence-snapshot.mdx)
+* [Qualità, flow e allineamento](../modules/evidence/03-quality-flow-and-alignment.mdx)
+* [Market Reactions](../modules/evidence/04-market-reactions.mdx)
+* [Source Identity](../modules/evidence/02-source-identity.mdx)
+* [Timeline e history](../modules/storage/01-timelines-and-history.mdx)
+* [Commit journal e recovery](../modules/storage/02-commit-journal-and-recovery.mdx)
+* [Validazione e rollback](../operations/04-validation-and-rollback.mdx)
+* [Selezione del contesto per API AI](../ai/01-context-selection.mdx)

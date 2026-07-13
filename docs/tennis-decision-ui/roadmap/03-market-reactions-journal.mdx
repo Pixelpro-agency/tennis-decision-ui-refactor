@@ -1,0 +1,241 @@
+export const meta = {
+id: 'market-reactions-journal',
+order: 3,
+title: 'Market Reactions Journal',
+};
+
+# Market Reactions Journal
+
+## Stato
+
+**Pianificato, non implementato.**
+
+File, moduli, route e persistenza descritti qui non esistono ancora.
+
+## Scopo
+
+Il Market Reactions Journal deve conservare le osservazioni create durante il live tracking senza sostituire o modificare timeline canoniche persistite o snapshot latest.
+
+```txt
+timeline SofaScore + timeline Betfair
+→ Market Reactions live
+→ Journal derivato
+→ consultazione storica lazy
+→ replay / export / baseline futura
+```
+
+## Distinzione fra fonti
+
+| Fonte              | Ruolo                                                            |
+| ------------------ | ---------------------------------------------------------------- |
+| Timeline SofaScore | Fonte canonica persistita degli eventi di campo                  |
+| Timeline Betfair   | Fonte canonica persistita di prezzo, ladder, book e volume       |
+| Snapshot latest    | Fotografia corrente dell’Evidence                                |
+| Journal            | Registro derivato delle osservazioni create, aggiornate o chiuse |
+| Replay             | Ricostruzione offline da timeline canoniche persistite           |
+
+Le timeline canoniche persistite sono la fonte primaria per ricalcoli futuri.
+
+Il Journal conserva soltanto ciò che il sistema ha osservato durante la sessione live.
+
+## Regole di cattura
+
+Il Journal non deve salvare una copia completa dello snapshot a ogni polling.
+
+Deve registrare soltanto:
+
+1. creazione di una nuova osservazione;
+2. aggiornamento materiale di una finestra;
+3. chiusura di una finestra;
+4. risultato finale dell’osservazione;
+5. indisponibilità o cambiamento Source Identity effective su un’osservazione già identificata;
+6. cambiamento materiale del summary.
+
+Pending o mismatch senza un evento sorgente e una chiave osservazione stabile non devono creare un record autonomo.
+
+Possono soltanto aggiornare un record già esistente a `not_available`, con una reason esplicita.
+
+Tick ripetuti senza cambiamenti materiali non devono creare nuovi record.
+
+Un aggiornamento è materiale soltanto quando cambia almeno uno di questi elementi:
+
+```txt
+lifecycle osservazione
+stato finestra
+risultato finestra
+reasons
+data quality
+Source Identity effective
+summary finale
+```
+
+## Lifecycle proposto
+
+Ogni osservazione deve avere un lifecycle esplicito:
+
+```txt
+created
+→ in_progress
+→ completed | insufficient_data | not_available
+```
+
+| Stato               | Significato                                                  |
+| ------------------- | ------------------------------------------------------------ |
+| `created`           | L’evento sorgente è stato rilevato                           |
+| `in_progress`       | Esistono finestre ancora aperte                              |
+| `completed`         | Tutte le finestre rilevanti sono concluse                    |
+| `insufficient_data` | Mancano dati necessari per osservare una o più finestre      |
+| `not_available`     | Identity, timeline o dati minimi non permettono il confronto |
+
+Il Journal non deve usare `completed` per indicare che esiste una reazione causale.
+
+## Chiave di deduplicazione
+
+Ogni osservazione deve essere identificabile da una chiave stabile, derivata almeno da:
+
+```txt
+eventId
+sourceType
+source timestamp
+source sequence o identificatore equivalente
+market epoch signature
+```
+
+`sourceType` può essere:
+
+```txt
+market_led
+field_led
+```
+
+La stessa chiave non deve creare due osservazioni separate.
+
+## Struttura minima proposta
+
+```json
+{
+  "journalId": "stable-id",
+  "eventId": "16305613",
+  "sourceType": "field_led",
+  "createdAt": "2026-06-25T12:00:00.000Z",
+  "updatedAt": "2026-06-25T12:02:00.000Z",
+  "status": "completed",
+  "sourceIdentity": {
+    "status": "aligned",
+    "epochSignature": "market-id-and-selections"
+  },
+  "sourceEvent": {},
+  "observationWindows": [],
+  "summary": {},
+  "reasons": [],
+  "interpretation": "temporal_proximity_only",
+  "causalityClaimed": false
+}
+```
+
+Il record non deve contenere:
+
+* timeline canoniche persistite, snapshot completi o payload browser;
+* cookie, token o header;
+* copie integrali dello snapshot;
+* dati inutili alla lettura storica;
+* deduzioni causali;
+* segnali operativi.
+
+## Persistenza proposta
+
+Il percorso esatto è da decidere durante l’implementazione.
+
+Il Journal deve essere separato da:
+
+```txt
+backend/match_history/
+backend/source_identity_confirmations.json
+backend/betfair_network_dump/
+```
+
+La persistenza proposta deve garantire:
+
+```txt
+scrittura atomica
+→ deduplicazione per chiave osservazione
+→ append o upsert controllato
+→ nessuna modifica alle timeline canoniche persistite
+```
+
+## Route storica futura
+
+Una route storica deve essere lazy e read-only.
+
+Contratto proposto:
+
+```txt
+GET /api/evidence/:eventId/market-reactions/history
+```
+
+La route futura deve:
+
+* leggere soltanto il Journal già persistito;
+* non avviare tracking;
+* non fare fetch live;
+* non aprire browser;
+* non ricostruire automaticamente tutte le timeline;
+* non scrivere nuovi record;
+* restituire risultati paginabili o limitati.
+
+## Frontend futuro
+
+La pagina live resta consumer dello snapshot corrente.
+
+Una vista storica futura deve:
+
+```txt
+richiedere il Journal solo quando l’utente la apre
+→ mostrare lifecycle, finestre, quality e reasons
+→ mantenere causalityClaimed: false
+→ distinguere live da storico
+```
+
+Non deve creare un secondo polling live o ricostruire Evidence nel browser.
+
+## Invarianti
+
+Il Journal non deve:
+
+* modificare timeline canoniche persistite o history aggregata;
+* sostituire replay;
+* rendere validi dati Betfair assenti o stale;
+* aggirare Source Identity;
+* dedurre intenzione dei trader;
+* dichiarare causalità;
+* diventare una strategia;
+* salvare dump o segreti.
+
+## Verifica futura
+
+Prima dell’adozione servono test per:
+
+```txt
+stessa osservazione → un solo record
+nessun record per polling invariato
+chiusura finestra → aggiornamento materiale
+pending o mismatch su un’osservazione già identificata
+→ upsert `not_available` con reason
+
+pending o mismatch senza chiave osservazione stabile
+→ nessun record autonomo
+
+timeline canoniche persistite immutate
+nessun fetch live nella route storica
+nessun duplicato dopo riavvio backend
+causalityClaimed sempre false
+```
+
+## Documenti collegati
+
+* [Market Reactions](../modules/evidence/04-market-reactions.mdx)
+* [Match Evidence Snapshot](../modules/evidence/01-match-evidence-snapshot.mdx)
+* [Source Identity](../modules/evidence/02-source-identity.mdx)
+* [Replay e backtesting](./02-replay-and-backtesting.mdx)
+* [Timeline e history](../modules/storage/01-timelines-and-history.mdx)
+* [Retention e pulizia dati](../operations/05-retention-and-cleanup.mdx)
