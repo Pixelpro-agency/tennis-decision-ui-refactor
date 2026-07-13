@@ -206,11 +206,15 @@ frontend/src/
 │       └── SourceIdentityControls.jsx
 ├── hooks/
 │   ├── useAnalysisSessionState.js
+│   ├── useBetfairLoginAction.js
 │   ├── useBetfairJson.js
+│   ├── useDashboardBootstrapState.js
 │   ├── useDashboardViewModel.js
+│   ├── useLiveTrackingActions.js
 │   ├── useMarketReactionEvidence.js
 │   ├── useMatchPolling.js
-│   └── useSourceIdentityGateStatus.js
+│   ├── useSourceIdentityGateStatus.js
+│   └── useSourceIdentityGateUi.js
 ├── services/
 │   └── liveSessionApi.js
 ├── utils/
@@ -221,12 +225,15 @@ frontend/src/
 
 | Area                 | Percorsi principali                                                      | Responsabilità                                                                 |
 | -------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| Shell                | `App.jsx`, `DashboardWorkspace.jsx`, `Sidebar.jsx`                       | Sessione, view attiva, shell immediata e orchestrazione UI                     |
+| Shell                | `App.jsx`, `DashboardWorkspace.jsx`, `Sidebar.jsx`                       | Composizione sessione, view attiva, shell immediata e orchestrazione UI        |
+| Azioni sessione      | `useLiveTrackingActions.js`, `useBetfairLoginAction.js`                  | Avvio tracking, stop, ritorno al form e apertura login Betfair                 |
+| Bootstrap dashboard  | `useDashboardBootstrapState.js`                                          | Attesa reset dati e primo payload valido della nuova sessione                  |
 | Source Identity live | `useSourceIdentityGateStatus.js`, `sourceIdentityGatePresentation.js`    | Polling status gate e presentazione pura                                       |
 | Source Identity UI   | indicatore, toast, waiting screen e modale                               | Rendering globale gate, conferma manuale e mismatch                            |
 | Dati live            | `useMatchPolling.js`, `useBetfairJson.js`                                | Lettura timeline SofaScore, dati Betfair, `integrity` e server status          |
 | Contesto punti       | `MatchContextCard.jsx`, `matchContextViewModel.js`, `types/dashboard.js` | Rendering descrittivo di `localContext` senza ricalcolo sportivo               |
 | Evidence             | `useMarketReactionEvidence.js`                                           | Polling snapshot Evidence, `persistenceComplete` e Market Reactions            |
+| Strategy UI          | `components/strategy/`, `components/strategy/marketEvidence/`            | Vista Lay The Winner e rendering Market Evidence                               |
 | API client           | `liveSessionApi.js`, `liveSessionRequests.js`                            | Tracking, stop, conferma reale e operazioni sessione                           |
 | View model           | `useDashboardViewModel.js`, `utils/dashboard*.js`                        | Adattamento dati backend per componenti, inclusi stati degradati read-only     |
 | Test puri            | `utils/*.test.mjs`                                                       | Contratti utility frontend                                                     |

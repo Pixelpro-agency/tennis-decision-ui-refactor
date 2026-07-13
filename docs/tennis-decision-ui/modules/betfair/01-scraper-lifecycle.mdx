@@ -341,10 +341,16 @@ node --check sofa/betfairFetch.js
 node --check sofa/betfair/scraperLifecycle/runner.js
 node --check sofa/matchTracker.js
 node --check sofa/betfair/processor.js
+node --check sofa/betfair/processor/persistence.js
+node --check sofa/betfair/processor/persistenceDecision.js
+node --check sofa/betfair/processor/persistenceDocuments.js
+node --check sofa/betfair/processor/persistenceCommitWorkflow.js
 
-node sofa/betfair/scraperLifecycle.test.mjs
-node sofa/betfair/trackerUpdate.test.mjs
-node sofa/betfair/processor.test.mjs
+node sofa/betfair/scraperLifecycle/facadeIntegration.test.mjs
+node sofa/betfair/trackerUpdate/technicalRecovery.test.mjs
+node sofa/betfair/processor/persistenceCommit.test.mjs
+node sofa/betfair/processor/persistenceRecovery.test.mjs
+node sofa/betfair/processor/runtimeOrchestration.test.mjs
 node sofa/betfairFetch.test.mjs
 ```
 

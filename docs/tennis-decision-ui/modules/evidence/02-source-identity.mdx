@@ -77,11 +77,22 @@ I consumer della classificazione automatica importano dalla facade:
 backend/src/sofa/matchEvidence/sourceIdentity.js
 ```
 
+Il matching nomi resta esposto da:
+
+```txt
+backend/src/sofa/matchEvidence/sourceIdentity/nameMatching.js
+```
+
+I file sotto `backend/src/sofa/matchEvidence/sourceIdentity/` separano normalizzazione, profilo nome, cognomi composti, apostrofi, given names, runner matching, builder Source Identity ed epoch Betfair.
+
 Il gate live resta separato in:
 
 ```txt
 backend/src/sofa/sourceIdentityGate.js
+backend/src/sofa/sourceIdentityGate/
 ```
+
+`sourceIdentityGate.js` resta la facade pubblica. I file sotto `sourceIdentityGate/` separano validazione campioni, sessione runtime, store in memoria, status read-only, evaluator del lifecycle e conferma manuale.
 
 ## Fasi del gate live
 
@@ -382,13 +393,32 @@ Dalla cartella `backend/src`:
 
 ```txt
 node --check sofa/matchEvidence/sourceIdentity/builder.js
+node --check sofa/matchEvidence/sourceIdentity/nameMatching.js
+node --check sofa/matchEvidence/sourceIdentity/nameProfile.js
+node --check sofa/matchEvidence/sourceIdentity/surnameMatching.js
+node --check sofa/matchEvidence/sourceIdentity/apostropheMatching.js
+node --check sofa/matchEvidence/sourceIdentity/givenNameMatching.js
+node --check sofa/matchEvidence/sourceIdentity/runnerNameMatching.js
+node --check sofa/sourceIdentityGate.js
+node --check sofa/sourceIdentityGate/sampleValidation.js
+node --check sofa/sourceIdentityGate/sessionFactory.js
+node --check sofa/sourceIdentityGate/store.js
+node --check sofa/sourceIdentityGate/status.js
+node --check sofa/sourceIdentityGate/evaluator.js
+node --check sofa/sourceIdentityGate/manualConfirmation.js
 
-node sofa/matchEvidence/sourceIdentity.test.mjs
-node sofa/sourceIdentityGate.test.mjs
+node sofa/matchEvidence/sourceIdentity/nameNormalization.test.mjs
+node sofa/matchEvidence/sourceIdentity/identityClassification.test.mjs
+node sofa/matchEvidence/sourceIdentity/ambiguityAndConfirmation.test.mjs
+node sofa/matchEvidence/sourceIdentity/marketEpoch.test.mjs
+node sofa/sourceIdentityGate/lifecycle.test.mjs
+node sofa/sourceIdentityGate/epochRecovery.test.mjs
+node sofa/sourceIdentityGate/bootstrapFailures.test.mjs
+node sofa/sourceIdentityGate/mismatchAndIsolation.test.mjs
 node routes/match/sourceIdentityStatusResponse.test.mjs
 
-node sofa/matchEvidence/latestMatchEvidence.test.mjs
-node sofa/matchEvidence/evidenceBuilder.test.mjs
+node sofa/matchEvidence/latestMatchEvidence/manualConfirmation.test.mjs
+node sofa/matchEvidence/evidenceBuilder/sourceIdentityGate.test.mjs
 ```
 
 La suite deve verificare almeno:

@@ -15,8 +15,11 @@ History e timeline restano file canonici distinti e atomicamente riscritti per s
 ```txt
 backend/src/sofa/matchHistory/commitId.js
 backend/src/sofa/matchHistory/commitJournal.js
+backend/src/sofa/matchHistory/commitJournal/
 backend/src/sofa/matchHistory/recovery.js
 ```
+
+`commitJournal.js` resta la facade pubblica. I file sotto `commitJournal/` separano store, validazione record, adapter filesystem, scanner recovery, integrity read-only e helper di risultato.
 
 ## Stato
 
@@ -434,11 +437,19 @@ Comandi mirati:
 ```txt
 node --check backend/src/sofa/matchHistory/commitId.js
 node --check backend/src/sofa/matchHistory/commitJournal.js
+node --check backend/src/sofa/matchHistory/commitJournal/store.js
 node --check backend/src/sofa/matchHistory/recovery.js
 
 node backend/src/sofa/matchHistory/commitId.test.mjs
-node backend/src/sofa/matchHistory/commitJournal.test.mjs
-node backend/src/sofa/matchHistory/recovery.test.mjs
+node backend/src/sofa/matchHistory/commitJournal/lifecycle.test.mjs
+node backend/src/sofa/matchHistory/commitJournal/integrityStatus.test.mjs
+node backend/src/sofa/matchHistory/commitJournal/payloadSafety.test.mjs
+node backend/src/sofa/matchHistory/commitJournal/residualRecovery.test.mjs
+node backend/src/sofa/matchHistory/commitJournal/filesystem.integration.test.mjs
+node backend/src/sofa/matchHistory/recovery/basicRecovery.integration.test.mjs
+node backend/src/sofa/matchHistory/recovery/completedTargetVerification.integration.test.mjs
+node backend/src/sofa/matchHistory/recovery/invalidJournal.integration.test.mjs
+node backend/src/sofa/matchHistory/recovery/retryAndFailure.integration.test.mjs
 ```
 
 Verificare almeno:
@@ -453,6 +464,7 @@ repair usa payload e target journalizzati
 completed residual con target mancante riapre marker
 invalidRecords diventano recovery_failed
 invalidEntries non eseguono scritture
+fixture residue condivise in commitJournalTestFixtures.mjs
 removeCompletedCommit solo dopo documenti completati
 payload sensibili rifiutati
 read-only integrity senza side effect

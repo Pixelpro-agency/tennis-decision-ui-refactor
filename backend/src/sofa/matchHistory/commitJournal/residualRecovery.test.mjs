@@ -6,6 +6,7 @@ import { createCommitJournalStore } from '../commitJournal.js';
 import {
     assert,
     countFiles,
+    createCompletedResidualFixture,
     createFakeFs,
     createFixture,
     finish,
@@ -14,8 +15,13 @@ import {
 } from './commitJournalTestFixtures.mjs';
 
 {
-    const { fake, journalDir, store } = createFixture();
-    const completedRecord = makeRecord({
+    const {
+        fake,
+        journalDir,
+        store,
+        record: completedRecord,
+        residualFile
+    } = createCompletedResidualFixture({
         commitId: 'commit-completed-residual',
         eventId: 'event-completed-residual',
         source: 'sofa'
@@ -26,14 +32,7 @@ import {
         source: 'sofa'
     });
 
-    store.createPendingCommit(completedRecord);
-    store.markDocumentComplete(completedRecord.commitId, 'history');
-    store.markDocumentComplete(completedRecord.commitId, 'timeline');
-    fake.seed(`history-${completedRecord.commitId}.json`, '{}');
-    fake.seed(`timeline-${completedRecord.commitId}.json`, '{}');
-
     const result = store.createPendingCommit(nextRecord);
-    const residualFile = journalFile(journalDir, completedRecord.commitId);
     const nextFile = journalFile(journalDir, nextRecord.commitId);
     const nextPending = store.getPendingCommit(nextRecord.commitId);
 
@@ -50,8 +49,13 @@ import {
 }
 
 {
-    const { fake, journalDir, store } = createFixture();
-    const completedRecord = makeRecord({
+    const {
+        fake,
+        journalDir,
+        store,
+        record: completedRecord,
+        residualFile
+    } = createCompletedResidualFixture({
         commitId: 'commit-residual-cleanup-failure',
         eventId: 'event-residual-cleanup-failure',
         source: 'sofa'
@@ -62,13 +66,6 @@ import {
         source: 'sofa'
     });
 
-    store.createPendingCommit(completedRecord);
-    store.markDocumentComplete(completedRecord.commitId, 'history');
-    store.markDocumentComplete(completedRecord.commitId, 'timeline');
-    fake.seed(`history-${completedRecord.commitId}.json`, '{}');
-    fake.seed(`timeline-${completedRecord.commitId}.json`, '{}');
-
-    const residualFile = journalFile(journalDir, completedRecord.commitId);
     const originalUnlink = fake.fs.unlinkSync;
     fake.fs.unlinkSync = file => {
         if (file === residualFile) {

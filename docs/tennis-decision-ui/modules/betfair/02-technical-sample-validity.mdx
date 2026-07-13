@@ -44,6 +44,12 @@ Un campione tecnico non utilizzabile può solo partecipare al repair di un journ
 backend/src/sofa/betfair/processor.js
 backend/src/sofa/betfair/trackerUpdate.js
 backend/src/sofa/betfair/processor/runnerProcessing.js
+backend/src/sofa/betfair/processor/technicalSample.js
+backend/src/sofa/betfair/processor/persistence.js
+backend/src/sofa/betfair/processor/persistenceDecision.js
+backend/src/sofa/betfair/processor/persistenceCommitWorkflow.js
+backend/src/sofa/betfair/timeline.js
+backend/src/sofa/betfair/timeline/
 backend/src/sofa/matchHistory/commitJournal.js
 ```
 
@@ -310,25 +316,48 @@ Dalla cartella `backend/src`:
 node --check sofa/betfair/processor.js
 node --check sofa/betfair/trackerUpdate.js
 node --check sofa/betfair/processor/runnerProcessing.js
+node --check sofa/betfair/processor/technicalSample.js
+node --check sofa/betfair/processor/persistence.js
+node --check sofa/betfair/processor/persistenceDecision.js
+node --check sofa/betfair/processor/persistenceDocuments.js
+node --check sofa/betfair/processor/persistenceCommitWorkflow.js
+node --check sofa/betfair/timeline.js
+node --check sofa/betfair/timeline/state.js
+node --check sofa/betfair/timeline/runnerSnapshot.js
+node --check sofa/betfair/timeline/ladderSummary.js
+node --check sofa/betfair/timeline/graphHealth.js
+node --check sofa/betfair/timeline/statusOnlySnapshot.js
 
-node sofa/betfair/processor.test.mjs
-node sofa/betfair/trackerUpdate.test.mjs
+node sofa/betfair/processor/technicalSample.test.mjs
+node sofa/betfair/processor/runnerProcessing.test.mjs
+node sofa/betfair/processor/persistenceCommit.test.mjs
+node sofa/betfair/processor/persistenceRecovery.test.mjs
+node sofa/betfair/processor/runtimeOrchestration.test.mjs
+node sofa/betfair/processor/canonicalTimeline.test.mjs
+node sofa/betfair/timeline/state.test.mjs
+node sofa/betfair/trackerUpdate/technicalRecovery.test.mjs
 node sofa/betfairFetch.test.mjs
 ```
 
 Copertura attuale:
 
 ```txt
-processor.test.mjs
+processor/technicalSample.test.mjs
 → classificazione runners_empty
+
+processor/persistenceCommit.test.mjs
 → duplicate_tick senza history o timeline
 → regressive_sample senza history o timeline
 → persistenza di una modifica materiale
 → commit Betfair strutturato
+
+processor/persistenceRecovery.test.mjs
 → repair pending senza nuovo tick
+
+processor/runtimeOrchestration.test.mjs
 → sample tecnico senza mutazione marketState
 
-trackerUpdate.test.mjs
+trackerUpdate/technicalRecovery.test.mjs
 → hasFinished senza gate o persistenza
 → campioni tecnici senza gate o nuova persistenza
 → polling attivo dopo errori tecnici

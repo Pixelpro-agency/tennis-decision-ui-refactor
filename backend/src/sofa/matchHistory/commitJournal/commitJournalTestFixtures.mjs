@@ -145,6 +145,35 @@ export function countFiles(fake, predicate) {
     return Array.from(fake.files.keys()).filter(predicate).length;
 }
 
+export function createCompletedResidualFixture({
+    commitId = 'commit-completed-residual',
+    eventId = 'event-completed-residual',
+    source = 'sofa',
+    seedHistory = true,
+    seedTimeline = true
+} = {}) {
+    const fixture = createFixture();
+    const record = makeRecord({ commitId, eventId, source });
+
+    fixture.store.createPendingCommit(record);
+    fixture.store.markDocumentComplete(record.commitId, 'history');
+    fixture.store.markDocumentComplete(record.commitId, 'timeline');
+
+    if (seedHistory) {
+        fixture.fake.seed(`history-${record.commitId}.json`, '{}');
+    }
+
+    if (seedTimeline) {
+        fixture.fake.seed(`timeline-${record.commitId}.json`, '{}');
+    }
+
+    return {
+        ...fixture,
+        record,
+        residualFile: journalFile(fixture.journalDir, record.commitId)
+    };
+}
+
 export function finish(scope = 'modular test') {
     console.log(`${scope}: ${passed} passed, ${failed} failed`);
     if (failed > 0) {

@@ -182,9 +182,12 @@ I moduli specializzati gestiscono gli update:
 
 ```txt
 matchHistory/sofaUpdates.js
+matchHistory/sofaUpdates/
 matchHistory/betfairUpdates.js
 matchHistory/storage.js
 ```
+
+`matchHistory/sofaUpdates.js` resta la facade pubblica. I file sotto `matchHistory/sofaUpdates/` separano handler, change detection, costruzione history, costruzione timeline, workflow journal e recovery.
 
 ## Update SofaScore
 
@@ -271,6 +274,22 @@ autorizzazione del gate
 ```
 
 Il processor Betfair resta owner della classificazione tecnica. Il gate resta owner dell’autorizzazione alla persistenza.
+
+La facade pubblica del commit Betfair resta:
+
+```txt
+backend/src/sofa/betfair/processor/persistence.js
+```
+
+I moduli sotto `backend/src/sofa/betfair/processor/` separano decisione di persistenza, costruzione documenti, wiring delle dipendenze e workflow di commit journalizzato. L'export pubblico resta re-esposto da `backend/src/sofa/betfair/processor.js`.
+
+La costruzione del tick Betfair canonico resta esposta da:
+
+```txt
+backend/src/sofa/betfair/timeline.js
+```
+
+I file sotto `backend/src/sofa/betfair/timeline/` separano stato/deduplica, snapshot runner, riepilogo ladder, health Graph e preservazione status-only.
 
 Flusso ordinario:
 
@@ -508,17 +527,46 @@ cd backend/src
 node --check sofa/timelineStore.js
 node --check sofa/matchHistory/commitId.js
 node --check sofa/matchHistory/commitJournal.js
+node --check sofa/matchHistory/commitJournal/store.js
 node --check sofa/matchHistory/recovery.js
+node --check sofa/matchHistory/sofaUpdates/handler.js
+node --check sofa/matchHistory/sofaUpdates/changeDetection.js
+node --check sofa/matchHistory/sofaUpdates/historyDocument.js
+node --check sofa/matchHistory/sofaUpdates/timelineDocument.js
+node --check sofa/matchHistory/sofaUpdates/journalWorkflow.js
 node --check sofa/betfairFetch.js
-node --check sofa/betfair/scraperLifecycle.test.mjs
+node --check sofa/betfair/scraperLifecycle/facadeIntegration.test.mjs
+node --check sofa/betfair/processor/persistence.js
+node --check sofa/betfair/processor/persistenceDecision.js
+node --check sofa/betfair/processor/persistenceDocuments.js
+node --check sofa/betfair/processor/persistenceCommitWorkflow.js
+node --check sofa/betfair/timeline.js
+node --check sofa/betfair/timeline/state.js
+node --check sofa/betfair/timeline/runnerSnapshot.js
+node --check sofa/betfair/timeline/ladderSummary.js
+node --check sofa/betfair/timeline/graphHealth.js
+node --check sofa/betfair/timeline/statusOnlySnapshot.js
 
 node sofa/timelineStore.test.mjs
 node sofa/matchHistory/commitId.test.mjs
-node sofa/matchHistory/commitJournal.test.mjs
-node sofa/matchHistory/recovery.test.mjs
-node sofa/matchHistory/sofaUpdates.test.mjs
+node sofa/matchHistory/commitJournal/lifecycle.test.mjs
+node sofa/matchHistory/commitJournal/integrityStatus.test.mjs
+node sofa/matchHistory/commitJournal/payloadSafety.test.mjs
+node sofa/matchHistory/commitJournal/residualRecovery.test.mjs
+node sofa/matchHistory/commitJournal/filesystem.integration.test.mjs
+node sofa/matchHistory/recovery/basicRecovery.integration.test.mjs
+node sofa/matchHistory/recovery/completedTargetVerification.integration.test.mjs
+node sofa/matchHistory/recovery/invalidJournal.integration.test.mjs
+node sofa/matchHistory/recovery/retryAndFailure.integration.test.mjs
+node sofa/matchHistory/sofaUpdates/changeDetection.test.mjs
+node sofa/matchHistory/sofaUpdates/commitLifecycle.test.mjs
+node sofa/matchHistory/sofaUpdates/recoveryAndRetry.test.mjs
+node sofa/matchHistory/sofaUpdates/writerContract.test.mjs
 node sofa/matchHistory/betfairUpdates.test.mjs
-node sofa/betfair/scraperLifecycle.test.mjs
+node sofa/betfair/scraperLifecycle/facadeIntegration.test.mjs
+node sofa/betfair/processor/persistenceCommit.test.mjs
+node sofa/betfair/processor/persistenceRecovery.test.mjs
+node sofa/betfair/processor/canonicalTimeline.test.mjs
 ```
 
 Controllare sempre:
@@ -550,9 +598,11 @@ Dalla cartella `backend/src`:
 ```txt
 node sofa/betfair/processor/runnerProcessing.test.mjs
 node sofa/betfair/timeline/state.test.mjs
-node sofa/betfair/processor.test.mjs
+node sofa/betfair/processor/persistenceCommit.test.mjs
+node sofa/betfair/processor/persistenceRecovery.test.mjs
+node sofa/betfair/processor/runtimeOrchestration.test.mjs
 node sofa/betfairFetch.test.mjs
-node sofa/betfair/trackerUpdate.test.mjs
+node sofa/betfair/trackerUpdate/technicalRecovery.test.mjs
 node routes/betfair/moneyFlowHistorySeries.test.mjs
 ```
 

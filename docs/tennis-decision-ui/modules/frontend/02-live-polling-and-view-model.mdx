@@ -318,7 +318,7 @@ setTimeout, non setInterval
 → nessuna ricostruzione Source Identity nel frontend
 ```
 
-`App.jsx` costruisce:
+`useSourceIdentityGateUi.js` costruisce lo stato UI consumato da `App.jsx`:
 
 ```txt
 sourceIdentityStatusForUi
@@ -557,8 +557,6 @@ npm run build
 
 node src/hooks/useMatchPolling.test.mjs
 node src/hooks/useBetfairJson.test.mjs
-node src/hooks/useMarketReactionEvidence.test.mjs
-
 node src/utils/sourceIdentityGatePresentation.test.mjs
 node src/utils/analysisSessionState.test.mjs
 node src/utils/liveSessionRequests.test.mjs
@@ -589,12 +587,6 @@ useBetfairJson.test.mjs
 → 409 persistence_integrity preserva integrity
 → 409 persistence_integrity non usa ora locale come lastUpdate
 → integrity separata da health
-
-useMarketReactionEvidence.test.mjs
-→ 404 = evidence null senza errore
-→ 404 con integrity preserva integrity
-→ 200 con persistenceComplete:false inoltra dataQuality
-→ 200 con sources.sofa / sources.betfair inoltra sources
 
 dashboardConnections.test.mjs
 → connected con backendData

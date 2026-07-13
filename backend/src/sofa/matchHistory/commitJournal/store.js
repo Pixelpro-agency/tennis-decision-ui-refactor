@@ -2,31 +2,31 @@ import fsDefault from 'node:fs';
 import pathDefault from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-    SOURCES,
     DOCUMENT_NAMES,
-    FORBIDDEN_KEY_CONCEPTS,
-    SENSITIVE_QUERY_PARAMS,
-    NETWORK_CAPTURE_SUMMARY_FIELDS,
-    hasOwn,
-    isPlainObject,
-    hasOnlyKeys,
     isValidEventId,
     isValidSource,
     isValidCommitId,
-    isValidTarget,
     isValidRecoveryReason,
-    isNonNegativeInteger,
-    isValidNetworkCaptureSummary,
-    isForbiddenKey,
-    hasSensitiveQueryParameter,
-    isSafeJsonValue,
-    stableJson,
     cloneJson,
     freezeRecord,
-    getAffectedDocuments,
     isActiveRecord,
     compareIntegrityRecords
 } from './recordSchema.js';
+import { createJournalFileStore } from './filesystemStore.js';
+import { getPersistenceIntegrityStatusFromRecords } from './integrity.js';
+import {
+    isEquivalentInitialRecord,
+    makePersistedRecord
+} from './recordFactory.js';
+import {
+    validateIncomingRecord,
+    validatePersistedRecord
+} from './recordValidation.js';
+import { scanRecoveryCandidatesFromFiles } from './recoveryScanner.js';
+import {
+    createResult,
+    createSafeLogger
+} from './results.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = pathDefault.dirname(__filename);
@@ -45,8 +45,6 @@ export function createCommitJournalStore({
     logError = (...args) => console.error(...args),
     verifyDocumentTarget = null
 } = {}) {
-    let temporarySequence = 0;
-
     function defaultVerifyDocumentTarget(target) {
         if (typeof target !== 'string') {
             return { ok: false };
@@ -65,289 +63,24 @@ export function createCommitJournalStore({
         ? verifyDocumentTarget
         : defaultVerifyDocumentTarget;
 
-    function logSafe(message) {
-        try {
-            logError(`[CommitJournal] ${message}`);
-        } catch (_) {
-        }
-    }
-
-    function ensureJournalDirectory() {
-        try {
-            if (!fs.existsSync(journalDir)) {
-                fs.mkdirSync(journalDir, { recursive: true });
-            }
-
-            return true;
-        } catch (_) {
-            logSafe('journal_directory_unavailable');
-            return false;
-        }
-    }
-
-    function createResult({
-        eventId = null,
-        source = null,
-        commitId = null,
-        status,
-        reason = null,
-        file = null
-    }) {
-        return {
-            ok: status !== 'failed',
-            operation: 'journal',
-            eventId,
-            source,
-            commitId,
-            status,
-            reason,
-            file
-        };
-    }
-
-    function getJournalFile(commitId) {
-        return path.join(journalDir, `${commitId}.json`);
-    }
-
-    function getCreatedAt() {
-        const now = getNow();
-
-        if (now && typeof now.toISOString === 'function') {
-            return now.toISOString();
-        }
-
-        return new Date(getNowMs()).toISOString();
-    }
-
-    function validateDocument(document) {
-        return isPlainObject(document) &&
-            hasOnlyKeys(document, ['target', 'payload', 'completed']) &&
-            isValidTarget(document.target) &&
-            isPlainObject(document.payload) &&
-            isSafeJsonValue(document.payload) &&
-            typeof document.completed === 'boolean';
-    }
-
-    function validateIncomingRecord(record) {
-        if (!isPlainObject(record) || !isSafeJsonValue(record)) {
-            return 'invalid_record';
-        }
-
-        if (!isValidCommitId(record.commitId)) {
-            return 'invalid_commit_id';
-        }
-
-        if (!isValidEventId(record.eventId)) {
-            return 'invalid_event_id';
-        }
-
-        if (!isValidSource(record.source)) {
-            return 'invalid_source';
-        }
-
-        if (!isPlainObject(record.documents) ||
-            !hasOnlyKeys(record.documents, DOCUMENT_NAMES) ||
-            !validateDocument(record.documents.history) ||
-            !validateDocument(record.documents.timeline) ||
-            record.documents.history.completed !== false ||
-            record.documents.timeline.completed !== false) {
-            return 'invalid_record';
-        }
-
-        return null;
-    }
-
-    function validatePersistedRecord(record) {
-        if (!isPlainObject(record) ||
-            !hasOnlyKeys(record, [
-                'version',
-                'commitId',
-                'eventId',
-                'source',
-                'createdAt',
-                'status',
-                'documents',
-                'reason'
-            ]) ||
-            !isSafeJsonValue(record) ||
-            record.version !== 1 ||
-            !isValidCommitId(record.commitId) ||
-            !isValidEventId(record.eventId) ||
-            !isValidSource(record.source) ||
-            typeof record.createdAt !== 'string' ||
-            !Number.isFinite(Date.parse(record.createdAt)) ||
-            !isPlainObject(record.documents) ||
-            !hasOnlyKeys(record.documents, DOCUMENT_NAMES) ||
-            !validateDocument(record.documents.history) ||
-            !validateDocument(record.documents.timeline)) {
-            return false;
-        }
-
-        if (record.status === 'pending') {
-            return record.reason === null;
-        }
-
-        if (record.status === 'recovery_failed') {
-            return isValidRecoveryReason(record.reason);
-        }
-
-        return false;
-    }
-
-    function makePersistedRecord(record) {
-        return {
-            version: 1,
-            commitId: record.commitId,
-            eventId: record.eventId,
-            source: record.source,
-            createdAt: getCreatedAt(),
-            status: 'pending',
-            documents: {
-                history: {
-                    target: record.documents.history.target,
-                    payload: cloneJson(record.documents.history.payload),
-                    completed: false
-                },
-                timeline: {
-                    target: record.documents.timeline.target,
-                    payload: cloneJson(record.documents.timeline.payload),
-                    completed: false
-                }
-            },
-            reason: null
-        };
-    }
-
-    function readJournalFile(file, expectedCommitId = null) {
-        let parsed;
-
-        try {
-            parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
-        } catch (_) {
-            return { record: null, reason: 'invalid_journal' };
-        }
-
-        if (!validatePersistedRecord(parsed) ||
-            (expectedCommitId !== null && parsed.commitId !== expectedCommitId)) {
-            return { record: null, reason: 'invalid_journal' };
-        }
-
-        return { record: parsed, reason: null };
-    }
-
-    function listJournalRecords() {
-        if (!fs.existsSync(journalDir)) {
-            return {
-                records: [],
-                invalid: [],
-                reason: null
-            };
-        }
-
-        let filenames;
-
-        try {
-            filenames = fs.readdirSync(journalDir);
-        } catch (_) {
-            logSafe('journal_directory_read_failed');
-            return {
-                records: [],
-                invalid: [{ file: null, reason: 'write_failed' }],
-                reason: 'write_failed'
-            };
-        }
-
-        const records = [];
-        const invalid = [];
-
-        for (const filename of filenames
-            .filter(name => typeof name === 'string' && name.endsWith('.json'))
-            .sort()) {
-            const file = path.join(journalDir, filename);
-            const loaded = readJournalFile(file);
-
-            if (loaded.reason !== null) {
-                invalid.push({ file, reason: loaded.reason });
-                continue;
-            }
-
-            const expectedFilename = `${loaded.record.commitId}.json`;
-
-            if (filename !== expectedFilename) {
-                invalid.push({ file, reason: 'invalid_journal' });
-                continue;
-            }
-
-            records.push({
-                file,
-                record: loaded.record
-            });
-        }
-
-        return {
-            records,
-            invalid,
-            reason: invalid.length > 0 ? 'invalid_journal' : null
-        };
-    }
-
-    function atomicWriteRecord(file, record) {
-        const base = path.basename(file);
-        const tempFile = path.join(
-            journalDir,
-            `.${base}.${processId}.${getNowMs()}.${temporarySequence++}.tmp`
-        );
-
-        try {
-            fs.writeFileSync(tempFile, JSON.stringify(record, null, 2), 'utf8');
-            fs.renameSync(tempFile, file);
-            return true;
-        } catch (_) {
-            try {
-                fs.unlinkSync(tempFile);
-            } catch (_) {
-            }
-
-            logSafe('journal_write_failed');
-            return false;
-        }
-    }
-
-    function findRecordByCommitId(commitId) {
-        const file = getJournalFile(commitId);
-
-        if (!fs.existsSync(file)) {
-            return { record: null, file, reason: 'not_found' };
-        }
-
-        const loaded = readJournalFile(file, commitId);
-
-        return {
-            record: loaded.record,
-            file,
-            reason: loaded.reason
-        };
-    }
-
-    function isEquivalentInitialRecord(existing, candidate) {
-        if (existing.status !== 'pending' || existing.reason !== null) {
-            return false;
-        }
-
-        return stableJson({
-            version: existing.version,
-            commitId: existing.commitId,
-            eventId: existing.eventId,
-            source: existing.source,
-            documents: existing.documents
-        }) === stableJson({
-            version: candidate.version,
-            commitId: candidate.commitId,
-            eventId: candidate.eventId,
-            source: candidate.source,
-            documents: candidate.documents
-        });
-    }
+    const logSafe = createSafeLogger(logError);
+    const fileStore = createJournalFileStore({
+        fs,
+        path,
+        journalDir,
+        getNowMs,
+        processId,
+        logSafe,
+        validatePersistedRecord
+    });
+    const {
+        ensureJournalDirectory,
+        getJournalFile,
+        listJournalRecords,
+        atomicWriteRecord,
+        findRecordByCommitId,
+        readRawJournalFile
+    } = fileStore;
 
     function createPendingCommit(record) {
         const validationReason = validateIncomingRecord(record);
@@ -372,7 +105,7 @@ export function createCommitJournalStore({
             });
         }
 
-        const candidate = makePersistedRecord(record);
+        const candidate = makePersistedRecord(record, { getNow, getNowMs });
         const ownFile = getJournalFile(candidate.commitId);
         const existing = findRecordByCommitId(candidate.commitId);
 
@@ -778,28 +511,6 @@ export function createCommitJournalStore({
         });
     }
 
-    function readRawJournalFile(file) {
-        if (!fs.existsSync(file)) {
-            return { ok: false, parsed: null };
-        }
-
-        let parsed;
-
-        try {
-            parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
-        } catch (_) {
-            return { ok: false, parsed: null };
-        }
-
-        if (!isPlainObject(parsed) ||
-            !isSafeJsonValue(parsed) ||
-            !isValidCommitId(parsed.commitId)) {
-            return { ok: false, parsed: null };
-        }
-
-        return { ok: true, parsed };
-    }
-
     function removeCompletedCommit(commitId) {
         if (!isValidCommitId(commitId)) {
             return createResult({
@@ -875,150 +586,22 @@ export function createCommitJournalStore({
         return freezeRecord(response);
     }
 
-    function isIdentifiableRawRecord(record, filename) {
-        return isPlainObject(record) &&
-            isSafeJsonValue(record) &&
-            isValidCommitId(record?.commitId) &&
-            filename === `${record.commitId}.json`;
-    }
-
-    function sanitizeInvalidRecord(record) {
-        return {
-            commitId: isValidCommitId(record?.commitId) ? record.commitId : null,
-            eventId: isValidEventId(record?.eventId) ? record.eventId : null,
-            source: isValidSource(record?.source) ? record.source : null,
-            category: 'invalid_journal_structure',
-            alreadyRecoveryFailed: record?.status === 'recovery_failed' &&
-                isValidRecoveryReason(record?.reason)
-        };
-    }
-
-    function sanitizeInvalidEntry(filename, reason) {
-        return {
-            file: typeof filename === 'string' ? path.basename(filename) : null,
-            category: 'invalid_journal',
-            reason
-        };
-    }
-
     function scanRecoveryCandidates() {
-        if (!fs.existsSync(journalDir)) {
-            return {
-                ok: true,
-                fatal: false,
-                records: [],
-                invalidRecords: [],
-                invalidEntries: []
-            };
-        }
-
-        let filenames;
-
-        try {
-            filenames = fs.readdirSync(journalDir);
-        } catch (_) {
-            return {
-                ok: false,
-                fatal: true,
-                records: [],
-                invalidRecords: [],
-                invalidEntries: []
-            };
-        }
-
-        const records = [];
-        const invalidRecords = [];
-        const invalidEntries = [];
-
-        for (const filename of filenames
-            .filter(name => typeof name === 'string' && name.endsWith('.json'))
-            .sort()) {
-            const file = path.join(journalDir, filename);
-            let parsed;
-
-            try {
-                parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
-            } catch (_) {
-                invalidEntries.push(sanitizeInvalidEntry(filename, 'invalid_journal'));
-                continue;
-            }
-
-            if (!isIdentifiableRawRecord(parsed, filename)) {
-                invalidEntries.push(sanitizeInvalidEntry(filename, 'invalid_journal'));
-                continue;
-            }
-
-            if (!validatePersistedRecord(parsed)) {
-                invalidRecords.push(sanitizeInvalidRecord(parsed));
-                continue;
-            }
-
-            records.push(cloneJson(parsed));
-        }
-
-        return {
-            ok: true,
-            fatal: false,
-            records,
-            invalidRecords,
-            invalidEntries
-        };
+        return scanRecoveryCandidatesFromFiles({
+            fs,
+            path,
+            journalDir,
+            validatePersistedRecord
+        });
     }
 
     function getPersistenceIntegrityStatus(eventId, source = undefined) {
-        const requestedSource = isValidSource(source) ? source : null;
-
-        if (!isValidEventId(eventId) ||
-            (source !== undefined && source !== null && !isValidSource(source))) {
-            return {
-                status: 'no_known_partial',
-                reason: null,
-                source: requestedSource,
-                commitId: null,
-                affectedDocuments: []
-            };
-        }
-
         const journal = listJournalRecords();
-        const candidates = journal.records
-            .map(entry => entry.record)
-            .filter(record =>
-                record.eventId === eventId &&
-                (requestedSource === null || record.source === requestedSource) &&
-                isActiveRecord(record)
-            )
-            .sort(compareIntegrityRecords);
-
-        if (candidates.length === 0) {
-            return {
-                status: 'no_known_partial',
-                reason: null,
-                source: requestedSource,
-                commitId: null,
-                affectedDocuments: []
-            };
-        }
-
-        const selected = candidates[0];
-        const affectedDocuments = getAffectedDocuments(selected);
-
-        if (selected.status === 'recovery_failed') {
-            return {
-                status: 'recovery_failed',
-                reason: selected.reason || 'recovery_failed',
-                source: selected.source,
-                commitId: selected.commitId,
-                affectedDocuments
-            };
-        }
-
-        return {
-            status: 'partial_persistence',
-            reason: 'pending_commit',
-            source: selected.source,
-            commitId: selected.commitId,
-            affectedDocuments
-        };
+        return getPersistenceIntegrityStatusFromRecords(
+            journal.records.map(entry => entry.record),
+            eventId,
+            source
+        );
     }
 
     return {

@@ -304,8 +304,12 @@ node --check sofa/matchTracker.js
 node --check sofa/trackerUpdate.js
 node --check sofa/betfair/trackerUpdate.js
 node --check sofa/betfair/processor.js
+node --check sofa/sourceIdentityGate.js
 
-node sofa/sourceIdentityGate.test.mjs
+node sofa/sourceIdentityGate/lifecycle.test.mjs
+node sofa/sourceIdentityGate/epochRecovery.test.mjs
+node sofa/sourceIdentityGate/bootstrapFailures.test.mjs
+node sofa/sourceIdentityGate/mismatchAndIsolation.test.mjs
 node sofa/trackerUpdate.test.mjs
 node sofa/betfair/trackerUpdate.test.mjs
 node sofa/betfair/processor.test.mjs

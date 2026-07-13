@@ -15,7 +15,11 @@ frontend/src/
 ├── main.jsx
 ├── App.jsx
 ├── hooks/useAnalysisSessionState.js
+├── hooks/useBetfairLoginAction.js
+├── hooks/useDashboardBootstrapState.js
+├── hooks/useLiveTrackingActions.js
 ├── hooks/useSourceIdentityGateStatus.js
+├── hooks/useSourceIdentityGateUi.js
 ├── utils/analysisSessionState.js
 ├── utils/liveSessionRequests.js
 ├── utils/sourceIdentityGatePresentation.js
@@ -34,12 +38,16 @@ frontend/src/
 | Area                                  | Proprietario                                       |
 | ------------------------------------- | -------------------------------------------------- |
 | Mount React e stili globali           | `main.jsx`                                         |
-| Coordinamento sessione, shell e viste | `App.jsx`                                          |
+| Composizione sessione, shell e viste  | `App.jsx`                                          |
 | Stato input e stato confermato        | `useAnalysisSessionState.js`                       |
+| Avvio, stop e ritorno al form         | `useLiveTrackingActions.js`                        |
+| Bootstrap dashboard dopo Start        | `useDashboardBootstrapState.js`                    |
+| Apertura login Betfair                | `useBetfairLoginAction.js`                         |
 | Trasformazione pura stato sessione    | `utils/analysisSessionState.js`                    |
 | Payload login e tracking              | `utils/liveSessionRequests.js`                     |
 | Azioni HTTP esplicite                 | `services/liveSessionApi.js`                       |
 | Polling status gate live              | `useSourceIdentityGateStatus.js`                   |
+| Stato UI Source Identity globale      | `useSourceIdentityGateUi.js`                       |
 | Presentazione pura Source Identity    | `utils/sourceIdentityGatePresentation.js`          |
 | Form iniziale                         | `StartAnalysisPanel.jsx`                           |
 | Shell dashboard e TopBar              | `DashboardWorkspace.jsx`, `TopBar.jsx`             |
@@ -103,7 +111,7 @@ Il valore predefinito `http://127.0.0.1:9222` resta soltanto per compatibilità 
 
 ## Visibilità shell
 
-`App.jsx` usa `sessionShellVisible` per separare il form iniziale dalla sessione live.
+`App.jsx` compone gli hook di sessione e usa `sessionShellVisible` per separare il form iniziale dalla sessione live.
 
 Dopo Start:
 
@@ -143,7 +151,7 @@ La condizione effettiva è:
 dashboardContentReady
 + dashboardData disponibile
 
-Dopo Start, `App.jsx` attende un reset del dato precedente e poi il primo `backendData` della nuova sessione. Finché questa condizione non è soddisfatta, renderizza `SourceIdentityGateWaitingScreen`.
+Dopo Start, `useDashboardBootstrapState.js` attende un reset del dato precedente e poi il primo `backendData` della nuova sessione. Finché questa condizione non è soddisfatta, `App.jsx` renderizza `SourceIdentityGateWaitingScreen`.
 
 La presentazione Source Identity determina testo della waiting screen, modale pending, indicatore, toast e gestione mismatch; non è una condizione frontend diretta per nascondere una dashboard già pronta.
 
@@ -211,7 +219,7 @@ Per `persistent`, il service invia `profileDir`.
 
 Per `cdp`, il service usa l'URL CDP selezionato dalla sessione.
 
-Un valore CDP vuoto blocca il login prima della richiesta HTTP. Il valore predefinito locale è usato soltanto per compatibilità legacy quando entrambi i valori CDP sono `undefined`.
+Un valore CDP corrente vuoto usa il valore confermato quando disponibile. Il valore predefinito locale è usato soltanto per compatibilità legacy quando entrambi i valori CDP sono assenti.
 
 ## Stop tracking
 
@@ -221,7 +229,7 @@ Il controllo visibile nell’Overview è:
 Stop Live Tracking
 ```
 
-`App.jsx` coordina richiesta, stato UI e stop del polling SofaScore. Il componente dashboard riceve callback e stato già preparati.
+`useLiveTrackingActions.js` coordina richiesta, stato UI e stop del polling SofaScore. `App.jsx` collega queste callback alla shell e al componente dashboard.
 
 La richiesta di stop invia:
 
@@ -360,7 +368,7 @@ path locali
 
 ### Conferma reale
 
-Quando il gate UI è pending reale, `App.jsx` invia:
+Quando il gate UI è pending reale, `useSourceIdentityGateUi.js` invia:
 
 ```txt
 POST /api/evidence/:eventId/source-identity/confirm
@@ -395,7 +403,7 @@ Gli input del form restano disponibili per correggere e riavviare.
 
 ## Confini
 
-`App.jsx` deve coordinare, non assorbire logica visiva o trasformazioni pure.
+`App.jsx` deve comporre hook e viste, non assorbire logica visiva, chiamate HTTP o trasformazioni pure.
 
 Non inserire in `App.jsx`:
 

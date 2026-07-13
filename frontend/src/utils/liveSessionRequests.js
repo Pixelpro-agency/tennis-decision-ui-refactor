@@ -1,11 +1,11 @@
 const DEFAULT_CDP_URL = 'http://127.0.0.1:9222';
 
 function selectCdpUrl(cdpUrl, confirmedCdpUrl) {
-    if (cdpUrl !== undefined) {
+    if (cdpUrl) {
         return cdpUrl;
     }
 
-    if (confirmedCdpUrl !== undefined) {
+    if (confirmedCdpUrl) {
         return confirmedCdpUrl;
     }
 
