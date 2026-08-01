@@ -1,7 +1,4 @@
 import express from 'express';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import {
     buildDebugLastResponse,
     buildMatchHistoryResponse,
@@ -13,95 +10,61 @@ import {
     buildTrackMatchResponse,
     buildUntrackMatchResponse
 } from './match/trackingResponses.js';
-import {
-    buildMatchAnalysisResponse
-} from './match/analysisResponse.js';
-import {
-    buildSourceIdentityStatusResponse
-} from './match/sourceIdentityStatusResponse.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const LOG_FILE = path.join(__dirname, '..', '..', 'backend_debug.log');
+import { buildMatchAnalysisResponse } from './match/analysisResponse.js';
+import { buildSourceIdentityStatusResponse } from './match/sourceIdentityStatusResponse.js';
+import { runtimeLog, runtimeErrorCode } from '../runtime/runtimeLogger.js';
 
 const router = express.Router();
 
-function logDebug(message) {
-    const time = new Date().toISOString();
-    fs.appendFileSync(LOG_FILE, `[${time}] ${message}\n`);
+function logDebug(_message) {
+    runtimeLog.debug('match_route', 'analysis_debug', { reason: 'analysis_event' });
 }
 
 let lastDebugData = null;
 
-router.get('/debug-last', (req, res) => {
+router.get('/debug-last', (_req, res) => {
     return res.json(buildDebugLastResponse(lastDebugData));
 });
-
 router.get('/:eventId/source-identity-status', (req, res) => {
-    const { eventId } = req.params;
-    const result = buildSourceIdentityStatusResponse(eventId);
-    
+    const result = buildSourceIdentityStatusResponse(req.params.eventId);
     return res.status(result.httpStatus).json(result.body);
 });
-
 router.get('/:eventId/history', (req, res) => {
-    const { eventId } = req.params;
     const result = buildMatchHistoryResponse(
-        eventId,
+        req.params.eventId,
         { getMatchPersistenceIntegrity }
     );
-
     return res.status(result.httpStatus).json(result.body);
-
 });
-
 router.get('/:eventId/json', (req, res) => {
-    const { eventId } = req.params;
     const result = buildSofaTimelineResponse(
-        eventId,
+        req.params.eventId,
         { getMatchPersistenceIntegrity }
     );
-
     return res.status(result.httpStatus).json(result.body);
-
 });
-
 router.post('/track', (req, res) => {
     const result = buildTrackMatchResponse(req.body || {});
-    
     return res.status(result.httpStatus).json(result.body);
-    
 });
-
 router.post('/untrack', (req, res) => {
     const result = buildUntrackMatchResponse(req.body || {});
-    
     return res.status(result.httpStatus).json(result.body);
-    
 });
-
-router.post('/stop', (req, res) => {
-    const result = buildStopMatchResponse(req.body || {});
-    
+router.post('/stop', async (req, res) => {
+    const result = await buildStopMatchResponse(req.body || {});
     return res.status(result.httpStatus).json(result.body);
-    
 });
-
 router.post('/analyze', async (req, res) => {
-    const result = await buildMatchAnalysisResponse(
-        req.body || {},
-        {
-            logDebug,
-            logError: (label, error) => {
-                console.error(label, error);
-            }
-        }
-    );
-    
+    const result = await buildMatchAnalysisResponse(req.body || {}, {
+        logDebug,
+        logError: (_label, error) => runtimeLog.error('match_route', 'analysis_failed', {
+            reason: runtimeErrorCode(error, 'analysis_failed')
+        })
+    });
     return res.status(result.httpStatus).json(result.body);
-    
 });
-
-router.post('/snapshot', async (req, res) => {
+router.post('/snapshot', async (_req, res) => {
     return res.redirect(307, '/api/match/analyze');
 });
 

@@ -1,4 +1,6 @@
-﻿import os
+import os
+import math
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -70,7 +72,6 @@ def resolve_betfair_app_key(environ=None, env_file=None):
 
 
 APP_KEY = resolve_betfair_app_key()
-DEFAULT_CDP_URL = "http://127.0.0.1:9222"
 DEFAULT_PERSISTENT_PROFILE = r"C:\BetfairChromeProfile"
 
 CACHE_DIR = PROJECT_ROOT / "backend" / "betfair_cache"
@@ -119,19 +120,67 @@ INTERESTING_PATH_KEYWORDS = (
 )
 
 
-def log(message):
-    redacted_message = redact_text(str(message))
-    line = f"[{datetime.now().isoformat()}] {redacted_message}"
+_LOG_LEVELS = {"debug", "info", "warn", "error"}
+_LOG_FIELDS = (
+    "eventId", "role", "state", "status", "reason", "mode", "source",
+    "scope", "service", "ownership", "pid", "port", "attempt", "count",
+    "requested", "graceful", "forceKilled", "alreadyExited", "remaining",
+    "active", "stopping", "graphUrlCount", "hasBetfairUrl", "ok", "code",
+    "text",
+)
 
+
+def _runtime_text(value, limit=800):
+    text = redact_text(str(value))
+    text = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", text)
+    text = re.sub(r"[\x00-\x1f\x7f-\x9f]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"\b(?:https?|wss?)://[^\s\"'<>]+", "<REDACTED>", text, flags=re.I)
+    text = re.sub(r"\b[A-Za-z]:\\(?:[^\s\"'<>]+\\)*[^\s\"'<>]*", "<REDACTED>", text)
+    if len(text) > limit:
+        suffix = "<truncated>"
+        text = text[: max(0, limit - len(suffix))] + suffix
+    return text
+
+
+def _log_code(value, fallback):
+    value = re.sub(r"[^a-z0-9]+", "_", str(value or "").lower()).strip("_")
+    return value if re.fullmatch(r"[a-z][a-z0-9_]*", value or "") else fallback
+
+
+def _write_log_line(line):
     sys.stderr.write(line + "\n")
     sys.stderr.flush()
-
     try:
         LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
         with LOG_FILE.open("a", encoding="utf-8") as file:
             file.write(line + "\n")
-    except Exception as error:
-        redacted_error = redact_text(str(error))
-        sys.stderr.write(
-            f"[Logger] Failed to write log file: {redacted_error}\n"
+    except Exception:
+        sys.stderr.write("level=error component=betfair_logger event=log_write_failed\n")
+        sys.stderr.flush()
+
+
+def log_event(component, event, level="info", **fields):
+    level = level if level in _LOG_LEVELS else "info"
+    parts = [
+        f"[{datetime.now().isoformat()}]",
+        f"level={level}",
+        f"component={_log_code(component, 'betfair_scraper')}",
+        f"event={_log_code(event, 'runtime_event')}",
+    ]
+    for key in _LOG_FIELDS:
+        if key not in fields:
+            continue
+        value = fields[key]
+        is_finite_number = (
+            isinstance(value, (int, float))
+            and not isinstance(value, bool)
+            and math.isfinite(value)
         )
+        if value is None or isinstance(value, (str, bool)) or is_finite_number:
+            parts.append(f"{key}={_runtime_text(value, 160)}")
+    _write_log_line(_runtime_text(" ".join(parts), 1000))
+
+
+def log(message):
+    log_event("betfair_scraper", "legacy_message", text=_runtime_text(message))

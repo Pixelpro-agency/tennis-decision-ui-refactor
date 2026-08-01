@@ -1,14 +1,14 @@
-﻿import argparse
+import argparse
 import asyncio
 import json
 
 from .cache import get_cached_result, set_cached_result
-from .config import DEFAULT_CDP_URL, log
+from .cdp_url import require_cdp_base_url
+from .config import log_event
 from .parsing import normalize_betfair_url
-from .scrape import open_login_window, scrape_betfair
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("url")
@@ -28,7 +28,7 @@ def parse_args():
 
     parser.add_argument(
         "--cdp-url",
-        default=DEFAULT_CDP_URL,
+        default="",
         help="CDP endpoint URL",
     )
 
@@ -56,11 +56,27 @@ def parse_args():
         help="Open browser for login and keep it open",
     )
 
-    return parser.parse_args()
+    return parser.parse_args(argv)
+
+
+def validate_browser_args(args):
+    if args.mode == "cdp":
+        args.cdp_url = require_cdp_base_url(args.cdp_url)
+        return args.cdp_url
+
+    args.cdp_url = ""
+    return ""
 
 
 def main():
     args = parse_args()
+
+    try:
+        validate_browser_args(args)
+    except ValueError as error:
+        raise SystemExit(str(error)) from None
+
+    from .scrape import open_login_window, scrape_betfair
 
     url = normalize_betfair_url(args.url)
     ladder_urls = [
@@ -71,23 +87,20 @@ def main():
 
     network_capture = not args.no_network_capture
 
-    log(
-        f"[Main] mode={args.mode} "
-        f"url={url} "
-        f"network_capture={network_capture}"
+    log_event(
+        "betfair_cli",
+        "scraper_start",
+        mode=args.mode,
+        hasBetfairUrl=bool(url),
+        graphUrlCount=len(ladder_urls),
+        status="network_capture" if network_capture else "no_network_capture",
     )
-
-    if args.profile_dir:
-        log(f"[Main] profile_dir={args.profile_dir}")
-
-    if args.mode == "cdp":
-        log(f"[Main] cdp_url={args.cdp_url}")
 
     if not args.no_cache and not args.login_only:
         cached = get_cached_result(url)
 
         if cached:
-            log("[Main] Returning cached result")
+            log_event("betfair_cli", "cache_hit", status="cached")
             print(json.dumps(cached))
             return
 

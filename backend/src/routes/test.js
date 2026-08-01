@@ -1,6 +1,7 @@
 import express from 'express';
 import { extractEventId } from '../sofa/extractEventId.js';
 import { validateGraphUrls } from './test/graphUrlValidation.js';
+import { classifyCdpBaseUrl, buildCdpVersionUrl } from '../utils/cdpUrl.js';
 
 const router = express.Router();
 
@@ -12,15 +13,31 @@ router.get('/health', (req, res) => {
     });
 });
 
-router.post('/cdp', async (req, res) => {
-    const cdpUrl = (req.body && req.body.cdpUrl) || 'http://127.0.0.1:9222';
-    const normalizedCdpUrl = String(cdpUrl).trim().replace(/\/+$/, '');
-    const checkedUrl = `${normalizedCdpUrl}/json/version`;
-    
+export async function handleCdpTestRequest(
+    req,
+    res,
+    dependencies = {}
+) {
+    const fetchFn = dependencies.fetchFn || fetch;
+    const classified = classifyCdpBaseUrl(req.body?.cdpUrl);
+
+    if (!classified.ok) {
+        return res.status(400).json({
+            ok: false,
+            code: classified.code,
+            error: classified.code === 'cdp_url_required'
+                ? 'CDP URL required'
+                : 'Invalid CDP URL'
+        });
+    }
+
+    const normalizedCdpUrl = classified.value;
+    const checkedUrl = buildCdpVersionUrl(normalizedCdpUrl);
+
     try {
-        const response = await fetch(checkedUrl);
+        const response = await fetchFn(checkedUrl);
         const text = await response.text();
-        
+
         if (text.trim() === '') {
             return res.json({
                 ok: false,
@@ -30,22 +47,20 @@ router.post('/cdp', async (req, res) => {
                 error: 'Empty response from CDP'
             });
         }
-        
+
         let data;
         try {
             data = JSON.parse(text);
-        } catch (parseErr) {
-            const snippet = text.slice(0, 300);
+        } catch (_) {
             return res.json({
                 ok: false,
                 cdpUrl: normalizedCdpUrl,
                 checkedUrl,
                 webSocketDebuggerUrl: false,
-                error: 'Invalid JSON from CDP',
-                snippet
+                error: 'Invalid JSON from CDP'
             });
         }
-        
+
         if (!response.ok) {
             return res.json({
                 ok: false,
@@ -56,7 +71,7 @@ router.post('/cdp', async (req, res) => {
                 error: `CDP returned HTTP ${response.status}`
             });
         }
-        
+
         if (data.webSocketDebuggerUrl) {
             return res.json({
                 ok: true,
@@ -66,7 +81,7 @@ router.post('/cdp', async (req, res) => {
                 browser: data.Browser || null
             });
         }
-        
+
         return res.json({
             ok: false,
             cdpUrl: normalizedCdpUrl,
@@ -75,16 +90,18 @@ router.post('/cdp', async (req, res) => {
             browser: data.Browser || null,
             error: 'CDP endpoint reached but webSocketDebuggerUrl is missing'
         });
-    } catch (error) {
+    } catch (_) {
         return res.json({
             ok: false,
             cdpUrl: normalizedCdpUrl,
             checkedUrl,
             webSocketDebuggerUrl: false,
-            error: error.message || 'CDP unreachable'
+            error: 'CDP unreachable'
         });
     }
-});
+}
+
+router.post('/cdp', handleCdpTestRequest);
 
 router.post('/sofa-url', (req, res) => {
     const { sofaUrl } = req.body || {};

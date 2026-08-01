@@ -5,6 +5,7 @@ import {
     stopMatchTracking
 } from '../services/liveSessionApi';
 import { buildMatchTrackingRequest } from '../utils/liveSessionRequests.js';
+import { frontendRuntimeLog } from '../utils/runtimeLog.js';
 
 export function useLiveTrackingActions({
     sofaEventId,
@@ -57,10 +58,10 @@ export function useLiveTrackingActions({
 
         try {
             await startMatchTracking(trackingRequest);
-        } catch (error) {
+        } catch (_error) {
             resetDashboardBootstrap();
             setSessionShellVisible(false);
-            console.error('Failed to start match tracker:', error);
+            frontendRuntimeLog('error', 'tracking_start_failed', { code: 'tracking_request_failed' });
         }
     }, [
         applySearchSession,

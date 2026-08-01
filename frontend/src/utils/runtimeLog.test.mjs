@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { frontendRuntimeLog } from './runtimeLog.js';
+const lines=[];
+const writer={log:v=>lines.push(v),warn:v=>lines.push(v),error:v=>lines.push(v),debug:v=>lines.push(v)};
+frontendRuntimeLog('error','betfair_login_failed',{code:'login_request_failed',url:'https://secret',payload:{x:1}},writer);
+assert.equal(lines.length,1);
+assert.equal(lines[0],'[Frontend] event=betfair_login_failed code=login_request_failed');
+assert.doesNotMatch(lines[0],/https|secret|payload|stack/);
+assert.doesNotThrow(()=>frontendRuntimeLog('error','x',{code:'bad code'},{error(){throw new Error('raw')}}));
+console.log('G39-G40 frontend runtimeLog tests passed');

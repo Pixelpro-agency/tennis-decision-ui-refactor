@@ -74,3 +74,6 @@ Desktop.ini
 *.rej
 *.before-*
 *~
+
+# Launcher runtime artifacts
+launcher/.runtime/

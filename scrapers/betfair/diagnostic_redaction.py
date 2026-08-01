@@ -6,6 +6,8 @@ from urllib.parse import unquote_plus, urlsplit, urlunsplit
 
 
 REDACTED = "<REDACTED>"
+MAX_DIAGNOSTIC_TEXT_LENGTH = 1000
+_ANSI_PATTERN = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 SENSITIVE_KEYS = frozenset({
     "_ak",
@@ -66,13 +68,54 @@ _BEARER_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-_TEXT_HEADER_PATTERN = re.compile(
-    r"(?P<prefix>(?<![\w-])(?:"
+_SAFE_DIAGNOSTIC_FIELDS = frozenset({
+    "event",
+    "eventId",
+    "marketId",
+    "selectionId",
+    "runnerName",
+    "price",
+    "volume",
+    "status",
+    "state",
+    "reason",
+    "mode",
+    "source",
+    "scope",
+    "service",
+    "ownership",
+    "pid",
+    "port",
+    "attempt",
+    "count",
+    "requested",
+    "graceful",
+    "forceKilled",
+    "alreadyExited",
+    "remaining",
+    "active",
+    "stopping",
+    "graphUrlCount",
+    "hasBetfairUrl",
+    "ok",
+    "code",
+})
+
+_SAFE_DIAGNOSTIC_FIELD_PATTERN = _build_pattern(_SAFE_DIAGNOSTIC_FIELDS)
+
+_TEXT_HEADER_START_PATTERN = re.compile(
+    r"(?P<prefix>(?<![\w-])(?P<name>"
     + _SENSITIVE_HEADER_PATTERN
-    + r")\s*:\s*)(?P<value>.*?)(?="
-    r"\s+(?:(?:"
+    + r")\s*:\s*)",
+    re.IGNORECASE,
+)
+
+_TEXT_HEADER_BOUNDARY_PATTERN = re.compile(
+    r"\s+(?P<field>(?:"
     + _SENSITIVE_TEXT_NAME_PATTERN
-    + r")\s*(?:=|:)|(?:[A-Za-z_][\w.-]*)\s*=)|[\r\n]|$)",
+    + r"|"
+    + _SAFE_DIAGNOSTIC_FIELD_PATTERN
+    + r"))\s*(?:=|:)",
     re.IGNORECASE,
 )
 
@@ -118,6 +161,66 @@ def _redact_text_match(match):
 
 def _redact_key_value_pairs(value):
     return _TEXT_PAIR_PATTERN.sub(_redact_text_match, value)
+
+
+
+def _line_end(value, start):
+    positions = [
+        position
+        for position in (
+            value.find("\r", start),
+            value.find("\n", start),
+        )
+        if position >= 0
+    ]
+    return min(positions, default=len(value))
+
+
+def _header_value_end(value, value_start, header_name):
+    line_end = _line_end(value, value_start)
+    segment = value[value_start:line_end]
+
+    for boundary in _TEXT_HEADER_BOUNDARY_PATTERN.finditer(segment):
+        absolute_start = value_start + boundary.start()
+        preceding_value = value[value_start:absolute_start].rstrip()
+
+        if (
+            header_name in {"cookie", "set-cookie"}
+            and preceding_value.endswith(";")
+        ):
+            continue
+
+        return absolute_start
+
+    return line_end
+
+
+def _redact_text_headers(value):
+    parts = []
+    cursor = 0
+    search_start = 0
+
+    while True:
+        match = _TEXT_HEADER_START_PATTERN.search(value, search_start)
+        if match is None:
+            break
+
+        value_start = match.end()
+        value_end = _header_value_end(
+            value,
+            value_start,
+            match.group("name").lower(),
+        )
+
+        parts.append(value[cursor:match.start()])
+        parts.append(match.group("prefix"))
+        parts.append(REDACTED)
+
+        cursor = value_end
+        search_start = value_end
+
+    parts.append(value[cursor:])
+    return "".join(parts)
 
 
 def _redact_query(query):
@@ -195,7 +298,7 @@ def redact_value(value, key=None):
 
 
 def redact_text(value):
-    """Redact recognizable sensitive values from free-form text."""
+    """Redact bounded sensitive data from free-form diagnostic text."""
     if not isinstance(value, str):
         return value
 
@@ -204,17 +307,55 @@ def redact_text(value):
         value,
     )
 
+    json_pattern = re.compile(
+        r"(?P<quote>[\"'])(?P<key>" + _SENSITIVE_TEXT_NAME_PATTERN + r")(?P=quote)"
+        r"\s*:\s*"
+        r"(?P<value>\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'|[^\s,}\]]+)",
+        re.IGNORECASE,
+    )
+
+    def redact_json_match(match):
+        quote = match.group("quote")
+        return f"{quote}{match.group('key')}{quote}:{quote}{REDACTED}{quote}"
+
+    redacted = json_pattern.sub(redact_json_match, redacted)
+
+    redacted = _redact_text_headers(redacted)
+
     redacted = _BEARER_PATTERN.sub(
         f"Bearer {REDACTED}",
         redacted,
     )
+    redacted = _redact_key_value_pairs(redacted)
 
-    redacted = _TEXT_HEADER_PATTERN.sub(
-        _redact_text_match,
+    redacted = re.sub(
+        r"\\\\\?\\[A-Za-z]:[\\/][^\s<>'\"`]*",
+        REDACTED,
+        redacted,
+    )
+    redacted = re.sub(
+        r"\\\\[^\\/\s<>'\"`]+[\\/][^\\/\s<>'\"`]+(?:[\\/][^\s<>'\"`]*)*",
+        REDACTED,
+        redacted,
+    )
+    redacted = re.sub(
+        r"\b[A-Za-z]:[\\/][^\s<>'\"`]*",
+        REDACTED,
+        redacted,
+    )
+    redacted = re.sub(
+        r"(^|[\s=(,:])/(?!/)(?:[A-Za-z0-9._~+-]+(?:/[A-Za-z0-9._~+-]+)*)",
+        lambda match: match.group(1) + REDACTED,
         redacted,
     )
 
-    return _redact_key_value_pairs(redacted)
+    redacted = _ANSI_PATTERN.sub("", redacted)
+    redacted = re.sub(r"[\x00-\x1f\x7f-\x9f]+", " ", redacted)
+    redacted = re.sub(r"\s+", " ", redacted).strip()
+    if len(redacted) > MAX_DIAGNOSTIC_TEXT_LENGTH:
+        suffix = "<truncated>"
+        redacted = redacted[: MAX_DIAGNOSTIC_TEXT_LENGTH - len(suffix)] + suffix
+    return redacted
 
 
 __all__ = [

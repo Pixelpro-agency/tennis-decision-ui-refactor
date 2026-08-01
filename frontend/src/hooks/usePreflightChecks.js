@@ -1,5 +1,7 @@
 
 import { parseGraphUrls, safeFetchJson } from '../utils/preflight.js';
+import { normalizeCdpBaseUrl } from '../utils/cdpUrl.js';
+import { frontendRuntimeLog } from '../utils/runtimeLog.js';
 
 export function usePreflightChecks({
   apiBase,
@@ -28,6 +30,7 @@ export function usePreflightChecks({
             setCheck('backend', 'error', 'Backend ERRORE âEUR” risposta non valida');
             return false;
         } catch (e) {
+            frontendRuntimeLog('warn', 'preflight_failed', { source: 'backend' });
             setCheck('backend', 'error', `Backend ERRORE âEUR” ${e.message}`);
             return false;
         }
@@ -35,8 +38,8 @@ export function usePreflightChecks({
 
     const testCdp = async () => {
         setCheck('cdp', 'checking', '');
-        const targetCdp = cdpUrl === undefined ? 'http://127.0.0.1:9222' : cdpUrl;
-        if (targetCdp === '') {
+        const targetCdp = normalizeCdpBaseUrl(cdpUrl);
+        if (!targetCdp) {
             setCheck('cdp', 'error', 'CDP non disponibile: usa modalità Persistent oppure attendi l’avvio di Chrome.');
             return null;
         }
@@ -53,6 +56,7 @@ export function usePreflightChecks({
             setCheck('cdp', 'error', `CDP ERRORE âEUR” ${data.error || 'Chrome non raggiungibile'} (${data.checkedUrl || targetCdp})`);
             return false;
         } catch (e) {
+            frontendRuntimeLog('warn', 'preflight_failed', { source: 'cdp' });
             setCheck('cdp', 'error', `CDP ERRORE âEUR” ${e.message} su ${targetCdp}`);
             return false;
         }
@@ -77,6 +81,7 @@ export function usePreflightChecks({
             setCheck('sofa', 'error', `Sofa ERRORE âEUR” ${data.error || 'eventId non trovato'}`);
             return false;
         } catch (e) {
+            frontendRuntimeLog('warn', 'preflight_failed', { source: 'sofa' });
             setCheck('sofa', 'error', `Sofa ERRORE âEUR” ${e.message}`);
             return false;
         }
@@ -101,6 +106,7 @@ export function usePreflightChecks({
             setCheck('betfair', 'error', `Betfair URL ERRORE âEUR” ${data.error || 'URL non valido'}`);
             return false;
         } catch (e) {
+            frontendRuntimeLog('warn', 'preflight_failed', { source: 'betfair' });
             setCheck('betfair', 'error', `Betfair URL ERRORE âEUR” ${e.message}`);
             return false;
         }
@@ -129,6 +135,7 @@ export function usePreflightChecks({
             setCheck('graphs', 'error', `Graph URLs ERRORE âEUR” ${firstError ? firstError.error : (data.error || 'formato non valido')}`);
             return false;
         } catch (e) {
+            frontendRuntimeLog('warn', 'preflight_failed', { source: 'graphs' });
             setCheck('graphs', 'error', `Graph URLs ERRORE âEUR” ${e.message}`);
             return false;
         }
@@ -156,4 +163,3 @@ export function usePreflightChecks({
     runAllChecks
   };
 }
-

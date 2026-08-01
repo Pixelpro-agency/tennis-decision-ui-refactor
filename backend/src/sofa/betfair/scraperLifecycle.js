@@ -10,6 +10,10 @@ export function fetchScraperLifecycle(context) {
     return defaultScraperLifecycle.fetchScraperLifecycle(context);
 }
 
+export function getActiveScraperRuntimeConflict(context) {
+    return defaultScraperLifecycle.getRuntimeConflict(context);
+}
+
 export function terminateActiveScraperLifecycle() {
     return defaultScraperLifecycle.terminateActiveScrapers();
 }
