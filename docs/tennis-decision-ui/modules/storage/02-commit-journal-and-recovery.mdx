@@ -23,9 +23,21 @@ backend/src/sofa/matchHistory/recovery.js
 
 ## Stato
 
-**Implementato, da validare.**
+```txt
+percorso ordinario live con commit completi
+→ validato
 
-Il comportamento è coperto da test mirati e validazione locale integrata. Restano da validare sessioni live/replay reali, riavvii reali del processo e failure operative su filesystem non simulato.
+partial_persistence reale controllata
+→ da validare
+
+recovery_failed reale
+→ da validare
+
+failure filesystem reale
+→ da validare
+```
+
+Le regole di recovery, sicurezza e single-process restano invariate.
 
 ## Collocazione
 
@@ -96,6 +108,41 @@ unchanged
 partial
 failed
 ```
+
+## Precondizione JSON-safe dei producer
+
+```txt
+producer
+→ payload completamente JSON-safe
+→ createPendingCommit
+```
+
+Il journal non converte `undefined` in `null`, non elimina campi `undefined`, non corregge semanticamente il payload e non allenta la validazione.
+
+Il producer decide esplicitamente se un dato assente diventa `null`, viene omesso o usa un altro valore canonico previsto.
+
+```txt
+SofaScore
+homeTotal / awayTotal assenti
+→ null
+
+Betfair diagnostics
+graphLoginRequiredUrl
+graphLoginRequiredReason
+graphLoginRequiredText
+→ null quando assenti
+```
+
+```txt
+null
+→ assenza serializzabile
+
+undefined
+→ payload non JSON-safe
+→ record rifiutato
+```
+
+Non esiste ancora un test automatico dedicato che costruisca statistiche senza `homeTotal`/`awayTotal` e verifichi l'assenza di `undefined`.
 
 ## Recovery e repair
 

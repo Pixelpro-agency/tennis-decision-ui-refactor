@@ -1,6 +1,7 @@
-﻿from urllib.parse import urlsplit
+from urllib.parse import urlsplit
 
-from .config import DEFAULT_CDP_URL, DEFAULT_PERSISTENT_PROFILE, log
+from .cdp_url import require_cdp_base_url
+from .config import DEFAULT_PERSISTENT_PROFILE, log_event
 
 
 async def get_or_create_betfair_page(context):
@@ -8,12 +9,12 @@ async def get_or_create_betfair_page(context):
         try:
             currentUrl = page.url
             if "betfair" in currentUrl.lower():
-                log(f"[Browser] Reusing existing Betfair page: {currentUrl}")
+                log_event("betfair_browser", "betfair_page_reused", status="existing")
                 return page
         except Exception:
             continue
 
-    log("[Browser] No existing Betfair page, creating new one")
+    log_event("betfair_browser", "betfair_page_created", status="new")
     return await context.new_page()
 
 
@@ -36,8 +37,8 @@ async def detect_logged_in(page):
                 return True
 
         return False
-    except Exception as error:
-        log(f"[Browser] Login detection error: {error}")
+    except Exception:
+        log_event("betfair_browser", "login_detection_failed", reason="page_content_unavailable", level="warn")
         return False
 
 
@@ -98,41 +99,34 @@ async def detect_betfair_event_status(page):
             except Exception:
                 continue
 
-    except Exception as error:
-        log(f"[Browser] Event status detection error: {error}")
+    except Exception:
+        log_event("betfair_browser", "event_status_detection_failed", reason="page_content_unavailable", level="warn")
 
     return result
 
 
 async def open_browser_session(playwright, mode, profile_dir, cdp_url):
-    effectiveCdpUrl = cdp_url or DEFAULT_CDP_URL
-
     if mode == "cdp":
-        log(f"[Browser] mode=cdp_existing_chrome cdp_url={effectiveCdpUrl}")
+        effectiveCdpUrl = require_cdp_base_url(cdp_url)
+        log_event("betfair_browser", "browser_session_open", mode="cdp")
 
         try:
             browser = await playwright.chromium.connect_over_cdp(
                 effectiveCdpUrl
             )
         except Exception as error:
-            port = urlsplit(effectiveCdpUrl).port or 9222
-            profile = profile_dir or DEFAULT_PERSISTENT_PROFILE
-
-            raise Exception(
-                f"Cannot connect to Chrome at {effectiveCdpUrl}. "
-                f"Make sure Chrome was started with: "
-                f'chrome.exe --remote-debugging-port={port} '
-                f'--user-data-dir="{profile}"'
-            ) from error
+            log_event("betfair_browser", "cdp_connect_failed", reason="connection_failed", level="error")
+            raise Exception("Cannot connect to Chrome CDP") from error
 
         if not browser.contexts:
             raise Exception("CDP browser has no contexts")
 
         context = browser.contexts[0]
 
-        log(
-            f"[Browser] CDP context found with "
-            f"{len(context.pages)} page(s)"
+        log_event(
+            "betfair_browser",
+            "cdp_context_ready",
+            count=len(context.pages),
         )
 
         page = await get_or_create_betfair_page(context)
@@ -142,9 +136,10 @@ async def open_browser_session(playwright, mode, profile_dir, cdp_url):
     if mode == "persistent":
         profile = profile_dir or DEFAULT_PERSISTENT_PROFILE
 
-        log(
-            f"[Browser] mode=persistent_profile "
-            f"profile_dir={profile} headless=False"
+        log_event(
+            "betfair_browser",
+            "browser_session_open",
+            mode="persistent",
         )
 
         context = await playwright.chromium.launch_persistent_context(

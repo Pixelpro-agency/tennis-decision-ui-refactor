@@ -1,3 +1,5 @@
+import { normalizeCdpStateValue } from './cdpUrl.js';
+
 export function buildAnalysisSessionUpdate({
     sofaUrl,
     betfairUrl,
@@ -7,6 +9,8 @@ export function buildAnalysisSessionUpdate({
     fullChromeProfilePath,
     cdpUrl
 } = {}) {
+    const normalizedCdpUrl = normalizeCdpStateValue(cdpUrl);
+
     return {
         current: {
             matchUrl: sofaUrl,
@@ -14,7 +18,7 @@ export function buildAnalysisSessionUpdate({
             betfairGraphUrls,
             betfairMode,
             chromeProfilePath: chromeProfileInput,
-            cdpUrl
+            cdpUrl: normalizedCdpUrl
         },
         confirmed: {
             url: sofaUrl,
@@ -22,7 +26,7 @@ export function buildAnalysisSessionUpdate({
             betfairGraphUrls,
             betfairMode,
             chromeProfilePath: fullChromeProfilePath,
-            cdpUrl
+            cdpUrl: normalizedCdpUrl
         }
     };
 }

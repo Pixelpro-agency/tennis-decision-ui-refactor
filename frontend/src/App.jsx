@@ -22,6 +22,7 @@ import { useAnalysisSessionState } from './hooks/useAnalysisSessionState.js';
 import { useDashboardBootstrapState } from './hooks/useDashboardBootstrapState.js';
 import { useBetfairLoginAction } from './hooks/useBetfairLoginAction.js';
 import { useLiveTrackingActions } from './hooks/useLiveTrackingActions.js';
+import { frontendRuntimeLog } from './utils/runtimeLog.js';
 import { useSourceIdentityGateUi } from './hooks/useSourceIdentityGateUi.js';
 
 const API_BASE = '';
@@ -167,8 +168,8 @@ function App() {
         try {
             const lines = await fetchBetfairLogLines();
             setBetfairLog(lines);
-        } catch (error) {
-            console.error('Failed to fetch Betfair log:', error);
+        } catch (_error) {
+            frontendRuntimeLog('error', 'betfair_log_fetch_failed', { code: 'log_request_failed' });
         }
     };
 

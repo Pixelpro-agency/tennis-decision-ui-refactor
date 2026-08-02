@@ -10,6 +10,8 @@ import {
     terminateActiveBetfairScrapers,
     persistBetfairTrackingSample
 } from './betfairFetch.js';
+import { invalidatePythonGeneration } from '../runtime/pythonProcessRegistry.js';
+import { runtimeLog, runtimeErrorCode } from '../runtime/runtimeLogger.js';
 import {
     startSourceIdentityGate,
     clearSourceIdentityGate,
@@ -50,7 +52,7 @@ export function persistBootstrapTrackingSamples({
             sofaResult = normalizeSofaCommitResult(rawSofaResult, eventId);
             sofaOk = sofaResult.ok === true;
         } catch (err) {
-            console.error('[Tracker] Sofa bootstrap persistence failed:', err);
+            runtimeLog.error('match_tracker', 'bootstrap_persistence_failed', { eventId, source: 'sofa', reason: runtimeErrorCode(err, 'persistence_failed') });
             sofaResult = normalizeSofaCommitResult(undefined, eventId);
             sofaOk = false;
         }
@@ -64,7 +66,7 @@ export function persistBootstrapTrackingSamples({
             betfairResult = persistBetfairTrackingSampleFn(eventId, betfairSample, betfairKey);
             betfairOk = betfairResult?.ok === true;
         } catch (err) {
-            console.error('[Tracker] Betfair bootstrap persistence failed:', err);
+            runtimeLog.error('match_tracker', 'bootstrap_persistence_failed', { eventId, source: 'betfair', reason: runtimeErrorCode(err, 'persistence_failed') });
             betfairOk = false;
         }
     }
@@ -86,7 +88,7 @@ function startScheduler() {
             if (!info.updatingSofa && now - info.lastSofaUpdate >= SOFA_INTERVAL_MS) {
                 info.updatingSofa = true;
                 updateSofa(eventId, info)
-                    .catch(err => console.error(`[Tracker] Sofa update error for ${eventId}:`, err.message))
+                    .catch(err => runtimeLog.error('match_tracker', 'sofa_update_failed', { eventId, source: 'sofa', reason: runtimeErrorCode(err, 'update_failed') }))
                     .finally(() => {
                         info.updatingSofa = false;
                         info.lastSofaUpdate = Date.now();
@@ -96,7 +98,7 @@ function startScheduler() {
             if (info.betfairUrl && !info.betfairFinished && !info.updatingBetfair && now - info.lastBetfairUpdate >= BETFAIR_INTERVAL_MS) {
                 info.updatingBetfair = true;
                 updateBetfair(eventId, info)
-                    .catch(err => console.error(`[Tracker] Betfair update error for ${eventId}:`, err.message))
+                    .catch(err => runtimeLog.error('match_tracker', 'betfair_update_failed', { eventId, source: 'betfair', reason: runtimeErrorCode(err, 'update_failed') }))
                     .finally(() => {
                         info.updatingBetfair = false;
                         info.lastBetfairUpdate = Date.now();
@@ -110,6 +112,29 @@ function stopSchedulerIfEmpty() {
     if (trackedMatches.size === 0 && schedulerInterval) {
         clearInterval(schedulerInterval);
         schedulerInterval = null;
+    }
+}
+
+export function handleSourceIdentityMismatch(
+    eventId,
+    dependencies = {}
+) {
+    const stopAllMatchTrackersFn =
+        dependencies.stopAllMatchTrackersFn || stopAllMatchTrackers;
+    const invalidateGenerationFn =
+        dependencies.invalidateGenerationFn || invalidatePythonGeneration;
+    const terminateBetfairScrapersFn =
+        dependencies.terminateBetfairScrapersFn ||
+        terminateActiveBetfairScrapers;
+
+    stopAllMatchTrackersFn({ preserveGateEventId: eventId });
+    invalidateGenerationFn('tracking');
+
+    try {
+        return Promise.resolve(terminateBetfairScrapersFn())
+            .catch(() => null);
+    } catch (_error) {
+        return Promise.resolve(null);
     }
 }
 
@@ -138,7 +163,7 @@ export function trackMatch(sofaUrl, betfairUrl = '', betfairGraphUrls = '', chro
             betfairSample,
             betfairKey
         }) => {
-            console.log(`[Tracker] Source identity aligned for eventId=${eventId}. Starting canonical recording.`);
+            runtimeLog.info('match_tracker', 'source_identity_aligned', { eventId, status: 'aligned' });
 
             return persistBootstrapTrackingSamples({
                 eventId,
@@ -148,14 +173,9 @@ export function trackMatch(sofaUrl, betfairUrl = '', betfairGraphUrls = '', chro
                 betfairKey
             });
         },
-        onMismatch: ({ sourceIdentity }) => {
-            console.warn(`[Tracker] Source identity mismatch for eventId=${eventId}. Stopping trackers.`);
-            
-            // Mismatch conserva solo il proprio gate terminale
-            stopAllMatchTrackers({ preserveGateEventId: eventId });
-            
-            // Terminate Betfair scrapers only
-            terminateActiveBetfairScrapers();
+                onMismatch: () => {
+            runtimeLog.warn('match_tracker', 'source_identity_mismatch', { eventId, status: 'mismatch' });
+            void handleSourceIdentityMismatch(eventId);
         }
     });
 
@@ -185,7 +205,7 @@ export function trackMatch(sofaUrl, betfairUrl = '', betfairGraphUrls = '', chro
     const info = trackedMatches.get(eventId);
     info.updatingSofa = true;
     updateSofa(eventId, info)
-        .catch(err => console.error(`[Tracker] Immediate Sofa update error for ${eventId}:`, err.message))
+        .catch(err => runtimeLog.error('match_tracker', 'sofa_update_failed', { eventId, source: 'sofa', reason: runtimeErrorCode(err, 'update_failed') }))
         .finally(() => {
             info.updatingSofa = false;
             info.lastSofaUpdate = Date.now();

@@ -4,77 +4,83 @@ import {
     buildMatchTrackingRequest
 } from './liveSessionRequests.js';
 
-const currentLoginRequest = buildBetfairLoginRequest({
+const currentWins = buildBetfairLoginRequest({
     betfairUrl: 'https://www.betfair.it/current',
     confirmedBetfairUrl: 'https://www.betfair.it/confirmed',
-    betfairMode: 'persistent',
-    confirmedBetfairMode: 'fallback',
-    chromeProfilePath: 'C:/Chrome/current-profile',
-    confirmedChromeProfilePath: 'C:/Chrome/confirmed-profile',
-    cdpUrl: 'http://127.0.0.1:9223',
+    betfairMode: 'cdp',
+    confirmedBetfairMode: 'cdp',
+    cdpUrl: ' http://127.0.0.1:9224/ ',
     confirmedCdpUrl: 'http://127.0.0.1:9222'
 });
+assert.equal(currentWins.cdpUrl, 'http://127.0.0.1:9224');
 
-assert.deepEqual(currentLoginRequest, {
-    url: 'https://www.betfair.it/current',
-    mode: 'persistent',
-    profileDir: 'C:/Chrome/current-profile',
-    cdpUrl: 'http://127.0.0.1:9223'
-});
-
-const confirmedLoginRequest = buildBetfairLoginRequest({
-    betfairUrl: '',
-    confirmedBetfairUrl: 'https://www.betfair.it/confirmed',
-    betfairMode: '',
-    confirmedBetfairMode: 'persistent',
-    chromeProfilePath: '',
-    confirmedChromeProfilePath: 'C:/Chrome/confirmed-profile',
+const emptyCurrentWins = buildBetfairLoginRequest({
+    betfairUrl: 'https://www.betfair.it/current',
+    betfairMode: 'cdp',
     cdpUrl: '',
     confirmedCdpUrl: 'http://127.0.0.1:9222'
 });
+assert.equal(emptyCurrentWins.cdpUrl, '');
 
-assert.deepEqual(confirmedLoginRequest, {
-    url: 'https://www.betfair.it/confirmed',
-    mode: 'persistent',
-    profileDir: 'C:/Chrome/confirmed-profile',
-    cdpUrl: 'http://127.0.0.1:9222'
+const confirmedFallback = buildBetfairLoginRequest({
+    betfairUrl: 'https://www.betfair.it/current',
+    betfairMode: 'cdp',
+    cdpUrl: undefined,
+    confirmedCdpUrl: 'http://127.0.0.1:9224'
 });
+assert.equal(confirmedFallback.cdpUrl, 'http://127.0.0.1:9224');
 
-const defaultCdpLoginRequest = buildBetfairLoginRequest({
+const noInput = buildBetfairLoginRequest({
+    betfairUrl: 'https://www.betfair.it/current',
+    betfairMode: 'cdp'
+});
+assert.equal(noInput.cdpUrl, '');
+
+const persistent = buildBetfairLoginRequest({
     betfairUrl: 'https://www.betfair.it/current',
     betfairMode: 'persistent',
-    chromeProfilePath: 'C:/Chrome/current-profile'
+    chromeProfilePath: 'C:/Chrome/profile'
+});
+assert.deepEqual(persistent, {
+    url: 'https://www.betfair.it/current',
+    mode: 'persistent',
+    profileDir: 'C:/Chrome/profile'
 });
 
-assert.equal(
-    defaultCdpLoginRequest.cdpUrl,
-    'http://127.0.0.1:9222'
-);
+const noTargetPersistent = buildBetfairLoginRequest({
+    betfairUrl: '',
+    betfairMode: 'persistent',
+    chromeProfilePath: 'C:/Profile'
+});
+assert.deepEqual(noTargetPersistent, {
+    url: '',
+    mode: 'persistent',
+    profileDir: 'C:/Profile'
+}, 'L41 persistent no-target request exists');
 
-assert.equal(
-    buildBetfairLoginRequest({
-        betfairUrl: '',
-        confirmedBetfairUrl: ''
-    }),
-    null
-);
+const noTargetCdp = buildBetfairLoginRequest({
+    betfairMode: 'cdp',
+    cdpUrl: ''
+});
+assert.deepEqual(noTargetCdp, {
+    url: '',
+    mode: 'cdp',
+    cdpUrl: ''
+}, 'L41 CDP no-target request does not invent an endpoint');
 
-const trackingRequest = buildMatchTrackingRequest({
+const trackingCdp = buildMatchTrackingRequest({
     sofaUrl: 'https://www.sofascore.com/tennis/match/example',
     betfairUrl: 'https://www.betfair.it/exchange/plus/tennis/market/1.123',
-    betfairGraphUrls: 'https://graphs.example/one\nhttps://graphs.example/two',
-    betfairMode: 'persistent',
-    chromeProfilePath: 'C:/Chrome/profile',
-    cdpUrl: 'http://127.0.0.1:9222'
+    betfairMode: 'cdp',
+    cdpUrl: 'http://localhost:9225/'
 });
+assert.equal(trackingCdp.cdpUrl, 'http://localhost:9225');
 
-assert.deepEqual(trackingRequest, {
+const trackingPersistent = buildMatchTrackingRequest({
     sofaUrl: 'https://www.sofascore.com/tennis/match/example',
-    betfairUrl: 'https://www.betfair.it/exchange/plus/tennis/market/1.123',
-    betfairGraphUrls: 'https://graphs.example/one\nhttps://graphs.example/two',
     betfairMode: 'persistent',
-    chromeProfilePath: 'C:/Chrome/profile',
-    cdpUrl: 'http://127.0.0.1:9222'
+    chromeProfilePath: 'C:/Chrome/profile'
 });
+assert.equal('cdpUrl' in trackingPersistent, false);
 
-console.log('liveSessionRequests tests passed');
+console.log('P9-P12/P15 and L41 liveSessionRequests tests passed');

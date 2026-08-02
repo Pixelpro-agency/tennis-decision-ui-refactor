@@ -1,55 +1,50 @@
-const DEFAULT_CDP_URL = 'http://127.0.0.1:9222';
+import { normalizeCdpStateValue } from './cdpUrl.js';
 
-function selectCdpUrl(cdpUrl, confirmedCdpUrl) {
-    if (cdpUrl) {
-        return cdpUrl;
-    }
-
-    if (confirmedCdpUrl) {
-        return confirmedCdpUrl;
-    }
-
-    return DEFAULT_CDP_URL;
+function hasOwn(object, key) {
+    return Object.prototype.hasOwnProperty.call(object, key);
 }
 
-export function buildBetfairLoginRequest({
-    betfairUrl,
-    confirmedBetfairUrl,
-    betfairMode,
-    confirmedBetfairMode,
-    chromeProfilePath,
-    confirmedChromeProfilePath,
-    cdpUrl,
-    confirmedCdpUrl
-} = {}) {
-    const url = betfairUrl || confirmedBetfairUrl;
-
-    if (!url) {
-        return null;
+function selectCdpUrl(input) {
+    if (hasOwn(input, 'cdpUrl') && input.cdpUrl !== undefined) {
+        return normalizeCdpStateValue(input.cdpUrl);
     }
-
-    return {
-        url,
-        mode: betfairMode || confirmedBetfairMode,
-        profileDir: chromeProfilePath || confirmedChromeProfilePath,
-        cdpUrl: selectCdpUrl(cdpUrl, confirmedCdpUrl)
-    };
+    if (
+        hasOwn(input, 'confirmedCdpUrl') &&
+        input.confirmedCdpUrl !== undefined
+    ) {
+        return normalizeCdpStateValue(input.confirmedCdpUrl);
+    }
+    return '';
 }
 
-export function buildMatchTrackingRequest({
-    sofaUrl,
-    betfairUrl,
-    betfairGraphUrls,
-    betfairMode,
-    chromeProfilePath,
-    cdpUrl
-} = {}) {
-    return {
-        sofaUrl,
-        betfairUrl,
-        betfairGraphUrls,
-        betfairMode,
-        chromeProfilePath,
-        cdpUrl
+export function buildBetfairLoginRequest(input = {}) {
+    const url = input.betfairUrl || input.confirmedBetfairUrl || '';
+    const mode = input.betfairMode ||
+        input.confirmedBetfairMode ||
+        'persistent';
+    const request = { url, mode };
+
+    if (mode === 'persistent') {
+        request.profileDir = input.chromeProfilePath ||
+            input.confirmedChromeProfilePath ||
+            '';
+    } else if (mode === 'cdp') {
+        request.cdpUrl = selectCdpUrl(input);
+    }
+    return request;
+}
+
+export function buildMatchTrackingRequest(input = {}) {
+    const request = {
+        sofaUrl: input.sofaUrl,
+        betfairUrl: input.betfairUrl,
+        betfairGraphUrls: input.betfairGraphUrls,
+        betfairMode: input.betfairMode
     };
+    if (input.betfairMode === 'persistent') {
+        request.chromeProfilePath = input.chromeProfilePath;
+    } else if (input.betfairMode === 'cdp') {
+        request.cdpUrl = selectCdpUrl(input);
+    }
+    return request;
 }

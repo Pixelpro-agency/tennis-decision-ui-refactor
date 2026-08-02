@@ -64,6 +64,114 @@ rollback senza cancellazioni cieche
 
 La presenza di `partial_persistence` o `recovery_failed` è un esito di integrità della persistenza, non un errore di health, freshness, Source Identity, Graph URL, frontend o runtime scraper.
 
+## Runtime launcher e lifecycle processi Python
+
+Suite esistenti, eseguibili separatamente:
+
+```txt
+py -3 -m unittest -v launcher.tests.test_launcher
+py -3 -m unittest -v scrapers.betfair.diagnostic_redaction_test
+py -3 -m unittest -v scrapers.betfair.cdp_url_test
+```
+
+Eseguire inoltre, separatamente dalla root del repository, i test Node realmente usati:
+
+```txt
+node backend/src/routes/match/trackingResponses.test.mjs
+node backend/src/server.test.mjs
+node backend/src/routes/betfair.loginWindow.test.mjs
+node backend/src/routes/betfair/loginWindow.test.mjs
+node backend/src/routes/betfair/loginWindowLifecycle.test.mjs
+node backend/src/routes/test.cdp.test.mjs
+node backend/src/runtime/pythonProcessRegistry.test.mjs
+node backend/src/runtime/runtimeLogger.test.mjs
+node backend/src/sofa/betfair/scraperLifecycle.test.mjs
+node backend/src/sofa/betfairFetch.test.mjs
+node backend/src/sofa/directFetch.test.mjs
+node backend/src/sofa/matchTracker.test.mjs
+node frontend/src/utils/cdpUrl.test.mjs
+node frontend/src/services/liveSessionApi.test.mjs
+node frontend/src/utils/analysisSessionState.test.mjs
+node frontend/src/utils/liveSessionRequests.test.mjs
+node frontend/src/utils/runtimeLog.test.mjs
+```
+
+Non sostituire l’elenco con un comando aggregato inesistente.
+
+## Matrice minima Task 2 runtime
+
+```txt
+lock e manifest
+session reuse
+owned / reused / external / unknown
+CDP senza fallback
+login dedupe
+runtime conflict
+spawnReady
+generation
+completion fisica
+scope=tracking
+scope=all
+shutdown idempotente
+log redatti
+```
+
+## Collaudo launcher finale
+
+Validato live dopo la correzione:
+
+```txt
+prima invocazione avviata e pronta
+seconda invocazione con lock attivo
+→ blocked
+→ nessun browser_open
+→ nessun nuovo backend o frontend
+
+shutdown Ctrl+C della prima invocazione
+riavvio pulito
+lock e manifest con nuove identità
+CDP preserved
+```
+
+La discovery CDP verifica al massimo cinque candidati e non interroga la sesta porta dell'intervallo.
+
+## Collaudo 9B
+
+Verificato live:
+
+```txt
+Source Identity aligned
+timeline SofaScore e Betfair
+Evidence
+commitId e seq
+nessuna sovrapposizione tracking
+Stop dei ruoli tracking senza respawn per 10 secondi
+login started / already_active in una sequenza successiva
+un solo processo login
+shutdown scope=all
+```
+
+Il collaudo Stop e il collaudo login-only non hanno esercitato nella stessa sequenza `login già attivo → Stop → login ancora attivo`. Non dichiarare direttamente osservata questa continuità.
+
+Non incorporare payload completi o dati reali.
+
+## Regressione JSON-safe
+
+```txt
+statistics item senza homeTotal / awayTotal
+→ snapshot usa null
+→ nessun undefined
+→ journal accetta il payload
+```
+
+Stato del test dedicato: **ancora da aggiungere**.
+
+```txt
+timeline SofaScore avanza
+timeline Betfair avanza
+integrity no_known_partial
+```
+
 ## Controlli Node
 
 Esempio:
@@ -92,7 +200,10 @@ node sofa\betfairHealth\statusClassification.test.mjs
 node sofa\betfairHealth.test.mjs
 
 node routes\betfair\moneyFlowHistorySeries.test.mjs
-node routes\betfair\latestPayloadResponse.test.mjs, latestPayloadIntegrity.test.mjs, betfairJsonResponse.test.mjs, normalizeIntegrity.test.mjs
+node routes\betfair\latestPayloadResponse.test.mjs
+node routes\betfair\latestPayloadIntegrity.test.mjs
+node routes\betfair\betfairJsonResponse.test.mjs
+node routes\betfair\normalizeIntegrity.test.mjs
 node sofa\betfairMoneyFlowValidation.test.mjs
 
 Pop-Location
@@ -817,6 +928,10 @@ CDP alternativo su porta diversa da 9222
 Durante queste verifiche non terminare manualmente processi in base alla sola porta e non chiudere Chrome/CDP esterno.
 
 Non dichiarare questi scenari verificati live senza output o osservazione dell’esecuzione reale.
+
+## Vincoli di rollback Task 2
+
+Il rollback non deve cancellare `pending_commits`, history o timeline; non deve terminare processi esterni, usare kill per porta o ripristinare fallback CDP impliciti.
 
 ## Rollback
 

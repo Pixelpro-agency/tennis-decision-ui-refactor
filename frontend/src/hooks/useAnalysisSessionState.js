@@ -1,5 +1,8 @@
 ﻿import { useCallback, useState } from 'react';
 import { buildAnalysisSessionUpdate } from '../utils/analysisSessionState.js';
+import { normalizeCdpStateValue } from '../utils/cdpUrl.js';
+
+const INITIAL_CDP_URL = normalizeCdpStateValue(import.meta.env.VITE_CDP_URL);
 
 export function useAnalysisSessionState() {
     const [matchUrl, setMatchUrl] = useState('');
@@ -8,7 +11,7 @@ export function useAnalysisSessionState() {
     const [betfairMode, setBetfairMode] = useState('persistent');
     const [chromeProfilePath, setChromeProfilePath] = useState('');
     const [chromeProfileName, setChromeProfileName] = useState('Default');
-    const [cdpUrl, setCdpUrl] = useState((import.meta.env.VITE_CDP_URL !== undefined ? import.meta.env.VITE_CDP_URL : 'http://127.0.0.1:9222'));
+    const [cdpUrl, setCdpUrl] = useState(INITIAL_CDP_URL);
 
     const [confirmedUrl, setConfirmedUrl] = useState('');
     const [confirmedBetfairUrl, setConfirmedBetfairUrl] = useState('');
@@ -16,7 +19,7 @@ export function useAnalysisSessionState() {
     const [confirmedBetfairMode, setConfirmedBetfairMode] = useState('persistent');
     const [confirmedChromeProfilePath, setConfirmedChromeProfilePath] = useState('');
     const [confirmedChromeProfileName, setConfirmedChromeProfileName] = useState('Default');
-    const [confirmedCdpUrl, setConfirmedCdpUrl] = useState((import.meta.env.VITE_CDP_URL !== undefined ? import.meta.env.VITE_CDP_URL : 'http://127.0.0.1:9222'));
+    const [confirmedCdpUrl, setConfirmedCdpUrl] = useState(INITIAL_CDP_URL);
 
     const applySearchSession = useCallback(({
         sofaUrl,
@@ -57,7 +60,7 @@ export function useAnalysisSessionState() {
         setConfirmedBetfairGraphUrls('');
         setConfirmedBetfairMode('persistent');
         setConfirmedChromeProfilePath('');
-        setConfirmedCdpUrl((import.meta.env.VITE_CDP_URL !== undefined ? import.meta.env.VITE_CDP_URL : 'http://127.0.0.1:9222'));
+        setConfirmedCdpUrl(INITIAL_CDP_URL);
     }, []);
 
     return {

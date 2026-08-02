@@ -98,22 +98,7 @@ oltre 45 secondi
 → stale
 ```
 
-Un campione tecnico scartato può comparire nei log come:
-
-```txt
-[Tracker] Betfair technical sample skipped ... <reason>
-```
-
-Questo log:
-
-```txt
-non indica finished
-→ non richiede cancellazione della timeline
-→ non crea un nuovo tick
-→ lascia il polling attivo
-```
-
-Il payload `latest` precedente può restare leggibile, ma non rappresenta un nuovo tick Betfair.
+I campioni tecnici scartati vengono diagnosticati tramite eventi strutturati e health; non producono un nuovo tick canonico.
 
 ## Persistence integrity diagnostica
 
@@ -179,27 +164,104 @@ contenuto raw di history o timeline parziali
 
 La diagnostica non deve tentare repair. La recovery appartiene al bootstrap e il controllo operativo appartiene a Validazione e rollback.
 
+## CDP runtime
+
+La porta CDP si legge dal manifest runtime:
+
+```txt
+manifest
+→ selectedPort e url del servizio cdp
+→ <cdp-url>
+→ stesso valore in preflight, login e tracking
+```
+
+`9222` è soltanto la porta preferita del launcher. Non assumere un endpoint fisso.
+
+## Runtime Health
+
+`GET /api/health` espone:
+
+```txt
+pythonProcesses.active
+pythonProcesses.stopping
+pythonProcesses.byRole
+pythonProcesses.entries
+```
+
+```txt
+betfair_login > 1
+→ duplicazione anomala
+
+più entry betfair_tracking contemporanee
+→ non bastano da sole a provare una sovrapposizione
+→ correlare le entry con gli eventi strutturati del flusso interessato
+
+stopping > 0 temporaneo
+→ cleanup in corso
+
+pythonCleanup.remaining > 0 nella risposta Stop
+→ cleanup incompleto
+```
+
+Non copiare dettagli privati delle entry.
+
+## Eventi runtime strutturati
+
+Eventi verificati nel codice:
+
+```txt
+login_spawn_requested
+login_spawn_ready
+login_already_active
+login_runtime_conflict
+tracking_start
+tracking_stop
+tracking_cleanup_complete
+python_spawn_requested
+python_spawn_ready
+python_terminate_requested
+python_terminate_complete
+recovery_complete
+recovery_fatal
+shutdown_requested
+python_cleanup_complete
+shutdown_complete
+```
+
+`GET /api/betfair/log` usa lettura bounded, redazione, `Cache-Control: no-store` e path fisso non controllabile dalla richiesta.
+
 ## Sequenza diagnostica
 
 ### 1. Verificare backend e CDP
 
+Leggere `backend.baseUrl` e `cdp.url` dal manifest runtime, quindi costruire:
+
+```txt
+<backend-url>
+<cdp-url>
+```
+
+Usare lo stesso `<cdp-url>` in preflight, login e tracking.
+
 ```powershell
-Invoke-RestMethod http://localhost:3001/api/test/health
+Invoke-RestMethod "<backend-url>/api/test/health"
 
 Invoke-RestMethod `
   -Method Post `
-  -Uri http://localhost:3001/api/test/cdp `
+  -Uri "<backend-url>/api/test/cdp" `
   -ContentType application/json `
-  -Body '{"cdpUrl":"http://127.0.0.1:9222"}'
+  -Body '{"cdpUrl":"<cdp-url>"}'
 ```
 
-Se CDP fallisce, non classificare il problema come errore di Money Flow o Evidence.
+Se CDP fallisce, non classificare il problema come Money Flow o Evidence. `9222` è soltanto la porta preferita del launcher.
 
 ### 2. Verificare il payload latest
 
+Usare backend e CDP scelti dalla sessione:
+
 ```powershell
 Invoke-RestMethod `
-  "http://localhost:3001/api/betfair/<eventId>/latest?mode=cdp&cdpUrl=http%3A%2F%2F127.0.0.1%3A9222"
+  "<backend-url>/api/betfair/<eventId>/latest?mode=cdp&cdpUrl=<cdp-url-encoded>"
 ```
 
 Controllare:
@@ -214,6 +276,7 @@ health.metrics
 health.checks
 moneyFlowHistory
 metadata.updatedAt
+integrity
 ```
 
 Controllare in particolare:
@@ -278,12 +341,14 @@ reason
 validationReasons
 ```
 
+Uno scrape riuscito non equivale a un tick canonico recente o a un commit completo.
+
 ### 3. Verificare timeline e log
 
 ```powershell
-Invoke-RestMethod "http://localhost:3001/api/betfair/<eventId>/json"
+Invoke-RestMethod "<backend-url>/api/betfair/<eventId>/json"
 
-Invoke-RestMethod "http://localhost:3001/api/betfair/log"
+Invoke-RestMethod "<backend-url>/api/betfair/log"
 ```
 
 Se `/json` risponde con `409 persistence_integrity`, non trattare la risposta come timeline semplicemente assente.
@@ -433,6 +498,12 @@ hover
 
 Non devono comparire barre Back, Lay, WOM, pressure, trend o volume non attribuito.
 
+## Redazione operativa
+
+Non devono comparire URL complete, WebSocket completo, `profileDir`, command line, Authorization, Cookie, token, password, app key, stack raw o `Error` object raw.
+
+Le verifiche usano fixture sintetiche o redatte, mai segreti reali.
+
 ## Persistenza incompleta e recovery
 
 Quando compare:
@@ -482,6 +553,18 @@ Se serve distinguere assenza reale da persistenza incompleta:
 409 persistence_integrity
 → persistenza incompleta nota
 ```
+
+## Diagnostica login runtime
+
+Distinguere:
+
+```txt
+started
+already_active
+login_runtime_conflict
+```
+
+Non terminare manualmente il processo login.
 
 ## Login Betfair
 

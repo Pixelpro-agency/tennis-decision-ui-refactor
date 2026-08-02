@@ -1,7 +1,5 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
 import { loadHistory } from './matchHistory.js';
+import { runtimeLog } from '../runtime/runtimeLogger.js';
 import * as timelineStore from './timelineStore.js';
 const loadTimeline = timelineStore.loadTimeline;
 const writeTimelineDocument = timelineStore.writeTimelineDocument;
@@ -14,7 +12,12 @@ import {
     discardPendingBetfairRunnerState
 } from './betfair/processor/runnerProcessing.js';
 import { createBetfairResultProcessor, persistBetfairProcessedResult } from './betfair/processor.js';
-import { fetchScraperLifecycle, terminateActiveScraperLifecycle } from './betfair/scraperLifecycle.js';
+import {
+    fetchScraperLifecycle,
+    getActiveScraperRuntimeConflict,
+    terminateActiveScraperLifecycle
+} from './betfair/scraperLifecycle.js';
+import { classifyCdpBaseUrl } from '../utils/cdpUrl.js';
 
 export { getRestoredMarketTotal };
 export {
@@ -27,18 +30,12 @@ export {
     calculateValidatedMoneyFlow
 } from './betfair/moneyFlow.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const logFile = path.join(__dirname, '../../betfair_debug.log');
-const logDebug = (msg) => {
-    const entry = `[${new Date().toISOString()}] ${msg}\n`;
-
-    try {
-        fs.appendFileSync(logFile, entry);
-    } catch (error) {
-    }
-};
+function logDebug(event, fields = {}) {
+    const safeEvent = /^[a-z][a-z0-9_]*$/.test(event)
+        ? event
+        : 'betfair_processing_event';
+    runtimeLog.debug('betfair_scraper', safeEvent, fields);
+}
 
 const marketState = new Map();
 
@@ -111,15 +108,34 @@ export function restoreMarketStateFromHistory(key, historyObj) {
 export async function fetchBetfairData(url, sofaEventId = null, options = {}) {
     const key = scraperKey(url);
     const ladderUrls = Array.isArray(options.ladderUrls) ? options.ladderUrls : [];
-    const mode = options.mode || 'persistent';
-    const profileDir = options.profileDir || '';
-    const cdpUrl = options.cdpUrl || '';
+    const mode = options.mode === 'cdp' ? 'cdp' : 'persistent';
+    const profileDir = typeof options.profileDir === 'string'
+        ? options.profileDir.trim()
+        : '';
+    let cdpUrl = '';
+
+    if (mode === 'cdp') {
+        const classified = classifyCdpBaseUrl(options.cdpUrl);
+
+        if (!classified.ok) {
+            const error = new Error(
+                classified.code === 'cdp_url_required'
+                    ? 'CDP URL required'
+                    : 'Invalid CDP URL'
+            );
+            error.code = classified.code;
+            throw error;
+        }
+
+        cdpUrl = classified.value;
+    }
+
     const networkCapture = options.networkCapture === true;
     const networkCaptureInput = options.networkCapture;
     const deferPersistence = options.deferPersistence === true;
 
     if (!marketState.has(key) && sofaEventId) {
-        logDebug(`[BetfairFetch] Restore attempted eventId=${sofaEventId}`);
+        logDebug('betfair_restore_requested', { eventId: sofaEventId });
 
         try {
             const historyObj = loadHistory(sofaEventId);
@@ -127,13 +143,13 @@ export async function fetchBetfairData(url, sofaEventId = null, options = {}) {
 
             if (restored) {
                 marketState.set(key, restored);
-                logDebug(
-                    `[BetfairFetch] Restore completed ` +
-                    `eventId=${sofaEventId} runners=${restored.runners.length}`
-                );
+                logDebug('betfair_restore_complete', {
+                    eventId: sofaEventId,
+                    count: restored.runners.length
+                });
             }
         } catch (_restoreErr) {
-            logDebug(`[BetfairFetch] Restore failed eventId=${sofaEventId}`);
+            logDebug('betfair_restore_failed', { eventId: sofaEventId, reason: 'restore_failed' });
         }
     }
 
@@ -163,7 +179,7 @@ export function cleanupLegacyBetfairTimeline(eventId, dependencies = {}) {
     const loadTimelineFn = dependencies.loadTimeline || loadTimeline;
     const writeTimelineDocumentFn = dependencies.writeTimelineDocument || writeTimelineDocument;
 
-    logDebug(`[BetfairTimeline] Cleanup attempted eventId=${eventId}`);
+    logDebug('betfair_timeline_cleanup_requested', { eventId });
 
     try {
         const timelineObj = loadTimelineFn('betfair', eventId);
@@ -189,16 +205,28 @@ export function cleanupLegacyBetfairTimeline(eventId, dependencies = {}) {
 
         if (!cleanupResult?.ok) {
             const reason = cleanupResult?.reason || 'write_failed';
-            logDebug(`[BetfairTimeline] Cleanup failed eventId=${eventId} reason=${reason}`);
+            logDebug('betfair_timeline_cleanup_failed', { eventId, reason: 'legacy_write_failed' });
             return { ok: false, code: 'legacy_write_failed' };
         }
 
-        logDebug(`[BetfairTimeline] Cleanup completed eventId=${eventId}`);
+        logDebug('betfair_timeline_cleanup_complete', { eventId });
         return { ok: true, status: 'cleaned' };
     } catch (_error) {
-        logDebug(`[BetfairTimeline] Cleanup failed eventId=${eventId}`);
+        logDebug('betfair_timeline_cleanup_failed', { eventId, reason: 'legacy_cleanup_failed' });
         return { ok: false, code: 'legacy_cleanup_failed' };
     }
+}
+
+export function getBetfairScraperRuntimeConflict(
+    url,
+    options = {}
+) {
+    const key = scraperKey(url);
+
+    return getActiveScraperRuntimeConflict({
+        key,
+        options
+    });
 }
 
 export function terminateActiveBetfairScrapers() {

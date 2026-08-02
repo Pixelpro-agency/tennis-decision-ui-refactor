@@ -1,57 +1,65 @@
-import { spawn } from 'child_process';
+import { classifyCdpBaseUrl } from '../../utils/cdpUrl.js';
 
-export function openBetfairLoginWindow({
-scraperPath,
-url,
-mode = 'persistent',
-profileDir = '',
-cdpUrl = ''
+function loginError(code) {
+    const error = new Error(code);
+    error.code = code;
+    return error;
+}
+
+function normalizeProfileDir(value) {
+    return typeof value === 'string' ? value.trim() : '';
+}
+
+export function buildLoginRuntimeIdentity({
+    mode = 'persistent',
+    profileDir = '',
+    cdpUrl
+} = {}) {
+    if (mode === 'cdp') {
+        const classified = classifyCdpBaseUrl(cdpUrl);
+        if (!classified.ok) throw loginError(classified.code);
+        return Object.freeze({ mode: 'cdp', cdpUrl: classified.value });
+    }
+    return Object.freeze({
+        mode: 'persistent',
+        profileDir: normalizeProfileDir(profileDir)
+    });
+}
+
+export function sameLoginRuntimeIdentity(left, right) {
+    if (!left || !right || left.mode !== right.mode) return false;
+    return left.mode === 'cdp'
+        ? left.cdpUrl === right.cdpUrl
+        : left.profileDir === right.profileDir;
+}
+
+export function buildLoginWindowArgs({
+    scraperPath,
+    url,
+    mode = 'persistent',
+    profileDir = '',
+    cdpUrl
 }) {
-const args = [
-scraperPath,
-url,
-'--login-only',
-'--mode',
-mode
-];
-
-if (mode === 'persistent' && profileDir) {
-    args.push('--profile-dir', profileDir);
-}
-
-if (mode === 'cdp' && cdpUrl) {
-    args.push('--cdp-url', cdpUrl);
-}
-
-console.log(
-    `[BetfairRoute] Spawning login window: python ${args.map(
-        argument => `"${argument}"`
-    ).join(' ')}`
-);
-
-const proc = spawn('python', args, {
-    detached: false,
-    windowsHide: false,
-    stdio: ['ignore', 'pipe', 'pipe']
-});
-
-proc.on('error', error => {
-    console.error('[BetfairRoute] Login window spawn error:', error);
-});
-
-proc.stderr.on('data', data => {
-    data.toString()
-        .split('\n')
-        .filter(Boolean)
-        .forEach(line => {
-            console.log(`[LoginWindow] ${line}`);
-        });
-});
-
-proc.on('exit', code => {
-    console.log(`[BetfairRoute] Login window exited with code ${code}`);
-});
-
-return proc;
-
+    const runtimeIdentity = buildLoginRuntimeIdentity({
+        mode,
+        profileDir,
+        cdpUrl
+    });
+    const args = [
+        scraperPath,
+        url,
+        '--login-only',
+        '--mode',
+        runtimeIdentity.mode
+    ];
+    if (
+        runtimeIdentity.mode === 'persistent' &&
+        runtimeIdentity.profileDir
+    ) {
+        args.push('--profile-dir', runtimeIdentity.profileDir);
+    }
+    if (runtimeIdentity.mode === 'cdp') {
+        args.push('--cdp-url', runtimeIdentity.cdpUrl);
+    }
+    return { args, runtimeIdentity };
 }
