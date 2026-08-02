@@ -470,7 +470,8 @@ DA RIAPRIRE
 
 - [x] Punto 1 — entry point, launcher, ownership e writer authority
 - [x] Punto 2 — tracking, Start/Stop, generazioni e callback tardive
-- [ ] Punto 3 — Betfair lifecycle, Graph, diagnostica, concorrenza e cleanup — **PROSSIMO**
+- [x] Punto 3 — Betfair lifecycle, Graph, diagnostica, concorrenza e cleanup — **COMPLETATO E APPROVATO**
+- [ ] Punto 4 — Storage, journal e recovery — **PROSSIMO**
 
 # BLOCCO E — Rilievi registrati
 
@@ -512,7 +513,7 @@ DA RIAPRIRE
 ## Bug e incoerenze di codice
 
 - [x] `CODE-001` — Strategy legacy attiva — **RIMOZIONE APPROVATA; MARKET REACTIONS PRESERVATE**
-- [ ] `CODE-002` — Validazione Betfair Preflight permissiva — **CONFERMATO**
+- [ ] `CODE-002` — Validatore Betfair non condiviso tra Preflight/Start/Login — **CONFERMATO E AMPLIATO; VALIDATORE UNICO APPROVATO**
 - [x] `CODE-003` — Match `debug-last` sempre vuoto — **RIMOZIONE APPROVATA**
 - [x] `CODE-004` — Strategy usa `localhost:3001` hardcoded — **ASSORBITO DALLA RIMOZIONE CODE-001**
 - [ ] `CODE-005` — Script lint frontend non configurato — **CONFERMATO, PRIORITÀ BASSA**
@@ -525,6 +526,15 @@ DA RIAPRIRE
 - [ ] `RUNTIME-008` — Mismatch non termina fisicamente SofaScore — **CONFERMATO; PRIORITÀ ALTA**
 - [ ] `RUNTIME-009` — Stop pubblico nasconde cleanup parziale — **CONFERMATO; PRIORITÀ ALTA**
 - [ ] `RUNTIME-010` — Conferma Source Identity stale sul gate nuovo — **CONFERMATO; PRIORITÀ ALTA**
+- [x] `RUNTIME-011` — `/api/betfair/odds` è un secondo ingresso mutante — **RIMOZIONE APPROVATA; PRIORITÀ CRITICA**
+- [ ] `RUNTIME-012` — Manca autorità globale dei comandi Betfair — **CONFERMATO; PRIORITÀ CRITICA**
+- [ ] `SECURITY-004` — Manca local control-plane boundary — **CONFERMATO; PRIORITÀ CRITICA**
+- [x] `SECURITY-005` — Flag Chromium indebolenti nel default — **RIMOZIONE APPROVATA SALVO NECESSITÀ DIMOSTRATA**
+- [ ] `CODE-006` — Preflight Graph divergente dal runtime — **CONFERMATO; PARITÀ APPROVATA**
+- [ ] `CODE-007` — Probe CDP di `/latest` guidato dalla query — **CONFERMATO; SESSION-OWNED APPROVATO**
+- [x] `DATA-001` — Volume runner sintetico `marketTotal/runnerCount` — **RIMOZIONE APPROVATA; PRIORITÀ CRITICA**
+- [ ] `DATA-002` — API/Graph senza acquisition timestamp e skew — **CONFERMATO; PRIORITÀ ALTA**
+- [ ] `CLEANUP-003` — Log e network dump senza retention distinta — **CONFERMATO; PRIORITÀ MEDIO-ALTA**
 - [ ] `FRONTEND-005` — Loop di polling orfani dopo cambio sessione — **CONFERMATO; PRIORITÀ CRITICA**
 - [ ] `FRONTEND-006` — Start concorrenti non serializzati — **CONFERMATO; PRIORITÀ ALTA**
 - [ ] `FRONTEND-007` — Stop Live lascia attivi Betfair/Evidence/Source Identity — **CONFERMATO; PRIORITÀ MEDIO-ALTA**
@@ -532,11 +542,11 @@ DA RIAPRIRE
 - [ ] `FRONTEND-002` — Integrity raccolta ma scartata prima della UI — **CONFERMATO**
 - [ ] `FRONTEND-003` — Start fallito lascia sessione e polling nascosti — **CONFERMATO; PRIORITÀ ALTA**
 - [ ] `FRONTEND-004` — Copy mojibake visibile — **CONFERMATO**
-- [ ] `SECURITY-001` — `network_capture.dump_dir` pubblico — **CONFERMATO, PRIORITÀ ALTA**
-- [ ] `SECURITY-002` — Filename cache derivato dalla URL — **CONFERMATO, PRIORITÀ ALTA**
+- [ ] `SECURITY-001` — Payload network capture oltrepassa il boundary pubblico — **CONFERMATO E AMPLIATO; PRIORITÀ ALTA**
+- [ ] `SECURITY-002` — Cache URL-derived e priva di runtime/Graph identity — **CONFERMATO E AMPLIATO; PRIORITÀ ALTA**
 - [ ] `SECURITY-003` — Dettagli raw degli errori HTTP — **CONFERMATO**
-- [ ] `PYTHON-001` — Task network capture non attese — **CONFERMATO**
-- [ ] `CLEANUP-002` — Apply offline controlla solo lock e porte preferite — **CONFERMATO**
+- [ ] `PYTHON-001` — Task network capture non tracked/drained/cancelled — **CONFERMATO E AMPLIATO**
+- [ ] `CLEANUP-002` — Apply offline privo di maintenance authority e porte effettive — **CONFERMATO E AMPLIATO**
 
 ## Decisioni e verifiche residue
 
@@ -552,6 +562,15 @@ DA RIAPRIRE
 - [ ] `TEST-007` — Cleanup mismatch completo SofaScore/Betfair — **MANCANTE**
 - [ ] `TEST-008` — Stop partial failure backend/UI — **MANCANTE**
 - [ ] `TEST-009` — Conferma Source Identity stale — **MANCANTE**
+- [ ] `TEST-010` — Validatore Betfair condiviso — **MANCANTE**
+- [ ] `TEST-011` — Parità Graph Preflight/runtime — **MANCANTE**
+- [ ] `TEST-012` — Un solo comando Betfair globale — **MANCANTE**
+- [ ] `TEST-013` — Endpoint `/odds` rimosso, letture preservate — **MANCANTE**
+- [ ] `TEST-014` — Probe CDP session-owned — **MANCANTE**
+- [ ] `TEST-015` — Network capture bounded e drained — **MANCANTE**
+- [ ] `TEST-016` — Nessun volume runner sintetico — **MANCANTE**
+- [ ] `TEST-017` — Acquisition timestamp e Graph skew — **MANCANTE**
+- [ ] `TEST-018` — Retention log/dump e maintenance authority — **MANCANTE**
 
 ---
 
@@ -587,6 +606,9 @@ DA RIAPRIRE
 - [x] `IMPL-013` — Baseline end-to-end e freshness — **NECESSARIA PRIMA DI OTTIMIZZARE**
 - [~] `IMPL-014` — Ottimizzazione Betfair misurata e reversibile — **FUTURA/CONDIZIONATA**
 - [x] `IMPL-015` — Writer authority esclusiva `match_history` — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
+- [x] `IMPL-016` — Betfair runtime command authority — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
+- [x] `IMPL-017` — Local control-plane boundary — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
+- [x] `IMPL-018` — Betfair acquisition envelope e provenance — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
 - [x] Inventario delle implementazioni emerse
 - [x] Classificazione necessaria/consigliata
 - [ ] Preparazione delle task separate
@@ -702,13 +724,12 @@ Per ogni rilievo approvato:
 ## Prossimo punto
 
 ```txt
-1. pubblicare il checkpoint cumulativo Punto 1 + Punto 2
+1. pubblicare il checkpoint cumulativo Punto 1 + Punto 2 + Punto 3
 2. verificare il nuovo SHA remoto
-3. procedere al Punto 3
-   → lifecycle Betfair
-   → Graph
-   → diagnostica
-   → concorrenza
-   → cleanup
-4. nessuna task esecutiva prima della chiusura dell’audit
+3. procedere al Punto 4
+   → storage
+   → journal
+   → recovery
+   → integrità e fault paths
+4. nessuna task esecutiva prima della chiusura del secondo audit
 ```

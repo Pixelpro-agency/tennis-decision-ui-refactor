@@ -233,3 +233,52 @@ eventId
 ```
 
 La sessione precedente viene invalidata prima del cleanup e prima della creazione della successiva.
+
+## DEC-020 — Hardening e autorità Betfair del Punto 3
+
+**Stato:** approvata integralmente.
+
+1. rimuovere `GET /api/betfair/odds` e il codice esclusivo, senza sostituto provvisorio, preservando `/latest`, `/json`, quote, book, ladder, Graph e Betfair health raccolti dal tracking;
+2. creare `IMPL-016`, autorità globale dei comandi Betfair;
+3. creare `IMPL-017`, confine locale delle API di controllo;
+4. usare un validatore Betfair unico in preflight, Start, login e future diagnostiche;
+5. rendere il preflight Graph identico al contratto runtime;
+6. derivare il probe CDP dalla runtime identity della sessione e non dalla query di `/latest`;
+7. creare `IMPL-018`, acquisition envelope e provenance temporale;
+8. eliminare il fallback sintetico `marketTotalMatched / runnerCount`;
+9. rendere la network capture tracked, bounded, drenata e cancellabile;
+10. disabilitare sempre la cache nel tracking; future diagnostiche usano hash, runtime identity, Graph fingerprint e schema version;
+11. rimuovere dal default i flag Chromium indebolenti, salvo necessità dimostrata e configurata;
+12. applicare `IMPL-011` prima di un cleanup `apply` reale e introdurre policy separate per cache, log runtime e network dump.
+
+### Confine della rimozione `/odds`
+
+La rimozione non elimina:
+
+- quote correnti presenti nei tick del tracking;
+- book back/lay;
+- ladder;
+- last traded price;
+- volumi realmente forniti;
+- dashboard Betfair;
+- API read-only `latest` e `json`.
+
+Non viene creato ora un polling quote alternativo ogni 5–10 secondi. Un futuro flusso ad alta frequenza sarà valutato con le Stream API Betfair.
+
+### Confine del volume runner
+
+Viene eliminata soltanto la stima inventata:
+
+```txt
+marketTotalMatched / numeroRunner
+```
+
+Quando il volume runner manca:
+
+```txt
+null/unavailable
+→ nessuna stima
+→ calcoli dipendenti soppressi con reason
+```
+
+I valori reali di mercato, runner, Graph e quote restano invariati.
