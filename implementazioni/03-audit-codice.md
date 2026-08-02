@@ -1416,3 +1416,538 @@ Non fondere persistence, health, freshness e Source Identity in un unico stato s
 ```
 
 Questi punti non devono ampliare le prime task di robustezza.
+
+---
+
+## 16. Secondo audit del codice — Punto 1: entry point, launcher e autorità runtime
+
+**Baseline:** `dda406c4a07ae4a1debfcab39db346e47c33c419`
+
+### Esito launcher
+
+Restano confermati:
+
+- wrapper `avvio.py` sottile;
+- lock launcher prima del riuso;
+- classificazione conservativa del lock;
+- fingerprint del processo contro PID riciclati;
+- massimo cinque porte candidate;
+- riuso soltanto dopo verifica identità;
+- ownership limitata a backend/frontend avviati;
+- Chrome/CDP non owned;
+- nessun kill-by-port;
+- shutdown idempotente;
+- recovery prima di `listen`.
+
+Non è stata trovata una ragione per riaprire il lifecycle del launcher.
+
+### RUNTIME-003 — Gli avvii manuali aggirano l’autorità del launcher
+
+**Stato:** `CONFERMATO`
+**Priorità:** alta
+**Area:** backend bootstrap e persistenza canonica
+
+Percorsi pubblici:
+
+```txt
+node backend/src/server.js
+npm start
+npm run dev
+scripts/start-backend-dev.ps1
+```
+
+entrano in `startServer()` senza acquisire il lock launcher e senza acquisire una writer authority specifica.
+
+Due backend possono quindi vivere su porte differenti e condividere:
+
+```txt
+backend/match_history
+backend/match_history/.pending_commits
+```
+
+Il problema non è il contenuto parziale del singolo file: le scritture atomiche lo proteggono. Il problema è la concorrenza logica tra due processi con:
+
+- recovery separate;
+- mappe runtime separate;
+- journal osservati in momenti differenti;
+- commit distinti;
+- rinomina concorrente sullo stesso target;
+- tracking e processi Python separati.
+
+### DOC-024 — Ownership del processo e autorità sulla persistenza sono concetti distinti
+
+**Stato:** `CONFERMATO`
+
+La documentazione runtime descrive correttamente:
+
+```txt
+launcher
+→ ownership dei processi avviati
+```
+
+ma non formalizza:
+
+```txt
+backend writer authority
+→ diritto esclusivo di recovery e scrittura canonica
+```
+
+La futura riscrittura deve esplicitare che:
+
+```txt
+process ownership
+≠
+persistence authority
+```
+
+### TEST-004 — Manca il test di esclusione tra due backend writer
+
+**Stato:** `CONFERMATO`
+
+Scenario minimo:
+
+```txt
+backend A
+→ acquisisce writer authority
+
+backend B
+→ tenta startup
+→ non esegue recovery
+→ non apre la porta
+→ restituisce/logga reason strutturata
+
+backend A termina
+→ authority rilasciata
+
+backend C
+→ può acquisire authority e avviarsi
+```
+
+Devono essere coperti anche:
+
+- lock stale positivamente verificato;
+- lock non verificabile fail-closed;
+- import del server senza acquisizione;
+- failure durante recovery;
+- shutdown e rilascio idempotente.
+
+### Decisione approvata
+
+```txt
+un solo backend writer per repository
+→ writer lock esclusivo backend-owned
+→ acquisito prima di recovery e listen
+→ secondo backend bloccato
+→ launcher lock mantenuto separato
+```
+
+Non introdurre:
+
+- multi-writer;
+- backend secondario read-only;
+- lock basato soltanto sulla porta;
+- riuso automatico del lock launcher come writer authority.
+
+### Ordine tecnico della futura task
+
+```txt
+create backend identity
+→ acquire writer authority
+→ recovery
+→ listen
+→ runtime attivo
+→ shutdown
+→ stop tracker/processi Python
+→ close server
+→ release writer authority
+```
+
+Un fallimento prima di `listen` deve rilasciare soltanto l’autorità posseduta dalla stessa identità.
+
+---
+
+## 17. Secondo audit del codice — Punto 2: tracking, Start/Stop, generazioni e callback tardive
+
+**Baseline:** `dda406c4a07ae4a1debfcab39db346e47c33c419`
+**Stato:** `COMPLETATO E APPROVATO`
+
+### Perimetro letto
+
+Sono stati verificati route, tracker, registry Python, lifecycle SofaScore/Betfair, Source Identity Gate, conferma manuale, hook di sessione e polling, servizi frontend e test collegati.
+
+### Parti confermate come solide
+
+Il registry Python protegge correttamente il lifecycle fisico dei figli:
+
+- generation separate per `tracking` e `login`;
+- rifiuto degli spawn appartenenti a generation obsolete;
+- ownership degli scraper;
+- terminazione bounded;
+- login preservato durante lo Stop del tracking.
+
+`directFetch` SofaScore:
+
+- serializza fisicamente i figli Python;
+- ricontrolla la generation;
+- riconosce cancellazione e terminazione;
+- non avvia il figlio successivo prima dell’uscita del precedente.
+
+Queste protezioni non equivalgono a un’autorità completa della sessione applicativa.
+
+### RUNTIME-002 — Il nuovo Start non invalida la sessione precedente
+
+**Stato:** `CONFERMATO E AMPLIATO`
+**Priorità:** critica
+
+`trackMatch(...)` sostituisce mappe e gate, ma non:
+
+- invalida prima la sessione logica precedente;
+- invalida la generation tracking;
+- termina e attende tutti i figli precedenti;
+- invalida Promise e callback JavaScript;
+- verifica un token prima degli effetti.
+
+Una callback precedente può trovare il gate assente e ricevere `action: no-gate`. SofaScore e Betfair trattano oggi `no-gate` come autorizzazione a persistere.
+
+### RUNTIME-004 — Riavvio dello stesso eventId contamina il gate nuovo
+
+**Stato:** `CONFERMATO`
+**Priorità:** critica
+
+Il gate è indicizzato soltanto per `eventId`.
+
+```txt
+Start A
+→ callback vecchia in volo
+
+nuovo Start A
+→ nuovo gate con lo stesso eventId
+
+callback vecchia
+→ osserva il gate nuovo
+→ può alimentarlo con campioni della sessione precedente
+```
+
+Rischi:
+
+- bootstrap misto;
+- pending falso;
+- mismatch falso;
+- stop della nuova sessione;
+- contaminazione dopo cambio URL, Graph o modalità browser.
+
+### RUNTIME-005 — `/untrack` è legacy, privo di cleanup fisico e va rimosso
+
+**Stato:** `RIMOZIONE APPROVATA`
+**Priorità:** media
+
+Il frontend corrente usa `/track` e `/stop`, non `/untrack`.
+
+`/untrack`:
+
+- elimina soltanto tracker e gate;
+- non invalida la generation;
+- non termina SofaScore o Betfair;
+- non attende completion;
+- lascia possibile la persistenza tramite `no-gate`.
+
+Decisione approvata:
+
+```txt
+rimuovere route /api/match/untrack
+rimuovere buildUntrackMatchResponse
+rimuovere untrackMatch e consumer/test esclusivi
+```
+
+La task esecutiva deve comunque effettuare un ultimo controllo dei consumer prima della rimozione.
+
+### RUNTIME-006 — Un mismatch stale può fermare la sessione corrente
+
+**Stato:** `CONFERMATO`
+**Priorità:** critica
+
+`onMismatch` cattura soltanto `eventId`. Prima di fermare tracker, invalidare generation e terminare Betfair non dimostra di appartenere alla sessione ancora attiva.
+
+### RUNTIME-007 — La Promise Betfair può essere riutilizzata tra sessioni logiche
+
+**Stato:** `CONFERMATO`
+**Priorità:** critica
+
+Il lifecycle Betfair riusa `active.promise` quando chiave mercato e runtime identity coincidono.
+
+Non verifica:
+
+- `trackingSessionId`;
+- identità del tracker richiedente;
+- command ID;
+- appartenenza al nuovo Start.
+
+Un nuovo Start può quindi ricevere il risultato dello scraper avviato dalla sessione precedente.
+
+### RUNTIME-008 — Il mismatch invalida SofaScore ma non termina il processo fisico
+
+**Stato:** `CONFERMATO`
+**Priorità:** alta
+
+Il percorso mismatch invalida la generation e termina Betfair, ma non termina esplicitamente il figlio SofaScore.
+
+Il risultato sarà stale, ma la barriera fisica può restare occupata fino a uscita o timeout.
+
+Decisione approvata:
+
+```txt
+mismatch e Stop usano un cleanup tracking unico
+→ SofaScore
+→ Betfair
+→ callback logiche
+```
+
+Il mismatch preserva soltanto lo stato necessario alla UI.
+
+### RUNTIME-009 — Stop pubblico nasconde un cleanup parziale
+
+**Stato:** `CONFERMATO`
+**Priorità:** alta
+
+`buildStopMatchResponse()` restituisce top-level `ok: true` e `stopped: true` anche quando `pythonCleanup.ok` è falso o rimangono processi.
+
+Decisione approvata:
+
+```txt
+status: complete | partial_failure
+logicalStop: true
+physicalCleanup: complete | partial
+```
+
+La UI non deve mostrare Stop completo quando il cleanup fisico è parziale.
+
+### RUNTIME-010 — Conferma Source Identity stale sul gate nuovo
+
+**Stato:** `CONFERMATO`
+**Priorità:** alta
+
+La conferma manuale contiene soltanto eventId, coppie e testo. Una conferma avviata dalla sessione precedente può arrivare dopo un nuovo Start dello stesso evento e colpire il gate nuovo.
+
+Decisione approvata:
+
+```txt
+trackingSessionId obbligatoria nella conferma
+→ mismatch della sessione
+→ 409 stale_session
+```
+
+### FRONTEND-001 — Risposte SofaScore e Betfair attraversano il cambio sessione
+
+**Stato:** `CONFERMATO E AMPLIATO`
+**Priorità:** critica
+
+`useMatchPolling` e `useBetfairJson` non possiedono:
+
+- session counter;
+- request ID;
+- AbortController;
+- verifica prima dei `setState`;
+- flag disposed per ciclo.
+
+Una risposta vecchia può modificare dati, health, Money Flow, integrity, timestamp, errori e serverStatus.
+
+`useSourceIdentityGateStatus` e `useMarketReactionEvidence` costituiscono il modello locale corretto da uniformare.
+
+### FRONTEND-003 — Start fallito lascia una sessione nascosta
+
+**Stato:** `CONFERMATO`
+**Priorità:** alta
+
+Il frontend conferma URL e apre la session shell prima della risposta di `POST /track`.
+
+In caso di failure non:
+
+- cancella la sessione confermata;
+- ferma tutti i poller;
+- resetta Betfair/Evidence;
+- invalida il comando Start;
+- esegue cleanup compensativo quando necessario.
+
+### FRONTEND-005 — I vecchi loop di polling possono ricrearsi dopo il cleanup
+
+**Stato:** `CONFERMATO`
+**Priorità:** critica
+
+I loop SofaScore e Betfair fanno:
+
+```txt
+await fetchData(...)
+→ setTimeout(loop)
+```
+
+Il cleanup cancella il timeout noto, ma una fetch già in attesa può programmare un nuovo timeout dopo il cleanup.
+
+Il ref `shouldPoll` è condiviso: un nuovo Start può riportarlo a `true` e riattivare anche il vecchio loop.
+
+### FRONTEND-006 — Start concorrenti non sono serializzati
+
+**Stato:** `CONFERMATO`
+**Priorità:** alta
+
+Il pulsante Start usa `sofaLoading`, che appartiene al polling timeline e non al comando `POST /track`.
+
+Mancano:
+
+- `startPending`;
+- command ID;
+- deduplicazione;
+- invalidazione esplicita del comando precedente.
+
+### FRONTEND-007 — Stop Live Tracking lascia attivi altri poller
+
+**Stato:** `CONFERMATO`
+**Priorità:** medio-alta
+
+`handleStopLiveTracking()` ferma soltanto il polling SofaScore.
+
+Restano attivi:
+
+- Betfair;
+- Evidence;
+- Source Identity.
+
+Decisione approvata:
+
+```txt
+Stop Live Tracking
+→ ferma tutti i poller live
+→ conserva gli ultimi dati
+→ UI in modalità statica
+```
+
+### DOC-025 — La documentazione sovrastima la generation tracking
+
+**Stato:** `CONFERMATO`
+
+La generation protegge il figlio Python, non l’intera catena applicativa.
+
+La futura documentazione deve distinguere:
+
+```txt
+process generation
+≠
+tracking session authority
+≠
+command/request identity
+```
+
+### Gap test
+
+#### TEST-002 — Lifecycle frontend
+
+**Stato:** `MANCANTE`
+
+- cambio eventId con risposta tardiva;
+- stesso eventId con nuova sessione;
+- Start fallito;
+- Start concorrenti;
+- Stop durante fetch;
+- loop orfano;
+- reset di tutti i poller.
+
+#### TEST-005 — Sostituzione sessione backend
+
+**Stato:** `MANCANTE`
+
+- Start A → Start B;
+- Start A → nuovo Start A;
+- callback A non osserva o persiste nella sessione B;
+- mismatch A non ferma B;
+- Stop invalida prima del cleanup.
+
+#### TEST-006 — Riuso Betfair session-safe
+
+**Stato:** `MANCANTE`
+
+Stessa chiave e stessa runtime identity non bastano per riusare una Promise appartenente a un’altra `trackingSessionId`.
+
+#### TEST-007 — Cleanup mismatch completo
+
+**Stato:** `MANCANTE`
+
+Mismatch deve terminare o rendere definitivamente stale sia SofaScore sia Betfair.
+
+#### TEST-008 — Stop partial failure
+
+**Stato:** `MANCANTE`
+
+Backend e frontend devono distinguere Stop logico e cleanup fisico parziale.
+
+#### TEST-009 — Conferma Source Identity stale
+
+**Stato:** `MANCANTE`
+
+Una conferma con session ID precedente deve essere rifiutata con `409 stale_session`.
+
+### Decisioni approvate
+
+1. `trackingSessionId` end-to-end, distinta da `eventId`;
+2. ogni nuovo Start invalida atomicamente il precedente;
+3. Stop e mismatch usano un cleanup tracking unico;
+4. `/untrack` viene rimosso;
+5. Stop parziale non viene mostrato come completato;
+6. tutti i poller condividono la stessa autorità frontend;
+7. Stop Live Tracking ferma tutti i poller e conserva una vista statica;
+8. conferma Source Identity vincolata alla sessione;
+9. un solo comando Start può essere corrente.
+
+### Contratto tecnico risultante
+
+```txt
+trackingSessionId
+→ UUID nuovo per ogni Start
+→ cambia anche con lo stesso eventId
+
+commandId
+→ identifica Start, Stop e Confirm
+
+eventId
+→ identifica la partita
+→ non identifica la sessione
+```
+
+Ogni effetto verifica l’autorità immediatamente prima di:
+
+- aggiornare runtime;
+- osservare il gate;
+- persistere SofaScore;
+- persistere Betfair;
+- aprire recording;
+- gestire mismatch;
+- applicare conferma;
+- modificare health o finished;
+- eseguire `setState`.
+
+### Sequenza Start approvata
+
+```txt
+ricevi Start con commandId
+→ invalida la sessione precedente
+→ invalida generation tracking
+→ cleanup completo precedente
+→ verifica cleanup
+→ crea trackingSessionId
+→ crea gate e tracker associati
+→ restituisce trackingSessionId
+→ frontend attiva i poller per quella sessione
+```
+
+La schermata può mostrare “avvio in corso”, ma la sessione richiesta non diventa attiva prima della risposta corrispondente.
+
+### Regola `no-gate`
+
+Nel percorso tracker:
+
+```txt
+gate assente
+oppure trackingSessionId diversa
+→ stale_session
+→ nessuna persistenza
+```
+
+Il comportamento globale degli observer non va modificato senza verificare gli altri chiamanti.

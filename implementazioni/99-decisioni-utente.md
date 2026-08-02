@@ -183,3 +183,53 @@ Registrare in Todo:
 - responsive completo.
 
 Non ampliare con questi lavori le prime task di robustezza.
+
+
+
+## DEC-018 — Un solo backend writer
+
+**Stato:** approvata.
+
+```txt
+un solo backend writer per repository
+→ writer authority esclusiva backend-owned
+→ acquisizione prima di recovery e listen
+→ secondo backend bloccato
+```
+
+Il lock launcher resta separato e continua a proteggere l’orchestratore.
+
+Non introdurre per ora:
+
+- multi-writer;
+- backend secondario read-only;
+- kill-by-port;
+- autorità dedotta dalla sola porta.
+
+
+## DEC-019 — Autorità end-to-end della sessione live
+
+**Stato:** approvata.
+
+1. `trackingSessionId` distinta da `eventId`;
+2. ogni nuovo Start invalida atomicamente il precedente;
+3. Stop e mismatch condividono un cleanup completo SofaScore/Betfair;
+4. `/api/match/untrack` e il relativo codice legacy vengono rimossi;
+5. cleanup fisico parziale non viene mostrato come Stop completo;
+6. tutti i poller frontend usano token, request ID, abort e guard;
+7. Stop Live Tracking sospende tutti i poller e conserva gli ultimi dati in modalità statica;
+8. la conferma Source Identity include `trackingSessionId` e rifiuta richieste stale;
+9. un solo comando Start può essere corrente.
+
+```txt
+trackingSessionId
+→ sessione logica
+
+commandId
+→ operazione asincrona
+
+eventId
+→ partita
+```
+
+La sessione precedente viene invalidata prima del cleanup e prima della creazione della successiva.

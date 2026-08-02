@@ -82,6 +82,11 @@ Dopo la pubblicazione del checkpoint:
 checkpoint audit materiali locali
 → pubblicazione
 → nuova lettura approfondita del codice
+→ Punto 1 completato
+→ writer authority approvata
+→ Punto 2 completato
+→ session authority approvata
+→ Punto 3 prossimo
 → precisione
 → robustezza
 → utilità

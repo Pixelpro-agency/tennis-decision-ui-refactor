@@ -466,6 +466,12 @@ DA RIAPRIRE
 
 ---
 
+## Secondo audit del codice
+
+- [x] Punto 1 — entry point, launcher, ownership e writer authority
+- [x] Punto 2 — tracking, Start/Stop, generazioni e callback tardive
+- [ ] Punto 3 — Betfair lifecycle, Graph, diagnostica, concorrenza e cleanup — **PROSSIMO**
+
 # BLOCCO E — Rilievi registrati
 
 ## Documentazione e struttura
@@ -493,6 +499,8 @@ DA RIAPRIRE
 - [x] `DOC-021` — Validation/rollback e runbook troppo estesi — **CONFERMATO**
 - [x] `DOC-022` — Current State non aggiornato — **CONFERMATO**
 - [x] `DOC-023` — Collaudi storici mescolati ai runbook — **CONFERMATO**
+- [x] `DOC-024` — Ownership processo distinta da writer authority — **CONFERMATO**
+- [x] `DOC-025` — Generation Python distinta dalla session authority — **CONFERMATO**
 
 ## Workflow e regole
 
@@ -508,10 +516,21 @@ DA RIAPRIRE
 - [x] `CODE-003` — Match `debug-last` sempre vuoto — **RIMOZIONE APPROVATA**
 - [x] `CODE-004` — Strategy usa `localhost:3001` hardcoded — **ASSORBITO DALLA RIMOZIONE CODE-001**
 - [ ] `CODE-005` — Script lint frontend non configurato — **CONFERMATO, PRIORITÀ BASSA**
-- [ ] `RUNTIME-002` — Nuovo Start non invalida callback precedente — **CONFERMATO, PRIORITÀ ALTA**
-- [ ] `FRONTEND-001` — Risposte tardive attraversano la sessione — **CONFERMATO, PRIORITÀ ALTA**
+- [ ] `RUNTIME-002` — Nuovo Start non invalida la sessione precedente — **CONFERMATO E AMPLIATO; PRIORITÀ CRITICA**
+- [x] `RUNTIME-003` — Avvii manuali aggirano il lock launcher e condividono `match_history` — **CONFERMATO**
+- [ ] `RUNTIME-004` — Riavvio dello stesso eventId contamina il gate nuovo — **CONFERMATO; PRIORITÀ CRITICA**
+- [x] `RUNTIME-005` — `/untrack` legacy senza cleanup fisico — **RIMOZIONE APPROVATA**
+- [ ] `RUNTIME-006` — Mismatch stale può fermare la sessione corrente — **CONFERMATO; PRIORITÀ CRITICA**
+- [ ] `RUNTIME-007` — Promise Betfair riutilizzata tra sessioni logiche — **CONFERMATO; PRIORITÀ CRITICA**
+- [ ] `RUNTIME-008` — Mismatch non termina fisicamente SofaScore — **CONFERMATO; PRIORITÀ ALTA**
+- [ ] `RUNTIME-009` — Stop pubblico nasconde cleanup parziale — **CONFERMATO; PRIORITÀ ALTA**
+- [ ] `RUNTIME-010` — Conferma Source Identity stale sul gate nuovo — **CONFERMATO; PRIORITÀ ALTA**
+- [ ] `FRONTEND-005` — Loop di polling orfani dopo cambio sessione — **CONFERMATO; PRIORITÀ CRITICA**
+- [ ] `FRONTEND-006` — Start concorrenti non serializzati — **CONFERMATO; PRIORITÀ ALTA**
+- [ ] `FRONTEND-007` — Stop Live lascia attivi Betfair/Evidence/Source Identity — **CONFERMATO; PRIORITÀ MEDIO-ALTA**
+- [ ] `FRONTEND-001` — Risposte Sofa/Betfair attraversano la sessione — **CONFERMATO E AMPLIATO; PRIORITÀ CRITICA**
 - [ ] `FRONTEND-002` — Integrity raccolta ma scartata prima della UI — **CONFERMATO**
-- [ ] `FRONTEND-003` — Start fallito lascia polling nascosti — **CONFERMATO, PRIORITÀ ALTA**
+- [ ] `FRONTEND-003` — Start fallito lascia sessione e polling nascosti — **CONFERMATO; PRIORITÀ ALTA**
 - [ ] `FRONTEND-004` — Copy mojibake visibile — **CONFERMATO**
 - [ ] `SECURITY-001` — `network_capture.dump_dir` pubblico — **CONFERMATO, PRIORITÀ ALTA**
 - [ ] `SECURITY-002` — Filename cache derivato dalla URL — **CONFERMATO, PRIORITÀ ALTA**
@@ -527,6 +546,12 @@ DA RIAPRIRE
 - [ ] `TEST-001` — Test dedicato tick Betfair `status-only` — **MANCANTE**
 - [ ] `TEST-002` — Test lifecycle cambio sessione/Start fallito — **MANCANTE**
 - [ ] `TEST-003` — Inventario o comando test canonico — **MANCANTE**
+- [x] `TEST-004` — Manca esclusione verificata tra due backend writer — **CONFERMATO**
+- [ ] `TEST-005` — Matrice sostituzione sessione backend — **MANCANTE**
+- [ ] `TEST-006` — Riuso Betfair session-safe — **MANCANTE**
+- [ ] `TEST-007` — Cleanup mismatch completo SofaScore/Betfair — **MANCANTE**
+- [ ] `TEST-008` — Stop partial failure backend/UI — **MANCANTE**
+- [ ] `TEST-009` — Conferma Source Identity stale — **MANCANTE**
 
 ---
 
@@ -552,7 +577,7 @@ DA RIAPRIRE
 - [x] `IMPL-003` — Matrice test ↔ modulo ↔ documento — **NECESSARIA**
 - [x] `IMPL-004` — Archivio collaudi storici — **CONSIGLIATA; STRUTTURA DA APPROVARE**
 - [x] `IMPL-005` — Coerenza Todo ↔ registri — **NECESSARIA**
-- [x] `IMPL-006` — Autorità/token della sessione live — **NECESSARIA**
+- [x] `IMPL-006` — Session authority end-to-end — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
 - [x] `IMPL-007` — Serializer pubblico diagnostica/errori — **NECESSARIA**
 - [x] `IMPL-008` — Harness offline persistence/recovery — **CONSIGLIATA**
 - [x] `IMPL-009` — Adapter persistence + stati locali + pannello sidebar — **NECESSARIA**
@@ -561,7 +586,7 @@ DA RIAPRIRE
 - [x] `IMPL-012` — Fixture versionate e replay offline — **NECESSARIA PRIMA DI BACKTESTING**
 - [x] `IMPL-013` — Baseline end-to-end e freshness — **NECESSARIA PRIMA DI OTTIMIZZARE**
 - [~] `IMPL-014` — Ottimizzazione Betfair misurata e reversibile — **FUTURA/CONDIZIONATA**
-- [?] `IMPL-015` — Invariante single-writer `match_history` — **DA VERIFICARE**
+- [x] `IMPL-015` — Writer authority esclusiva `match_history` — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
 - [x] Inventario delle implementazioni emerse
 - [x] Classificazione necessaria/consigliata
 - [ ] Preparazione delle task separate
@@ -677,14 +702,13 @@ Per ogni rilievo approvato:
 ## Prossimo punto
 
 ```txt
-1. pubblicare il checkpoint audit materiali locali
+1. pubblicare il checkpoint cumulativo Punto 1 + Punto 2
 2. verificare il nuovo SHA remoto
-3. nuova lettura approfondita del codice
-   → precisione
-   → robustezza
-   → utilità
-   → verifica IMPL-015
-4. preparare la prima task esecutiva
-   → isolamento sessione live
-5. pianificare separatamente la pulizia fisica dei file locali
+3. procedere al Punto 3
+   → lifecycle Betfair
+   → Graph
+   → diagnostica
+   → concorrenza
+   → cleanup
+4. nessuna task esecutiva prima della chiusura dell’audit
 ```

@@ -165,80 +165,165 @@ Queste voci sono state registrate su richiesta esplicita durante il ricontrollo 
 
 Non sono feature approvate e non devono essere implementate automaticamente.
 
-### IMPL-006 — Autorità della sessione live
+### IMPL-006 — Session authority end-to-end
 
 **Classificazione:** `NECESSARIA`
-**Stato:** `CONFERMATO COME STRUTTURA ASSENTE`
+**Stato:** `CONFERMATA E APPROVATA`
+**Priorità:** critica
+**Dipendenze:** tracker backend, Source Identity Gate, lifecycle Python/Betfair e polling frontend
 
-### Problema
-
-Backend e frontend hanno più meccanismi locali:
-
-```txt
-generation Python
-trackedMatches
-Source Identity Gate
-sessionId Evidence
-requestId Source Identity
-timeout SofaScore
-timeout Betfair
-dashboard bootstrap
-```
-
-Non esiste però una singola autorità di sessione che consenta a ogni callback asincrona di verificare:
+### Contratto approvato
 
 ```txt
-questa risposta appartiene ancora alla sessione attiva?
+trackingSessionId
+→ UUID immutabile
+→ nuovo per ogni Start
+→ cambia anche con lo stesso eventId
+
+commandId
+→ identifica Start, Stop e Confirm
+
+eventId
+→ identità della partita
+→ non identità della sessione
 ```
 
-### Evidenza collegata
+Backend e frontend devono riferirsi alla stessa `trackingSessionId` restituita da Start.
+
+### Sequenza Start
 
 ```txt
-RUNTIME-002
-FRONTEND-001
-FRONTEND-003
-TEST-002
+ricevi Start con commandId
+→ invalida la sessione precedente
+→ invalida generation tracking
+→ cleanup completo precedente
+→ verifica cleanup
+→ crea trackingSessionId
+→ crea gate e tracker associati
+→ restituisce trackingSessionId
+→ attiva poller frontend
 ```
 
-### Responsabilità minima proposta
+Un solo comando Start può essere corrente.
 
-```txt
-session token immutabile
-→ creato a ogni Start
-→ invalidato su nuovo Start, Stop, mismatch e failure Start
-→ verificato prima di observe, persist e setState
-```
+### Effect guard obbligatoria
 
-Il token non deve sostituire `eventId`, generation processi o Source Identity. Deve rappresentare l’autorità della sessione utente.
-
-### Rischio da evitare
-
-Creare due token non coordinati, uno backend e uno frontend, senza contratto comune.
-
-### Estensione emersa dal backlog runtime
-
-La futura authority deve distinguere almeno:
-
-```txt
-sessionId/generationId
-→ identità della sessione logica
-
-commandId/requestId
-→ identità della singola operazione asincrona
-```
-
-Ogni callback deve ricontrollare l’autorità immediatamente prima di:
+Verifica immediatamente prima di:
 
 - osservare Source Identity;
-- aggiornare health;
-- modificare stato runtime;
-- persistere;
+- aggiornare health/runtime;
+- modificare `betfairFinished`;
+- persistere SofaScore;
+- persistere Betfair;
+- eseguire bootstrap;
+- gestire mismatch;
+- applicare conferma;
 - pubblicare latest;
-- eseguire `setState` nel frontend.
+- eseguire `setState`.
 
-Lo stop deve invalidare prima l’autorità e solo dopo avviare il cleanup fisico.
+### Source Identity Gate
 
----
+Ogni gate contiene `eventId` e `trackingSessionId`.
+
+```txt
+gate assente
+oppure sessione diversa
+→ stale_session
+→ nessuna persistenza
+```
+
+Mismatch e bootstrap verificano l’autorità prima dell’effetto.
+
+La conferma manuale include `trackingSessionId`; una conferma stale restituisce `409 stale_session`.
+
+### Lifecycle Python e Betfair
+
+- Stop e mismatch usano un cleanup tracking unico;
+- il cleanup copre SofaScore e Betfair;
+- la Promise Betfair è riutilizzabile soltanto nella stessa `trackingSessionId`;
+- il nuovo Start non eredita scraper o Promise della sessione precedente;
+- la sessione viene invalidata prima del cleanup fisico.
+
+### Frontend
+
+Tutti i poller live adottano:
+
+- session token;
+- request ID monotono;
+- AbortController;
+- flag disposed;
+- controllo prima di ogni `setState`;
+- nessuna riprogrammazione del loop dopo cleanup.
+
+Il frontend distingue:
+
+```txt
+sessione richiesta
+sessione accettata
+sessione attiva
+sessione statica dopo Stop
+```
+
+### Start fallito
+
+Deve:
+
+- invalidare il comando;
+- cancellare la sessione confermata;
+- fermare tutti i poller;
+- resettare dati transitori;
+- eseguire cleanup compensativo se la risposta backend è ambigua;
+- tornare a uno stato realmente privo di sessione.
+
+### Stop
+
+```txt
+status: complete | partial_failure
+logicalStop: true
+physicalCleanup: complete | partial
+pythonCleanup: {...}
+```
+
+La UI non mostra Stop completo quando rimangono processi.
+
+Dopo Stop completo:
+
+- tutti i poller sono sospesi;
+- gli ultimi dati restano visibili;
+- la dashboard passa a modalità statica.
+
+### Cleanup legacy
+
+Rimuovere, dopo ultimo controllo consumer:
+
+```txt
+POST /api/match/untrack
+buildUntrackMatchResponse
+untrackMatch
+stopMatchTracker se esclusivo/duplicato
+test esclusivi del passthrough legacy
+```
+
+### Test obbligatori
+
+```txt
+TEST-002
+TEST-005
+TEST-006
+TEST-007
+TEST-008
+TEST-009
+```
+
+### Rischi da evitare
+
+- token backend e frontend non coordinati;
+- session identity derivata dall’eventId;
+- riuso Promise basato soltanto sulla chiave mercato;
+- cleanup dopo la creazione della nuova sessione;
+- `no-gate` interpretato come persistenza autorizzata nel tracker;
+- top-level `ok:true` che nasconde cleanup parziale.
+
 
 ### IMPL-007 — Boundary pubblico per diagnostica ed errori
 
@@ -748,40 +833,101 @@ baseline
 
 ---
 
-### IMPL-015 — Invariante single-writer per `match_history`
+### IMPL-015 — Writer authority esclusiva per `match_history`
 
-**Classificazione:** `DA VERIFICARE / CONDIZIONALE`
-**Stato:** `ASSUNZIONE ARCHITETTURALE NON FORMALIZZATA`
+**Classificazione:** `NECESSARIA`
+**Stato:** `CONFERMATA E APPROVATA`
+**Priorità:** alta
+**Dipendenze:** bootstrap backend, recovery e shutdown
 
-### Problema
+### Problema confermato
 
-Il journal protegge i commit multi-file nello stesso processo, ma la documentazione storica segnala che due backend distinti potrebbero effettuare contemporaneamente:
-
-```txt
-scan journal
-→ nessun pending visto
-→ creazione di due commit diversi
-```
-
-### Decisione necessaria dopo la nuova lettura del codice
-
-Se il progetto garantisce:
+Il lock launcher impedisce due orchestratori, ma non impedisce:
 
 ```txt
-un solo backend writer
+backend manuale A su 3001
+backend manuale B su 3002
+→ stessa backend/match_history
+→ stesso journal
+→ runtime e mappe in memoria distinti
 ```
 
-allora occorre:
+Tutti i percorsi diretti di avvio backend entrano in `startServer()` senza autorità esclusiva sulla persistenza.
 
-- documentare l’invariante;
-- impedirne il riuso ambiguo nei runbook;
-- verificare che launcher e avvio manuale non creino due writer inconsapevoli.
+### Decisione approvata
 
-Se in futuro sono ammessi più writer, servirà:
+```txt
+un solo backend writer per repository
+```
 
-- creazione esclusiva;
-- lock atomico project-owned;
-- ownership della directory;
-- test cross-process.
+Ogni backend deve acquisire una writer authority project-owned:
 
-Non introdurre un lock cross-process finché il requisito multi-writer non esiste.
+```txt
+prima di recovery
+prima di listen
+prima di qualunque tracking o scrittura canonica
+```
+
+### Identità minima
+
+```txt
+schema
+project marker
+backend instanceId
+pid
+process start fingerprint
+createdAt
+repository/storage identity
+```
+
+### Classificazione
+
+```txt
+lock assente
+→ acquisibile
+
+owner positivamente morto
+→ stale
+→ recuperabile
+
+owner vivo e verificato
+→ active
+→ startup bloccato
+
+identità non verificabile
+→ unknown
+→ fail-closed
+```
+
+### Sequenza
+
+```txt
+create backend identity
+→ acquire writer authority
+→ recovery
+→ listen
+→ tracking e scritture
+→ shutdown
+→ release authority
+```
+
+### Vincoli
+
+- lock launcher e writer lock restano distinti;
+- nessun controllo basato soltanto sulla porta;
+- nessun kill del writer esistente;
+- nessuna modalità multi-writer;
+- nessun backend read-only introdotto ora;
+- import di `server.js` senza side effect;
+- release soltanto da parte dell’owner;
+- recovery non deve partire se l’autorità non è acquisita.
+
+### Test minimi
+
+- secondo backend bloccato prima di recovery;
+- owner morto recuperabile;
+- owner non verificabile bloccante;
+- recovery fatal rilascia l’autorità acquisita;
+- failure di listen rilascia l’autorità;
+- shutdown ripetuto non rilascia authority altrui;
+- backend manuale e launcher rispettano lo stesso writer lock.
