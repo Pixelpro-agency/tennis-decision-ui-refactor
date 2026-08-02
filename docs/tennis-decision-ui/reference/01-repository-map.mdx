@@ -138,19 +138,16 @@ La persistenza canonica vive sotto `backend/match_history/`.
 
 ```txt
 backend/match_history/
-├── <eventId>/
-│   ├── history*.json
-│   ├── timeline*.json
-│   └── pending_commits/
-│       └── *.json
-└── ...
+├── file e directory dei dati canonici
+└── .pending_commits/
+    └── journal sidecar globale
 ```
 
 | Area                       | Regola di orientamento                                                                 |
 | -------------------------- | -------------------------------------------------------------------------------------- |
 | History aggregate          | Stato canonico aggregato; non modificare manualmente                                   |
 | Timeline append-only       | Sequenza canonica degli eventi; non modificare manualmente                             |
-| `pending_commits/`         | Journal sidecar tecnico per commit logici incompleti e recovery                        |
+| `.pending_commits/`        | Journal sidecar globale per commit logici incompleti e recovery                        |
 | `commitId`                 | Identificatore logico del commit da propagare fra writer e recovery                     |
 | `integrity`                | Stato read-only derivato dalla persistenza incompleta nota                              |
 | `partial_persistence`      | Persistenza incompleta osservabile; non equivale a health, freshness o errore scraper   |
@@ -194,7 +191,7 @@ Gli scraper Python non sono owner della persistenza canonica. Producono campioni
 | Percorso                                             | Tipo                                      | Regola di orientamento                                                                  |
 | ---------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------- |
 | `backend/match_history/`                             | Timeline canoniche, history e journal     | Non modificare o cancellare fuori da retention, replay o recovery espliciti             |
-| `backend/match_history/*/pending_commits/`           | Journal sidecar tecnico                   | Non cancellare manualmente; non includere in cleanup cache o rollback cieco             |
+| `backend/match_history/.pending_commits/`            | Journal sidecar tecnico globale           | Non cancellare manualmente; non includere in cleanup cache o rollback cieco             |
 | `backend/scraper_cache/`, `backend/betfair_cache/`   | Cache runtime                             | Non sono fonti canoniche; pulizia consentita solo tramite utility allow-list            |
 | `backend/scraper_profile/`                           | Profilo browser SofaScore                 | Escludere da contesto AI e condivisione                                                 |
 | `backend/betfair_network_dump/`                      | Dump diagnostici opzionali                | Redatti ma potenzialmente sensibili; non usare come input algoritmico o fonte canonica  |

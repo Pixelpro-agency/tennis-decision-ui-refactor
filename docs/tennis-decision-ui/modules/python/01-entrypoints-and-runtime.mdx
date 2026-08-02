@@ -209,7 +209,7 @@ Chrome/CDP esterno non viene chiuso né registrato come processo owned.
 
 ## Manifest e ownership
 
-Il manifest runtime registra la sessione corrente, gli URL effettivi e i soli PID creati dal launcher.
+Il manifest runtime registra la sessione corrente, gli URL effettivi e i PID dei servizi quando disponibili e verificati. Solo i processi con ownership `owned` sono stati avviati dalla sessione corrente e possono essere terminati dal launcher. Un servizio `reused` può avere un PID verificato nel manifest, ma non diventa owned e non viene terminato dal launcher.
 
 Il riuso richiede:
 
