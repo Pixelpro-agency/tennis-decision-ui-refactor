@@ -45,8 +45,9 @@ Stato iniziale verificato:
 ```txt
 Repository: Pixelpro-agency/tennis-decision-ui-refactor
 Branch canonico: main
-SHA esaminato: ae9766dde97de08425d65cf62fe929aece3ba6a2
-Commit: docs: fix runtime ownership and journal paths
+SHA iniziale esaminato: ae9766dde97de08425d65cf62fe929aece3ba6a2
+SHA checkpoint audit B1–B6: b277bd9b7373dfd8702e65446c88bab7a0f64dcc
+Commit checkpoint: docs: modularize project revision registers
 ```
 
 La revisione parte da questo SHA. Ogni aggiornamento futuro deve indicare esplicitamente:
@@ -121,6 +122,8 @@ Prefissi stabili:
 | `EVIDENCE-` | Match Evidence, Source Identity e Market Reactions |
 | `FRONTEND-` | Shell, polling, view model e componenti |
 | `SCRAPER-` | Package Python, CLI e compatibilità wrapper |
+| `PYTHON-` | Concorrenza, task asincrone e comportamento interno dei package Python |
+| `SECURITY-` | Redazione, superfici pubbliche, path locali e dati potenzialmente sensibili |
 | `CLEANUP-` | File legacy, codice morto, duplicazioni e materiali non canonici |
 | `WORKFLOW-` | Metodo operativo, ruoli, prompt, Git e revisione |
 | `IMPL-` | Implementazione utile individuata durante l’audit |
@@ -353,3 +356,116 @@ L’utente resta responsabile dell’inserimento nel repository e delle operazio
 Questa modalità riduce gli errori rispetto a una patch terminale, ma richiede comunque una revisione del contenuto completo e dei link prima della rimozione dei vecchi `.mdx`.
 
 ---
+
+## 7.7 Coerenza obbligatoria dei registri
+
+Il checkpoint B6 ha dimostrato che un rilievo può essere presente nel registro analitico ma mancare dalla vista sintetica.
+
+Regola aggiuntiva:
+
+```txt
+ogni ID dettagliato
+→ compare nella Todo
+→ compare nel BLOCCO E dei rilievi
+→ usa un prefisso dichiarato
+→ mantiene lo stesso stato sostanziale
+```
+
+Non è necessario duplicare la scheda completa nella Todo. È però obbligatoria una riga sintetica con:
+
+```txt
+ID
+→ titolo breve
+→ stato
+→ eventuale decisione o task ancora necessaria
+```
+
+Controlli minimi di checkpoint:
+
+```txt
+ID nel registro documentazione
+∪ ID nel registro codice
+→ uguali agli ID sintetici della Todo
+
+prefissi usati
+→ sottoinsieme dei prefissi dichiarati
+
+stato COMPLETATO
+→ non può convivere con una Todo ancora DA VERIFICARE
+
+ID DA DECIDERE
+→ deve comparire anche nel registro decisioni quando la scelta diventa operativa
+```
+
+Il controllo automatico è registrato come `IMPL-005`. Fino alla sua implementazione, la verifica resta manuale e deve essere eseguita prima di ogni pacchetto di checkpoint.
+
+---
+
+---
+
+## 8. Modalità operative approvate
+
+Le modalità sono distinte e non intercambiabili durante la stessa task.
+
+```txt
+CHAT_ANALISI
+→ analisi, decisioni, scope, prompt, revisione e approvazione
+
+CHAT_ESECUTORE
+→ legge GitHub in sola lettura
+→ non modifica la copia locale
+→ consegna file completi, script patch o comandi da eseguire
+
+DESKTOP_ESECUTORE
+→ modifica direttamente la copia locale autorizzata
+→ esegue controlli
+→ produce fileModificati.md
+
+DESKTOP_COLLAUDATORE
+→ esegue collaudo indipendente
+→ non modifica file
+→ produce finding e matrice PASS / FAIL / BLOCCATO
+
+UTENTE
+→ applica le consegne della Chat Esecutore
+→ esegue commit e push finali
+```
+
+La Chat Analisi sceglie una sola modalità esecutiva per task in base a:
+
+- disponibilità di ChatGPT Desktop;
+- necessità di modifiche locali dirette;
+- numero e dimensione dei file;
+- possibilità di consegnare file completi;
+- necessità di collaudo browser;
+- rischio della modifica.
+
+## 8.1 Strutture o procedure totalmente assenti
+
+Quando l’audit dimostra che una struttura utile non esiste:
+
+```txt
+non inventare che sia già implementata
+→ registrarla in 06-implementazioni-proposte.md
+→ indicare problema, utilità, confini e dipendenze
+→ non trasformarla automaticamente in task approvata
+```
+
+Una struttura assente diventa task soltanto dopo:
+
+- confronto con il codice corrente;
+- decisioni dell’utente;
+- definizione di file, test e criteri;
+- verifica che non duplichi un owner esistente.
+
+## 8.2 Regola sulle decisioni mancanti
+
+Se una scelta cambia comportamento, dati osservabili, UX, persistenza o risultato:
+
+```txt
+la Chat Analisi si ferma
+→ espone la decisione
+→ attende l’utente
+```
+
+Le scelte tecniche equivalenti che non cambiano il contratto possono invece essere risolte dalla Chat Analisi.

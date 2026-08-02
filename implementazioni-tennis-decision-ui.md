@@ -17,6 +17,7 @@ Non è:
 Repository: Pixelpro-agency/tennis-decision-ui-refactor
 Branch canonico: main
 SHA iniziale esaminato: ae9766dde97de08425d65cf62fe929aece3ba6a2
+SHA corrente verificato: b277bd9b7373dfd8702e65446c88bab7a0f64dcc
 ```
 
 ## Registri
@@ -28,9 +29,10 @@ SHA iniziale esaminato: ae9766dde97de08425d65cf62fe929aece3ba6a2
 - [Audit documentazione](./implementazioni/02-audit-documentazione.md)
 - [Audit codice](./implementazioni/03-audit-codice.md)
 - [Ricontrollo task completate](./implementazioni/04-task-completate.md)
-- [Audit differito di docs/planning](./implementazioni/05-audit-docs-planning.md)
+- [Audit di docs/planning](./implementazioni/05-audit-docs-planning.md)
 - [Implementazioni proposte](./implementazioni/06-implementazioni-proposte.md)
 - [Workflow esecutivo](./implementazioni/07-workflow-esecutivo.md)
+- [Linee guida per chat e AI](./implementazioni/08-linee-guida-chat-e-ai.md)
 - [Decisioni dell’utente](./implementazioni/99-decisioni-utente.md)
 
 ## Regole di utilizzo
@@ -51,9 +53,34 @@ Non duplicare rilievi completi in questo indice.
 ## Punto corrente
 
 ```txt
-audit approfondito della documentazione canonica
-→ verifica tecnica della migrazione .mdx → .md
-→ audit del codice settore per settore
-→ ricontrollo delle task dichiarate completate
-→ audit differito di docs/planning
+audit documentazione e codice B1–B6
+→ completato
+
+ricontrollo task D1–D18
+→ completato
+
+decisioni di prodotto e cleanup
+→ completate
+
+workflow multi-esecutore
+→ definito
+
+planning e materiali di processo accessibili
+→ classificati
+→ nessuna eliminazione eseguita
+
+checkpoint corrente
+→ solo registri
+→ pronto per inserimento e push su main
+```
+
+Dopo la pubblicazione del checkpoint:
+
+```txt
+nuova lettura approfondita del codice
+→ precisione
+→ robustezza
+→ utilità
+→ strutture mancanti
+→ preparazione delle task esecutive prioritarie
 ```

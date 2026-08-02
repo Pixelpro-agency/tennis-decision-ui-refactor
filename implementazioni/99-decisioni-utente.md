@@ -1,80 +1,185 @@
 # Tennis Decision UI — Decisioni strutturali dell’utente
 
-> Conserva soltanto decisioni che influenzano più aree o task.
+## Scopo
 
-## 17. Registro delle decisioni dell’utente
+Conserva soltanto decisioni che influenzano più aree, task o documenti.
 
-Questa sezione conserva soltanto decisioni strutturali che influenzano più task.
-
-### DEC-001 — Uso di due registri operativi
+## DEC-001 — Registro modulare
 
 **Stato:** approvata.
-
-Decisione:
 
 ```txt
-documento analitico dettagliato
-+ Todo sintetica
+Todo sintetica
++ registri tematici in implementazioni/
 ```
 
-Il documento analitico conserva motivi e criteri. La Todo conserva stato e percorso.
-
-### DEC-002 — Audit prima delle modifiche
+## DEC-002 — Audit prima delle modifiche
 
 **Stato:** approvata.
-
-Decisione:
 
 ```txt
-prima analisi documentazione e codice
-→ poi task esecutive
+documentazione e codice
+→ classificazione
+→ decisioni
+→ task esecutive
 ```
 
-### DEC-003 — Possibile modularizzazione del registro
-
-**Stato:** approvata come opzione futura.
-
-Decisione:
-
-Se il registro diventa troppo grande, creare una cartella root `implementazioni/` e dividerlo per aree collegate, mantenendo ID e indice.
-
-
-### DEC-004 — Nuovi documenti soltanto in formato Markdown
+## DEC-003 — Git sotto controllo dell’utente
 
 **Stato:** approvata.
 
-Decisione:
+Commit e push vengono eseguiti materialmente soltanto dall’utente dopo revisione.
+
+## DEC-004 — Documentazione tecnica in Markdown
+
+**Stato:** approvata.
 
 ```txt
-nuovi documenti tecnici: .md
-nuovi documenti tecnici: non .mdx
+nuovi documenti: .md
+non creare nuovi .mdx
 ```
 
-La migrazione deve verificare la compatibilità del sistema documentale e convertire gli elementi specifici MDX prima della sostituzione.
+Usare Markdown ordinario. Non usare frontmatter per default.
 
-### DEC-005 — Lettura differita e classificata di `docs/planning`
+## DEC-005 — Planning come fonte separata
+
+**Stato:** approvata ed eseguita sui materiali accessibili.
+
+Planning e report storici non prevalgono sul codice corrente.
+
+## DEC-006 — Consegna con file completi
 
 **Stato:** approvata.
 
-Decisione:
+Preferire file completi o ZIP con manifest. Patch/script/comandi sono ammessi quando più adatti.
 
-`docs/planning` verrà analizzata dopo il primo confronto fra documentazione canonica e codice corrente. I file saranno letti per area e classificati come storici, realizzati, ancora validi, futuri, duplicati o superati.
+## DEC-007 — Metadata dei nuovi `.md`
 
+**Stato:** approvata.
 
-### DEC-006 — Consegna tramite documenti completi
+```txt
+nessun export const meta
+nessun JSX/MDX
+nessun frontmatter predefinito
+ordine tramite nomi numerici e indice
+```
 
-**Stato:** approvata come metodo preferito.
+Introdurre frontmatter soltanto se un consumer tecnico reale lo richiede.
 
-Decisione:
+## DEC-008 — Rimozione Strategy
 
-I documenti riscritti saranno consegnati come file completi scaricabili. Per gruppi numerosi, usare un archivio ZIP con struttura delle cartelle e manifest di migrazione. L’utente inserirà i file nel repository e gestirà Git.
+**Stato:** approvata.
 
-### DEC-007 — Conversione dei metadata MDX
+Rimuovere le tre card Strategy e il relativo runtime/polling/backend esclusivo.
 
-**Stato:** da verificare tecnicamente.
+Preservare:
 
-Proposta:
+- Market Reactions;
+- Field → Market;
+- Market → Field;
+- Evidence;
+- Source Identity.
 
-Sostituire `export const meta` con frontmatter YAML nei nuovi `.md`, preservando `id`, ordine, titolo, stato, versione e lingua quando presenti.
+Le strategie future verranno studiate con strumenti autonomi offline (`IMPL-010`).
 
----
+## DEC-009 — Rimozione `debug-last`
+
+**Stato:** approvata come decisione tecnica.
+
+Rimuovere la route e il codice senza producer. Non ripristinare un contenitore debug generico.
+
+## DEC-010 — `selectionId` nel ramo Field → Market
+
+**Stato:** approvata.
+
+`selectionId` è obbligatorio per confrontare lo stesso runner nel ramo Field → Market.
+
+Questa decisione:
+
+- non cambia Source Identity;
+- non confronta i due URL;
+- non aggiunge blocchi a Start;
+- non impedisce l’ingresso nel frontend;
+- non cambia pending/mismatch/recording.
+
+Quando manca l’ID degrada soltanto quel ramo Evidence con reason esplicita.
+
+## DEC-011 — Una sola authority Source Identity
+
+**Stato:** approvata.
+
+```txt
+useSourceIdentityGateUi
+→ unica authority globale frontend
+```
+
+Rimuovere authority e controlli legacy concorrenti nel ramo Market Reactions.
+
+## DEC-012 — Visibilità persistence
+
+**Stato:** approvata.
+
+```txt
+stati locali nelle card
++
+indicatore globale in fondo alla sidebar
++
+modale di controllo complessivo
+```
+
+TopBar principalmente dedicata a SofaScore e Betfair.
+
+## DEC-013 — Collaudi separati
+
+**Stato:** approvata.
+
+I collaudi approfonditi restano separati dai documenti owner e confluiscono in `docs/validations/`.
+
+## DEC-014 — Cleanup offline robusto
+
+**Stato:** approvata come direzione tecnica.
+
+Usare:
+
+- authority/lock project-owned;
+- manifest e porte effettive;
+- identificazione positiva dei servizi;
+- fail-closed;
+- recheck metadata;
+- nessun kill-by-port.
+
+## DEC-015 — Esclusioni planning
+
+**Stato:** approvata.
+
+Non leggere né classificare:
+
+```txt
+docs.rar
+idee future.odt
+idee per stream api betfair.odt
+```
+
+## DEC-016 — Quattro ruoli operativi
+
+**Stato:** approvata.
+
+```txt
+Chat Analisi
+Chat Esecutore
+Desktop Esecutore
+Desktop Collaudatore
+```
+
+La Chat Esecutore legge GitHub in sola lettura e consegna file, ZIP, patch Python o comandi da applicare.
+
+## DEC-017 — UI minore e responsive
+
+**Stato:** rinviata.
+
+Registrare in Todo:
+
+- piccole correzioni/rimozioni UI;
+- responsive completo.
+
+Non ampliare con questi lavori le prime task di robustezza.

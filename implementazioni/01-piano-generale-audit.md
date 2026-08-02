@@ -185,3 +185,168 @@ L’adattamento deve preservare le esigenze specifiche di Tennis Decision UI:
 - distinzione tra test automatici e collaudo live.
 
 ---
+
+## 8.1 Stato dopo il checkpoint B6
+
+Baseline dell’audit concluso:
+
+```txt
+SHA verificato
+→ b277bd9b7373dfd8702e65446c88bab7a0f64dcc
+```
+
+Stato:
+
+```txt
+BLOCCO A — baseline e inventario
+→ completato nel perimetro necessario
+
+BLOCCO B — documentazione canonica
+→ B1–B6 completati
+
+BLOCCO C — audit codice
+→ prima analisi statica per tutti i settori completata
+→ test presenti letti
+→ suite non eseguite
+
+BLOCCO D — ricontrollo task completate
+→ prossimo blocco
+
+BLOCCO E — implementazioni utili
+→ classificate, non ancora eseguite
+
+BLOCCO F — docs/planning
+→ ancora differito
+```
+
+Il completamento dell’audit B1–B6 significa:
+
+- documenti owner confrontati con il codice;
+- discrepanze principali registrate;
+- bug, gap di test e decisioni separati;
+- roadmap future distinte dallo stato corrente;
+- registri riallineati.
+
+Non significa:
+
+- che i test siano stati eseguiti nuovamente;
+- che le task dichiarate completate siano tutte riconfermate;
+- che i bug siano già corretti;
+- che la documentazione canonica sia già riscritta;
+- che `docs/planning` sia già classificata.
+
+Ordine successivo:
+
+```txt
+ricontrollo task completate
+→ decisioni utente strettamente necessarie
+→ raggruppamento dei rilievi in task esecutive
+→ correzioni codice prioritarie
+→ riscrittura documentazione canonica
+→ audit differito docs/planning
+```
+
+---
+
+---
+
+## 8.2 Stato dopo il ricontrollo D1–D18
+
+Baseline invariata:
+
+```txt
+SHA verificato
+→ b277bd9b7373dfd8702e65446c88bab7a0f64dcc
+```
+
+Esito:
+
+```txt
+D1–D18
+→ completati
+
+CONFERMATA
+→ 9
+
+CONFERMATA CON LIMITI
+→ 7
+
+DA RIAPRIRE
+→ D14 persistence integrity frontend/cross-layer
+→ D17 diagnostica Betfair hardening pubblico/capture
+```
+
+Il ricontrollo ha inoltre registrato strutture o procedure assenti:
+
+```txt
+IMPL-006 — autorità della sessione live
+IMPL-007 — serializer pubblico diagnostica/errori
+IMPL-008 — harness offline persistence/recovery
+IMPL-009 — adapter frontend persistence integrity
+```
+
+Queste voci non sono automaticamente approvate come implementazione.
+
+Ordine successivo:
+
+```txt
+decisioni utente strettamente necessarie
+→ raggruppamento dei rilievi in task
+→ preparazione prompt esecutivi
+→ correzioni prioritarie
+→ riscrittura documentazione canonica
+→ docs/planning ancora differito
+```
+
+Il ricontrollo D1–D18 non ha eseguito suite, collaudi live o modifiche al prodotto.
+
+---
+
+## 8.3 Stato dopo decisioni, workflow e planning
+
+Completato:
+
+```txt
+decisioni CODE-001, CODE-003, EVIDENCE-001 e CLEANUP-001
+→ chiuse
+
+workflow Props24 adattato
+→ Chat Analisi
+→ Chat Esecutore
+→ Desktop Esecutore
+→ Desktop Collaudatore
+→ utente owner di commit e push
+
+docs/planning accessibile
+→ classificato per gruppi
+→ tre file esclusi non letti
+
+docs/_work, change brief e percorsi
+→ informazioni utili assorbite nel workflow
+→ non più necessari come procedura ordinaria
+
+formato documentazione
+→ Markdown .md ordinario
+→ nessun MDX
+→ nessun frontmatter predefinito
+```
+
+Decisione di sequenza:
+
+```txt
+checkpoint registri
+→ push su main eseguito dall’utente
+→ verifica del nuovo SHA
+→ seconda lettura del codice per precisione, robustezza e utilità
+→ preparazione task separate
+```
+
+Non sono comprese in questo checkpoint:
+
+- modifiche al codice;
+- rimozione Strategy o debug-last;
+- modifica Evidence;
+- cleanup frontend;
+- nuova UI persistence;
+- migrazione dei documenti canonici;
+- eliminazione di planning o materiali locali.
