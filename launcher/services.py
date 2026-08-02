@@ -343,7 +343,7 @@ def resolve_cdp(manifest: dict) -> str:
     preferred = PREFERRED_CDP_PORT
     candidates = [
         port
-        for port in range(preferred, preferred + _MAX_PORT_ATTEMPTS + 1)
+        for port in range(preferred, preferred + _MAX_PORT_ATTEMPTS)
         if 1 <= port <= 65535
     ]
     free_ports = []

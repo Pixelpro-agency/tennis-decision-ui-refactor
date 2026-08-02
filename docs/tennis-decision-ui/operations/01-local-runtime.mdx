@@ -24,20 +24,24 @@ Il launcher può avviare e coordinare backend e frontend, ma non crea dati canon
 
 **Implementato.**
 
-Il percorso ordinario è stato validato con il collaudo runtime `9A-R`:
+Il collaudo runtime finale ha validato avvio, blocco della seconda invocazione con lock attivo, shutdown, riavvio e preservazione CDP.
+
+La correzione finale impone:
 
 ```txt
-avvio canonico
-lock e manifest schema 2
-riuso della sessione
-seconda invocazione session_reuse
-shutdown Ctrl+C
-terminazione dei soli backend/frontend owned
-rilascio lock
-rimozione manifest
-riavvio con nuove identità
-preservazione CDP reused
+prima istanza con lock attivo
+→ seconda invocazione bloccata
+→ nessun session_reuse
+→ nessun browser_open
+
+lock assente o positivamente stale
++ manifest e servizi riusabili
+→ lock acquisito o reclaimed
+→ riuso della sessione
+→ rilascio del lock della nuova invocazione
 ```
+
+Lock, manifest e identità della prima sessione restano invariati; la seconda invocazione non apre il browser e non avvia nuovi servizi.
 
 Restano **Implementato, da validare live**:
 
@@ -92,8 +96,9 @@ Sequenza:
 
 ```txt
 avvio.py
-→ verifica sessione riusabile
-→ lock e manifest runtime iniziale
+→ acquisizione o recupero conservativo del lock
+→ eventuale verifica sessione riusabile
+→ manifest runtime iniziale
 → risoluzione CDP
 → backend
 → frontend Vite
@@ -139,7 +144,9 @@ Quando una porta preferita è occupata da un processo non riconosciuto, il launc
 
 Un backend esistente viene riusato soltanto dopo verifica health e identità Tennis Decision UI.
 
-Il riuso della sessione richiede:
+Il riuso della sessione richiede prima che la nuova invocazione abbia acquisito o positivamente recuperato il lock. Un lock attivo o non verificabile blocca la seconda invocazione prima della verifica del manifest.
+
+Dopo il lock, il riuso richiede:
 
 ```txt
 backend raggiungibile
@@ -152,13 +159,15 @@ Lock e manifest runtime sono effimeri.
 
 Il manifest registra stato, endpoint, instance ID, CDP e ownership della sessione.
 
-`ownedPids` e `ownership` includono soltanto backend e frontend avviati dal launcher. Un backend riusato può comparire nel manifest, ma non è owned.
+L'ownership `owned` è assegnata soltanto a backend e frontend avviati dal launcher. Un backend riusato può comparire nel manifest, ma non è owned.
 
 Il manifest non è una fonte canonica per history, timeline, journal, Evidence o Source Identity.
 
 ## CDP
 
 La porta `9222` è la porta preferita del launcher, non un fallback applicativo.
+
+La discovery valuta al massimo cinque porte candidate: quella preferita e le quattro immediatamente successive, senza interrogare un sesto candidato.
 
 ```txt
 endpoint CDP locale valido già disponibile
@@ -352,7 +361,7 @@ Un lock positivamente stale può essere recuperato. Uno stato attivo o non verif
 
 ## Riuso della sessione
 
-Una sessione è riusabile soltanto quando lock, manifest schema 2 e identità dei servizi sono coerenti.
+Una sessione è riusabile soltanto dopo che la nuova invocazione ha acquisito un lock assente o ha recuperato un lock positivamente stale, e quando manifest schema 2 e identità dei servizi sono coerenti.
 
 ```txt
 manifest reusable
@@ -360,12 +369,12 @@ manifest reusable
 + frontend identity valida
 → session_reuse
 → apertura del frontend esistente
-→ nessun nuovo lock
 → nessun nuovo backend o frontend
 → seconda invocazione terminata autonomamente
+→ rilascio del lock acquisito dalla seconda invocazione
 ```
 
-L’evento `browser_open` sul frontend esistente è corretto: riapre l’interfaccia senza acquisire ownership sui servizi già attivi.
+L’evento `browser_open` sul frontend esistente è corretto nel solo fast path successivo all'acquisizione o al recupero del lock: riapre l’interfaccia senza acquisire ownership sui servizi già attivi. Se il lock appartiene a un launcher attivo, la seconda invocazione viene invece bloccata prima di `session_reuse` e non apre il browser.
 
 ## Ownership runtime
 

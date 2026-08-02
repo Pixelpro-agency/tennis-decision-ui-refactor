@@ -183,19 +183,16 @@ def main():
     print("=== Tennis Decision UI ===", flush=True)
 
     existing = read_manifest()
-    if is_manifest_reusable(existing):
-        frontend_url = existing["services"]["frontend"]["url"]
-        frontend_port = existing["services"]["frontend"].get("selectedPort")
-        log("Launcher", "session_reuse", service="frontend", port=frontend_port, ownership="reused")
-        open_browser(frontend_url)
-        return
-
     session_identity = create_launcher_session_identity()
     controller = _StopController()
     manifest = None
     installed_handlers: dict[int, object] = {}
     preserve_failure_state = False
 
+    # The lock is authoritative. A live launcher blocks every second
+    # invocation before the reusable-manifest fast path can open another tab.
+    # Reuse remains available only after this invocation has acquired or
+    # positively reclaimed the lock.
     lock_result = acquire_or_recover_lock(
         session_identity,
         manifest=existing,
@@ -215,6 +212,20 @@ def main():
             f"lock action={lock_result.get('state')} "
             f"reason={lock_result.get('reason')}",
         )
+
+        if is_manifest_reusable(existing):
+            frontend_url = existing["services"]["frontend"]["url"]
+            frontend_port = existing["services"]["frontend"].get("selectedPort")
+            log(
+                "Launcher",
+                "session_reuse",
+                service="frontend",
+                port=frontend_port,
+                ownership="reused",
+            )
+            open_browser(frontend_url)
+            return
+
         installed_handlers = _install_signal_handlers(controller)
 
         manifest = _empty_manifest(session_identity["pid"], session_identity)

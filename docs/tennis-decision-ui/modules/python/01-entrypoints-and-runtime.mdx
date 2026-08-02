@@ -67,16 +67,18 @@ Il backend Node non deve importare o invocare direttamente moduli interni di `sc
 
 ## Stato
 
-Validato live:
+Validato live, inclusa la correzione finale:
 
 ```txt
 avvio canonico
-seconda invocazione reusable
+seconda invocazione bloccata dal lock attivo
 shutdown Ctrl+C
 terminazione backend/frontend owned
 preservazione CDP reused
 riavvio pulito
 ```
+
+Il collaudo finale ha confermato che la seconda invocazione termina senza `session_reuse`, `browser_open` o nuovi servizi e lascia invariati lock, manifest e identità della prima sessione.
 
 Restano da validare live:
 
@@ -125,21 +127,28 @@ wrapper Python
 
 Il launcher non mantiene un registry concorrente degli scraper.
 
-## Riuso della sessione
+## Lock e riuso della sessione
 
 ```txt
-sessione reusable
+lock attivo o non verificabile
+→ seconda invocazione bloccata
+→ nessun session_reuse
+→ nessun browser_open
+
+lock assente o positivamente stale
++ manifest e servizi riusabili
+→ lock acquisito o reclaimed
 → session_reuse
 → browser_open sul frontend esistente
-→ seconda invocazione terminata
+→ rilascio del lock acquisito dalla nuova invocazione
 ```
 
 ## Sequenza runtime
 
 ```txt
 python avvio.py
-→ verifica di una sessione riusabile
 → lock launcher
+→ eventuale verifica di una sessione riusabile
 → manifest runtime iniziale
 → risoluzione CDP
 → risoluzione backend
@@ -183,6 +192,8 @@ Il documento collega questi moduli senza assorbirne i contratti completi.
 ## CDP
 
 Il launcher riusa un endpoint CDP valido esistente.
+
+La discovery considera al massimo cinque porte candidate, dalla porta preferita fino alla quarta porta successiva.
 
 Quando non trova un endpoint valido, può avviare Chrome dedicato su una porta libera e passa subito al frontend l'URL candidato.
 

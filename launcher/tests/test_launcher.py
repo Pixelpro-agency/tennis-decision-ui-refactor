@@ -756,7 +756,7 @@ class TestCDPUnavailableDoesNotBlock(unittest.TestCase):
             url = services.resolve_cdp(manifest)
 
         self.assertEqual(url, "")
-        self.assertEqual(probe.call_count, services._MAX_PORT_ATTEMPTS + 1)
+        self.assertEqual(probe.call_count, services._MAX_PORT_ATTEMPTS)
         helper.assert_not_called()
 
     def test_cdp_url_empty_not_9222_when_unavailable(self):
@@ -1046,7 +1046,7 @@ class TestTaskAFinalFixes(unittest.TestCase):
         self.assertEqual(manifest["services"]["cdp"]["url"], url)
         self.assertEqual(manifest["services"]["cdp"]["status"], "starting")
         launch.assert_called_once_with(alternative)
-        self.assertEqual(probe.call_count, services._MAX_PORT_ATTEMPTS + 2)
+        self.assertEqual(probe.call_count, services._MAX_PORT_ATTEMPTS + 1)
 
     def test_cdp_without_any_free_port_is_unavailable(self):
         """A2: no reusable CDP and no free candidate is explicitly unavailable."""
@@ -3962,7 +3962,7 @@ class TestDeterministicCDPDiscovery(unittest.TestCase):
             seen,
             list(range(
                 services.PREFERRED_CDP_PORT,
-                services.PREFERRED_CDP_PORT + services._MAX_PORT_ATTEMPTS + 1,
+                services.PREFERRED_CDP_PORT + services._MAX_PORT_ATTEMPTS,
             )),
         )
 
@@ -4155,7 +4155,7 @@ class TestDeterministicCDPDiscovery(unittest.TestCase):
     def test_cd30_already_ready_race_requires_valid_reprobe(self):
         services = self.services
         manifest = _new_runtime_manifest("cd30")
-        probes = [(False, {})] * 6 + [(True, {})]
+        probes = [(False, {})] * services._MAX_PORT_ATTEMPTS + [(True, {})]
         with patch.object(services, "check_cdp_endpoint", side_effect=probes), \
              patch.object(services, "is_port_free", return_value=True), \
              patch.object(
@@ -4172,7 +4172,7 @@ class TestDeterministicCDPDiscovery(unittest.TestCase):
     def test_cd31_port_occupied_race_can_become_reusable_cdp(self):
         services = self.services
         manifest = _new_runtime_manifest("cd31")
-        probes = [(False, {})] * 6 + [(True, {})]
+        probes = [(False, {})] * services._MAX_PORT_ATTEMPTS + [(True, {})]
         with patch.object(services, "check_cdp_endpoint", side_effect=probes), \
              patch.object(services, "is_port_free", return_value=True), \
              patch.object(
@@ -4207,7 +4207,7 @@ class TestDeterministicCDPDiscovery(unittest.TestCase):
     def test_cd33_launch_requested_ready_immediately_is_external_ready(self):
         services = self.services
         manifest = _new_runtime_manifest("cd33")
-        probes = [(False, {})] * 6 + [(True, {})]
+        probes = [(False, {})] * services._MAX_PORT_ATTEMPTS + [(True, {})]
         with patch.object(services, "check_cdp_endpoint", side_effect=probes), \
              patch.object(services, "is_port_free", return_value=True), \
              patch.object(
@@ -4299,7 +4299,7 @@ class TestDeterministicCDPDiscovery(unittest.TestCase):
         with patch.object(
             services,
             "check_cdp_endpoint",
-            side_effect=[(False, {})] * 6 + [(True, {})],
+            side_effect=[(False, {})] * services._MAX_PORT_ATTEMPTS + [(True, {})],
         ), patch.object(services, "is_port_free", return_value=True), patch.object(
             services,
             "_start_chrome_cdp",
@@ -4739,6 +4739,131 @@ class TestPrompt7RCorrections(unittest.TestCase):
             TestExactCdpPropagation,
             "test_p48_prompt1_to_prompt5_regressions_remain_present",
         ))
+
+
+class TestFinalLauncherLockRegression(unittest.TestCase):
+    """Regressioni finali per il collaudo live del secondo launcher."""
+
+    def test_q1_active_launcher_blocks_reusable_fast_path(self):
+        from launcher import app
+
+        existing = {
+            "services": {
+                "frontend": {
+                    "url": "http://127.0.0.1:3000",
+                    "selectedPort": 3000,
+                }
+            }
+        }
+        identity = {
+            "sessionId": "q1-second-launcher",
+            "pid": 99101,
+            "createdAt": "2026-08-02T00:00:00Z",
+            "processIdentity": {
+                "startFingerprint": "q1-fingerprint",
+                "executable": "python",
+            },
+        }
+
+        with patch.object(app, "read_manifest", return_value=existing), \
+             patch.object(app, "create_launcher_session_identity", return_value=identity), \
+             patch.object(app, "acquire_or_recover_lock", return_value={
+                 "acquired": False,
+                 "state": "active",
+                 "reason": "owner_verified",
+             }) as acquire, \
+             patch.object(app, "is_manifest_reusable", return_value=True) as reusable, \
+             patch.object(app, "open_browser") as browser, \
+             patch.object(app, "resolve_cdp") as resolve_cdp:
+            app.main()
+
+        acquire.assert_called_once_with(identity, manifest=existing)
+        reusable.assert_not_called()
+        browser.assert_not_called()
+        resolve_cdp.assert_not_called()
+
+    def test_q2_reclaimed_lock_allows_dead_launcher_service_reuse(self):
+        from launcher import app
+
+        existing = {
+            "services": {
+                "frontend": {
+                    "url": "http://127.0.0.1:3000",
+                    "selectedPort": 3000,
+                }
+            }
+        }
+        identity = {
+            "sessionId": "q2-reclaimed",
+            "pid": 99102,
+            "createdAt": "2026-08-02T00:00:00Z",
+            "processIdentity": {
+                "startFingerprint": "q2-fingerprint",
+                "executable": "python",
+            },
+        }
+
+        with patch.object(app, "read_manifest", return_value=existing), \
+             patch.object(app, "create_launcher_session_identity", return_value=identity), \
+             patch.object(app, "acquire_or_recover_lock", return_value={
+                 "acquired": True,
+                 "state": "reclaimed",
+                 "reason": "dead_pid",
+             }), \
+             patch.object(app, "is_manifest_reusable", return_value=True), \
+             patch.object(app, "open_browser") as browser, \
+             patch.object(app, "_install_signal_handlers") as install_handlers, \
+             patch.object(app, "resolve_cdp") as resolve_cdp, \
+             patch.object(app, "shutdown_owned", return_value={
+                 "ok": True,
+                 "state": "already_empty",
+                 "attempted": 0,
+                 "stopped": 0,
+                 "failed": 0,
+                 "entries": [],
+             }), \
+             patch.object(app, "remove_manifest", return_value={
+                 "removed": False,
+                 "state": "not_owner",
+                 "reason": "not_owner",
+             }) as remove_manifest, \
+             patch.object(app, "release_lock", return_value={
+                 "released": True,
+                 "state": "released",
+                 "reason": "owner_removed",
+             }) as release_lock:
+            app.main()
+
+        browser.assert_called_once_with("http://127.0.0.1:3000")
+        install_handlers.assert_not_called()
+        resolve_cdp.assert_not_called()
+        remove_manifest.assert_called_once_with(identity)
+        release_lock.assert_called_once_with(identity)
+
+    def test_q3_cdp_candidate_count_matches_max_attempts(self):
+        from launcher import services
+
+        manifest = _new_runtime_manifest("q3")
+        seen = []
+
+        def probe(port, timeout=None):
+            seen.append(port)
+            return False, {}
+
+        with patch.object(services, "check_cdp_endpoint", side_effect=probe), \
+             patch.object(services, "is_port_free", return_value=False), \
+             patch.object(services, "_start_chrome_cdp") as helper:
+            self.assertEqual(services.resolve_cdp(manifest), "")
+
+        self.assertEqual(len(seen), services._MAX_PORT_ATTEMPTS)
+        self.assertEqual(
+            seen,
+            list(range(
+                services.PREFERRED_CDP_PORT,
+                services.PREFERRED_CDP_PORT + services._MAX_PORT_ATTEMPTS,
+            )),
+        )
+        helper.assert_not_called()
 
 class TestStructuredRuntimeLogging(unittest.TestCase):
     """Prompt 8 logging contracts G22-G32/G39-G40/G48-G50."""

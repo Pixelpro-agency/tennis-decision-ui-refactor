@@ -75,7 +75,7 @@ Lo stop globale del live tracking e il cleanup backend su `SIGINT` o `SIGTERM` s
 
 ### Task 2 runtime launcher e lifecycle processi
 
-**Implementato e validato nel percorso ordinario.**
+**Implementato e validato nel percorso ordinario, inclusa la correzione finale della seconda invocazione.**
 
 Completati:
 
@@ -87,7 +87,7 @@ scope tracking
 scope all
 propagazione CDP senza fallback
 logging strutturato e redatto
-collaudo 9A-R
+collaudo 9A-R2B per lock esclusivo, avvio, shutdown, riavvio e preservazione CDP
 collaudo 9B
 percorso ordinario JSON-safe live
 ```
@@ -105,6 +105,8 @@ failure filesystem reale
 pending Source Identity reale, se ancora aperto
 test automatico dedicato JSON-safe
 ```
+
+Il collaudo finale ha confermato che un lock attivo blocca la seconda invocazione senza riuso, apertura browser o nuovi servizi; lock, manifest e identità restano invariati. La discovery CDP è limitata a cinque candidati.
 
 Questa voce è distinta dalla precedente Task 2A–2F Money Flow e non rinumera retroattivamente le task.
 

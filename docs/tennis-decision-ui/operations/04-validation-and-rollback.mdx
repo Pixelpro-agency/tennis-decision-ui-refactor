@@ -116,17 +116,24 @@ shutdown idempotente
 log redatti
 ```
 
-## Collaudo 9A-R
+## Collaudo launcher finale
+
+Validato live dopo la correzione:
 
 ```txt
-avvio
-riuso sessione
-login no-target
-stop idempotente
-shutdown
-riavvio
+prima invocazione avviata e pronta
+seconda invocazione con lock attivo
+→ blocked
+→ nessun browser_open
+→ nessun nuovo backend o frontend
+
+shutdown Ctrl+C della prima invocazione
+riavvio pulito
+lock e manifest con nuove identità
 CDP preserved
 ```
+
+La discovery CDP verifica al massimo cinque candidati e non interroga la sesta porta dell'intervallo.
 
 ## Collaudo 9B
 
