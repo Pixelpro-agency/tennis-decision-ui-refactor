@@ -27,6 +27,7 @@ scrapers/betfair/
 ├── scrape.py
 ├── graph_url.py
 ├── graph_url_test.py
+├── cdp_url.py
 ├── browser_session.py
 ├── market_api.py
 ├── ladder.py
@@ -43,6 +44,7 @@ scrapers/betfair/
 | `scrape.py`               | Orchestrazione browser, mercato, ladder e diagnostica                     |
 | `graph_url.py`            | Parser puro URL dirette e validazione mapping ladder                      |
 | `graph_url_test.py`       | Test unitari puri del parser e del mapping                                |
+| `cdp_url.py`              | Validazione e normalizzazione dell'endpoint CDP locale                 |
 | `browser_session.py`      | CDP esistente o profilo persistente                                       |
 | `market_api.py`           | Dati mercato read-only                                                    |
 | `ladder.py`               | Lettura ladder da Graph URL                                               |
@@ -101,6 +103,21 @@ Il parser locale del `.env` supporta commenti, righe vuote, `KEY=value`, spazi e
 
 Non carica né sovrascrive altre variabili `.env`.
 
+## CLI CDP e modalità persistent
+
+```txt
+--mode cdp
+→ --cdp-url obbligatoria
+```
+
+Una URL vuota o non valida fallisce prima di Playwright, cache, login-only, fetch o browser session. Non esiste default implicito a `9222`.
+
+```txt
+--mode persistent
+→ cdpUrl non richiesta
+→ profileDir usata quando prevista
+```
+
 ## Browser
 
 ### Modalità CDP
@@ -125,6 +142,18 @@ profilo locale
 → scraping
 → chiusura context al termine
 ```
+
+## Login-only
+
+```txt
+--login-only
+→ processo interattivo distinto dal tracking
+→ nessun payload dati finale
+→ resta attivo finché l'utente chiude le pagine/browser
+→ viene terminato anche dallo shutdown backend con scope=all
+```
+
+`POST /api/match/stop` usa `scope=tracking` e non termina il login-only.
 
 ## Risultato
 
@@ -272,7 +301,52 @@ Il logger Python scrive ancora su `stderr` e sul file log esistente, ma il messa
 
 La network capture mantiene condizioni di attivazione, filtri, soglie e schema del summary, ma metadata, header, URL, errori, body JSON, body testuali e dati inseriti nel collector vengono salvati solo in forma redatta.
 
-Resta aperta la validazione controllata su diagnostica runtime reale con Chrome/CDP e Betfair, senza condividere segreti, cookie, dump o payload reali.
+Il percorso runtime ordinario con Chrome/CDP e Betfair è stato validato nel collaudo `9B`. Restano fuori da questa validazione le failure specifiche di rete, credenziali e browser; la redazione continua a essere verificata con marker fittizi, senza usare o condividere segreti, cookie, dump o payload reali.
+
+## Redazione diagnostica
+
+La redazione copre:
+
+```txt
+Authorization Basic
+Authorization Digest
+Proxy-Authorization
+Cookie multipli
+Set-Cookie e attributi
+chiavi sensibili JSON
+token Bearer
+path Windows con slash e backslash
+path UNC
+path POSIX
+valori numerici non finiti
+```
+
+```txt
+stdout
+→ JSON scraper
+
+stderr e file log
+→ diagnostica strutturata e redatta
+```
+
+Nessun messaggio diagnostico contamina stdout.
+
+## Stato live Task 2
+
+Validato nel collaudo `9B`:
+
+```txt
+mode=cdp reale
+login-only started
+login-only reused
+tracking Betfair
+ladder utilizzabile
+matched volume aggiornato
+shutdown del figlio owned
+CDP preservato
+```
+
+Non sono dichiarate validate tutte le possibili failure di rete, credenziali o browser.
 
 ## Verifica
 

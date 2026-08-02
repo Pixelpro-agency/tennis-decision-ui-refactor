@@ -103,6 +103,35 @@ Il tracking può funzionare con solo SofaScore.
 
 `betfairUrl` e `betfairGraphUrls` possono essere vuoti.
 
+## Registry fisico, generation e barriera
+
+Il ruolo fisico è:
+
+```txt
+sofa_tracking
+```
+
+```txt
+scheduler
+→ directFetch
+→ capture della generation tracking corrente
+→ spawn Python registrato
+→ risposta pubblica
+→ completion fisica
+```
+
+`Stop` invalida la generation tramite `terminatePythonProcesses("tracking")`. Il mismatch la invalida esplicitamente prima del cleanup Betfair. Un nuovo Start successivo usa la generation corrente già aggiornata; `trackMatch(...)` non incrementa autonomamente la generation.
+
+Una callback appartenente a una generation precedente non può avviare un nuovo figlio o produrre un risultato valido per la sessione successiva.
+
+```txt
+risposta scraper disponibile
+≠
+processo fisicamente terminato
+```
+
+Retry e nuovo spawn rispettano la barriera di completion fisica precedente.
+
 ## Source Identity Gate
 
 Con URL SofaScore e Betfair, ogni nuova sessione crea un gate in memoria.
@@ -233,51 +262,64 @@ In caso di `mismatch`:
 
 ```txt
 tick causale non persistito
-→ stop globale tramite stopAllMatchTrackers({ preserveGateEventId: eventId })
-→ terminazione soli scraper Betfair figli del progetto
+→ stopAllMatchTrackers({ preserveGateEventId: eventId })
+→ generation tracking invalidata
+→ terminateActiveBetfairScrapers()
+→ betfair_tracking attivo terminato
+→ eventuale sofa_tracking in flight reso obsoleto
+→ betfair_login preservato
 → Chrome/CDP lasciato aperto
 → gate mismatch leggibile dallo status endpoint
 ```
 
-Il mismatch non deve cancellare timeline, history o conferme già esistenti.
+Il mismatch non usa il cleanup globale `scope=tracking`. Una callback della generation invalidata non può produrre effetti per la sessione successiva. Timeline, history e conferme già esistenti non vengono cancellate.
 
 ## Stop
 
-| Funzione                    | Effetto                                                                                                                             |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `untrackMatch(eventId)`     | Rimuove un solo match e il relativo gate; è usata dal percorso selettivo `/untrack`                                                 |
-| `stopMatchTracker(eventId)` | Variante programmabile per un solo match; restituisce `false` se il match non è tracciato e non è invocata dalla route HTTP attuale |
-| `stopAllMatchTrackers()`    | Ferma tutti i match e arresta lo scheduler globale                                                                                  |
-| `stopSchedulerIfEmpty()`    | Arresta l’intervallo quando non restano match                                                                                       |
+| Funzione | Effetto |
+| --- | --- |
+| `untrackMatch(eventId)` | Rimuove un solo match e il relativo gate; è usata dal percorso `/untrack` |
+| `stopMatchTracker(eventId)` | Ferma un match quando presente; non è invocata dalla route HTTP globale |
+| `stopAllMatchTrackers()` | Svuota i match, ferma lo scheduler e rimuove i gate; non invalida da sola la generation |
+| `stopSchedulerIfEmpty()` | Ferma l'intervallo quando non restano match |
 
-`stopAllMatchTrackers()` svuota `trackedMatches`, ferma lo scheduler interval e reimposta il relativo riferimento. È idempotente.
-
-Dopo uno stop globale, un successivo `trackMatch(...)` può riavviare normalmente lo scheduler.
-
-Dopo un nuovo Start, la timeline esistente continua senza reset ma `trackMatch(...)` pulisce i gate precedenti e crea una nuova sessione gate.
-
-Untrack rimuove il gate del solo event ID richiesto.
-
-Stop globale rimuove tutti i gate.
-
-Il mismatch conserva soltanto il proprio gate terminale finché non viene rimosso da Stop, Untrack o nuovo Start.
-
-Il cleanup globale è usato da:
+Percorso globale corrente:
 
 ```txt
 POST /api/match/stop
 → stopAllMatchTrackers()
-→ terminateActiveBetfairScrapers()
-
-SIGINT o SIGTERM backend
-→ stopAllMatchTrackers()
-→ terminateActiveBetfairScrapers()
-→ chiusura server HTTP
+→ terminatePythonProcesses("tracking")
+→ generation tracking invalidata
+→ sofa_tracking e betfair_tracking terminati
+→ betfair_login preservato
 ```
 
-La terminazione degli scraper Betfair riguarda soltanto i figli del progetto gestiti dal lifecycle Betfair.
+`stopAllMatchTrackers()` è idempotente. Dopo lo stop, un nuovo `trackMatch(...)` può riavviare lo scheduler e usa la generation aggiornata dal registry.
 
-Lo stop globale non cancella timeline, history, conferme Source Identity, dashboard già visibile o URL della sessione. Non chiude Chrome CDP.
+La route non chiude backend, frontend o Chrome/CDP e non cancella timeline, history o journal.
+
+## Normalizzazione JSON-safe SofaScore
+
+I campi statistici opzionali vengono normalizzati dal producer:
+
+```txt
+homeTotal assente
+→ null
+
+awayTotal assente
+→ null
+```
+
+`null` indica dato assente, non equivale a zero, è serializzabile in JSON ed è compatibile con il journal. Non è un fallback numerico e non modifica la semantica statistica.
+
+Validato live:
+
+```txt
+timeline SofaScore avanzata
+commit completo
+seq finita
+integrity no_known_partial
+```
 
 ## Confini
 
@@ -330,8 +372,11 @@ recording
 
 mismatch
 → non persiste il tick causale
-→ ferma tracker e scraper Betfair figli
-→ lascia Chrome CDP aperto
+→ ferma i tracker logici e preserva il gate terminale
+→ invalida la generation tracking
+→ termina il betfair_tracking attivo
+→ rende obsoleto l'eventuale sofa_tracking in flight
+→ lascia Chrome/CDP aperto
 
 nuovo Start
 → crea un nuovo gate

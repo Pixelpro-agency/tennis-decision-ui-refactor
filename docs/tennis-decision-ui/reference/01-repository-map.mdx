@@ -74,6 +74,40 @@ Il launcher non termina processi in base alla sola porta. Registra come owned so
 
 Il launcher non è owner del journal di persistenza. Non ripara, non cancella e non compatta `pending_commits`.
 
+## Runtime Task 2: percorsi e ownership
+
+```txt
+backend/src/runtime/
+├── pythonProcessRegistry.js
+└── runtimeLogger.js
+
+backend/src/utils/cdpUrl.js
+frontend/src/utils/cdpUrl.js
+frontend/src/utils/runtimeLog.js
+scrapers/betfair/cdp_url.py
+backend/src/routes/betfair/loginWindowLifecycle.js
+
+launcher/.runtime/
+├── launcher.lock
+├── launcher.lock.guard
+└── manifest.json
+```
+
+`launcher/.runtime/` è effimera e ignorata da Git.
+
+```txt
+launcher
+→ backend/frontend avviati
+
+backend
+→ figli Python registrati
+
+Chrome/CDP
+→ non owned
+```
+
+Per i contratti completi consultare Runtime locale, API Runtime Health, Tracking live SofaScore e Lifecycle scraper Betfair.
+
 ## Backend
 
 ```txt
@@ -280,7 +314,8 @@ docs/tennis-decision-ui/
 ├── api/
 │   ├── 01-match.mdx
 │   ├── 02-betfair.mdx
-│   └── 03-evidence.mdx
+│   ├── 03-evidence.mdx
+│   └── 06-runtime-health.mdx
 ├── operations/
 │   ├── 01-local-runtime.mdx
 │   ├── 03-betfair-diagnostics.mdx
@@ -303,6 +338,7 @@ docs/tennis-decision-ui/
 | API Match                    | `api/01-match.mdx`                                                                |
 | API Betfair                  | `api/02-betfair.mdx`                                                              |
 | API Evidence                 | `api/03-evidence.mdx`                                                             |
+| API Runtime Health           | `api/06-runtime-health.mdx`                                                       |
 | Evidence snapshot            | `modules/evidence/01-match-evidence-snapshot.mdx`                                  |
 | Quality flow e alignment     | `modules/evidence/03-quality-flow-and-alignment.mdx`                               |
 | Market Reactions             | `modules/evidence/04-market-reactions.mdx`                                        |
@@ -328,3 +364,7 @@ docs/tennis-decision-ui/
 * Modifica `integrity` o `409 persistence_integrity`: leggere storage, API interessata, Evidence se coinvolta e frontend consumer.
 * Modifica cleanup o rollback: leggere prima retention, validation, repository map e commit journal; non trattare `pending_commits` come cache.
 * Non usare history, cache, dump, lockfile, `pending_commits` o Repomix completo come contesto iniziale per un task ristretto.
+
+## Documenti collegati
+
+* [API Runtime Health](../api/06-runtime-health.mdx)

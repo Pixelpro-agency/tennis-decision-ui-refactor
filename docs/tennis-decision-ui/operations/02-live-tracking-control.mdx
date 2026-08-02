@@ -83,7 +83,7 @@ GET /api/match/:eventId/source-identity-status
 | `collecting`     | Dati ancora incompleti; nessuna persistenza                                                                                                                                |
 | `pending`        | Giocatori e runner presenti; conferma manuale ammessa                                                                                                                      |
 | `recording`      | Persistenza canonica attiva                                                                                                                                                |
-| `mismatch`       | Tick causale bloccato; il callback arresta tutti i tracker attivi, preserva soltanto il gate mismatch dell’evento causale e termina gli scraper Betfair figli del progetto |
+| `mismatch`       | Tick causale bloccato; il callback ferma i tracker logici, preserva il gate mismatch, invalida la generation e termina il Betfair tracking attivo; un eventuale SofaScore in flight diventa obsoleto |
 | `not-applicable` | Sessione SofaScore senza Betfair                                                                                                                                           |
 
 La conferma manuale è ammessa solo in `pending`.
@@ -94,81 +94,80 @@ POST /api/evidence/:eventId/source-identity/confirm
 
 `GET /api/evidence/:eventId/latest` può restituire `404` durante `collecting` o `pending`: non è un errore del gate.
 
-## Stop tracking
+## Stop Live Tracking
 
-Per fermare il live tracking usare il controllo Overview:
-
-```txt
-Stop Live Tracking
-```
-
-oppure:
+Per fermare il live usare il controllo Overview o:
 
 ```txt
 POST /api/match/stop
 ```
 
-Il comando è globale e idempotente. Il body può essere vuoto; un eventuale `eventId` è solo informativo.
-
-Durante la richiesta il frontend mostra:
+Flusso backend:
 
 ```txt
-Stopping live tracking...
+stopAllMatchTrackers()
+→ tracker e scheduler fermati
+→ terminatePythonProcesses("tracking")
+→ generation tracking invalidata
+→ sofa_tracking terminato
+→ betfair_tracking terminato
+→ attesa bounded
+→ betfair_login preservato
+→ backend, frontend e CDP preservati
 ```
 
-Dopo una risposta positiva mostra:
+La risposta include `pythonCleanup`; lo schema completo resta nell’owner [API Match](../api/01-match.mdx).
+
+Lo stop è globale e idempotente. L’eventuale `eventId` è informativo. Non cancella history, timeline, journal, conferme Source Identity, dashboard, URL o profilo browser.
+
+Il controllo Overview ferma esplicitamente il polling SofaScore frontend. Gli hook Betfair, Evidence e Source Identity possono restare montati e leggere dati persistiti, ma non riavviano il tracking backend.
+
+## Controllo tramite Runtime Health
+
+Usare `GET /api/health`.
+
+Prima dello stop possono essere presenti ruoli tracking. Dopo una completion riuscita (`pythonCleanup.ok: true` e `pythonCleanup.remaining: 0`):
 
 ```txt
-Live tracking stopped
+sofa_tracking = 0
+betfair_tracking = 0
+stopping = 0
 ```
 
-Flusso previsto:
+`scope=tracking` non termina `betfair_login`; il conteggio può comunque cambiare per il lifecycle autonomo del login. Se `pythonCleanup.remaining > 0`, il cleanup è incompleto e i contatori possono non essere ancora a zero.
+
+## Shutdown completo
 
 ```txt
-stop richiesto
-→ stop tracker SofaScore e scheduler globale
-→ rimozione dei gate Source Identity attivi
-→ stop polling Betfair backend
-→ terminazione scraper Betfair figli del progetto
-→ risposta backend positiva
-→ stop polling SofaScore frontend
-→ backend e frontend restano aperti
-→ Chrome CDP resta aperto
+Ctrl+C launcher
+→ shutdown backend
+→ terminate scope=all
+→ termina anche betfair_login
+→ chiude backend/frontend owned
+→ preserva CDP reused o external
 ```
 
-Il controllo Overview ferma esplicitamente soltanto il polling SofaScore frontend.
+Lo shutdown duplicato condivide una singola procedura. L’eventuale fallback agisce soltanto sui PID owned registrati.
 
-I hook Betfair, Evidence e Source Identity restano montati finché la shell resta aperta. Possono quindi continuare a leggere dati persistiti o ricevere `404` dopo lo stop, ma non riavviano il tracking backend.
+## Verifica live 9B
 
-Lo stop non deve:
-
-* cancellare history;
-* cancellare timeline;
-* cancellare conferme Source Identity;
-* cancellare dashboard o URL di sessione;
-* chiudere Chrome CDP;
-* cancellare il profilo browser;
-* trasformare dati già mostrati in dati live.
-
-Il mismatch è un caso speciale: il gate mismatch resta leggibile finché non viene rimosso da Stop, Untrack o nuovo Start.
-
-## Chiusura completa dello stack
-
-Con il launcher già aperto, usare `Ctrl+C` nel terminale.
-
-Sequenza attesa:
+La verifica live è stata eseguita in due sequenze distinte:
 
 ```txt
-Ctrl+C
-→ cleanup globale tracker e scraper Betfair figli
-→ chiusura server HTTP backend
-→ frontend chiuso se controllato dal launcher
-→ Chrome CDP lasciato aperto
+sequenza Stop
+→ ruoli tracking terminati
+→ nessun respawn per 10 secondi
+
+sequenza login-only successiva
+→ started
+→ already_active
+→ un solo PID ed executionId
+→ tracking ancora fermo
 ```
 
-Il backend applica lo stesso cleanup anche quando riceve `SIGINT` o `SIGTERM`.
+Non è stata esercitata direttamente nella stessa sequenza la condizione `login già attivo → Stop → login ancora attivo`. La preservazione del ruolo `betfair_login` da `scope=tracking` resta verificata dal contratto e dai test automatici.
 
-Uno shutdown duplicato viene ignorato. Se il server HTTP non chiude, resta un fallback massimo di cinque secondi prima dell’uscita del backend.
+Non sono riportati event ID, giocatori o dati reali della sessione.
 
 ## Regole operative
 
@@ -182,6 +181,8 @@ Uno shutdown duplicato viene ignorato. Se il server HTTP non chiude, resta un fa
 
 ## Documenti collegati
 
+
+* [API Runtime Health](../api/06-runtime-health.mdx)
 * [Runtime locale](./01-local-runtime.mdx)
 * [Diagnostica Betfair](./03-betfair-diagnostics.mdx)
 * [API Match](../api/01-match.mdx)

@@ -67,29 +67,23 @@ Il backend Node non deve importare o invocare direttamente moduli interni di `sc
 
 ## Stato
 
-**Implementato.**
-
-Verificato live:
+Validato live:
 
 ```txt
-python avvio.py
-→ backend avviato
-→ frontend Vite avviato
-→ browser aperto dal launcher
+avvio canonico
+seconda invocazione reusable
+shutdown Ctrl+C
+terminazione backend/frontend owned
+preservazione CDP reused
+riavvio pulito
 ```
 
-Restano **Implementato, da validare**:
+Restano da validare live:
 
 ```txt
-porte preferite occupate da processi esterni
-→ fallback backend e frontend
-
-doppio avvio ravvicinato
-
-shutdown Ctrl+C
-→ verifica dei soli processi owned
-
-CDP alternativo su porta diversa da 9222
+fallback backend/frontend con porte occupate da processi esterni
+CDP reale alternativo
+force-kill realmente necessario
 ```
 
 ## Launcher
@@ -115,6 +109,30 @@ launcher/
 | `tests/test_launcher.py` | Test deterministici del lifecycle launcher.                                               |
 
 `system.py` non termina processi in base alla sola porta.
+
+## Ownership e registri
+
+```txt
+launcher
+→ owner di backend/frontend avviati
+
+backend
+→ owner esclusivo dei figli Python registrati
+
+wrapper Python
+→ entrypoint compatibili
+```
+
+Il launcher non mantiene un registry concorrente degli scraper.
+
+## Riuso della sessione
+
+```txt
+sessione reusable
+→ session_reuse
+→ browser_open sul frontend esistente
+→ seconda invocazione terminata
+```
 
 ## Sequenza runtime
 
@@ -151,6 +169,16 @@ Il frontend viene avviato direttamente tramite Node e CLI Vite locale, con bind 
 ```
 
 Il launcher usa l'URL frontend effettivamente scelto nel manifest e per aprire il browser.
+
+## Percorsi runtime aggiunti
+
+```txt
+scrapers/betfair/cdp_url.py
+backend/src/runtime/pythonProcessRegistry.js
+backend/src/runtime/runtimeLogger.js
+```
+
+Il documento collega questi moduli senza assorbirne i contratti completi.
 
 ## CDP
 

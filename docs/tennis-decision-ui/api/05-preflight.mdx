@@ -58,23 +58,27 @@ Payload:
 }
 ```
 
-La route normalizza l’URL rimuovendo slash finali e verifica:
+La URL deve rispettare tutti i vincoli:
 
 ```txt
-<cdpUrl>/json/version
+protocollo http
+host locale: 127.0.0.1 | localhost | ::1
+porta esplicita fra 1 e 65535
+nessuna username o password
+path applicativo assente
+query assente
+fragment assente
 ```
 
-Quando `cdpUrl` è assente o falsy, la route usa il fallback:
+Esiti di validazione:
 
-```txt
-http://127.0.0.1:9222
-```
+| Condizione | HTTP | Body |
+| --- | ---: | --- |
+| Input assente o vuoto | `400` | `{ ok: false, code: "cdp_url_required", error: "CDP URL required" }` |
+| Input non valido | `400` | `{ ok: false, code: "cdp_url_invalid", error: "Invalid CDP URL" }` |
+| Input valido | `200` gestito | Verifica `<cdp-url>/json/version` |
 
-Una stringa composta solo da spazi non usa questo fallback, perché è truthy prima della normalizzazione. I chiamanti devono quindi omettere il campo o inviare un URL valido.
-
-La route non apre Chrome e non modifica la sessione browser.
-
-Gli esiti gestiti restituiscono body JSON con status HTTP `200`, anche quando `ok` è `false`.
+Input vuoto o non valido non esegue alcun fetch.
 
 Risposta riuscita:
 
@@ -88,25 +92,17 @@ Risposta riuscita:
 }
 ```
 
-Possibili errori gestiti:
+Gli errori raggiunti dopo la validazione restano risposte JSON con HTTP `200` e `ok: false`:
 
-| Condizione                         | Campi rilevanti                                          |
-| ---------------------------------- | -------------------------------------------------------- |
-| Risposta vuota                     | `ok: false`, `error: 'Empty response from CDP'`          |
-| JSON non valido                    | `ok: false`, `error: 'Invalid JSON from CDP'`, `snippet` |
-| HTTP non riuscito                  | `ok: false`, `status`, `error`                           |
-| Endpoint raggiunto senza WebSocket | `ok: false`, `browser`, `error`                          |
-| Endpoint irraggiungibile           | `ok: false`, `error`                                     |
+| Condizione | Campi rilevanti |
+| --- | --- |
+| Risposta vuota | `webSocketDebuggerUrl: false`, `error: "Empty response from CDP"` |
+| JSON non valido | `webSocketDebuggerUrl: false`, `error: "Invalid JSON from CDP"` |
+| HTTP CDP non riuscito | `status`, `webSocketDebuggerUrl: false`, `error` statico |
+| Endpoint senza WebSocket | `browser`, `webSocketDebuggerUrl: false`, `error` statico |
+| Endpoint irraggiungibile | `webSocketDebuggerUrl: false`, `error: "CDP unreachable"` |
 
-La decisione del frontend di non inviare il preflight quando Chrome non è disponibile appartiene al modulo frontend. Questo router resta comunque invocabile e applica il fallback locale quando il campo CDP manca.
-
-Il fallback CDP di questa route non modifica il contratto di:
-
-```txt
-POST /api/match/track
-```
-
-Il tracking in modalità CDP mantiene le proprie regole di validazione.
+La route non apre Chrome, non avvia tracking e non modifica la sessione browser. `9222` è soltanto la porta preferita del launcher: non è un fallback della route.
 
 ## URL SofaScore
 
@@ -334,7 +330,7 @@ Verificare almeno:
 
 ```txt
 CDP senza cdpUrl
-→ fallback locale 127.0.0.1:9222
+→ HTTP 400 cdp_url_required e nessun fetch
 
 Sofa URL non valida
 → body ok false senza fetch

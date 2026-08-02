@@ -91,23 +91,24 @@ confirmedCdpUrl
 
 ### URL CDP effettivo
 
-`cdpUrl` e `confirmedCdpUrl` conservano l'endpoint CDP effettivo ricevuto dalla sessione, anche quando usa una porta alternativa.
+`cdpUrl` e `confirmedCdpUrl` conservano l'endpoint effettivo della sessione.
 
-Un valore vuoto:
-
-```txt
-cdpUrl === ''
-```
-
-rappresenta un CDP non disponibile e deve restare vuoto. Il frontend non lo sostituisce con:
+Precedenza reale:
 
 ```txt
-http://127.0.0.1:9222
+valore current definito
+→ prevale anche quando è ""
+
+altrimenti valore confirmed definito
+→ prevale
+
+altrimenti
+→ ""
 ```
 
-In modalità `cdp`, il preflight non invia una richiesta quando l'URL è vuoto. Le azioni di login e tracking devono invece fermarsi prima della richiesta HTTP con un errore esplicito.
+Un valore vuoto resta vuoto. Il frontend non introduce alcun fallback a `http://127.0.0.1:9222`.
 
-Il valore predefinito `http://127.0.0.1:9222` resta soltanto per compatibilità legacy quando entrambi i valori CDP sono `undefined`.
+In modalità `cdp`, preflight, login e tracking usano lo stesso valore normalizzato; quando è vuoto, l'azione si ferma senza inventare un endpoint.
 
 ## Visibilità shell
 
@@ -204,9 +205,9 @@ Non cambiare questo ordine senza aggiornare comportamento UX e test collegati.
 
 ## Login Betfair
 
-`buildBetfairLoginRequest(...)` usa prima i valori correnti e, se assenti, quelli confermati.
+Il flusso UI resta `Link Accounts & Start`; non esiste un pulsante login-only separato.
 
-Il payload include:
+`buildBetfairLoginRequest(...)` usa la precedenza current/confirmed descritta sopra e invia:
 
 ```txt
 url
@@ -215,13 +216,13 @@ profileDir
 cdpUrl
 ```
 
-Per `persistent`, il service invia `profileDir`.
+`liveSessionApi.openBetfairLoginWindow(...)` riceve le risposte strutturate `no_target`, `started` e `already_active`. Gli errori, incluso `login_runtime_conflict`, vengono trasformati in eccezioni statiche dal service.
 
-Per `cdp`, il service usa l'URL CDP selezionato dalla sessione.
+L’hook `useBetfairLoginAction(...)` restituisce il payload in caso di successo; in caso di errore registra `betfair_login_failed` e restituisce `null`. Quindi l’interfaccia attuale non propaga integralmente il `code` strutturato dell’errore come stato UI.
 
-Un valore CDP corrente vuoto usa il valore confermato quando disponibile. Il valore predefinito locale è usato soltanto per compatibilità legacy quando entrambi i valori CDP sono assenti.
+Login e tracking restano nello stesso flusso UI corrente.
 
-## Stop tracking
+## Stop Live Tracking
 
 Il controllo visibile nell’Overview è:
 
@@ -229,36 +230,27 @@ Il controllo visibile nell’Overview è:
 Stop Live Tracking
 ```
 
-`useLiveTrackingActions.js` coordina richiesta, stato UI e stop del polling SofaScore. `App.jsx` collega queste callback alla shell e al componente dashboard.
-
-La richiesta di stop invia:
+`useLiveTrackingActions.js` invia `POST /api/match/stop` con `eventId` informativo, coordina lo stato UI e ferma il polling SofaScore previsto.
 
 ```txt
-eventId: sofaEventId || null
-```
+richiesta
+→ Stopping live tracking...
 
-Durante la richiesta viene mostrato:
-
-```txt
-Stopping live tracking...
-```
-
-Quando il backend restituisce `ok: true`:
-
-```txt
-Live tracking stopped
+risposta con ok: true
+→ Live tracking stopped
 → stopSofaPolling()
+→ setTrackingStopped(true)
 ```
 
-In caso di errore viene mostrato:
+Il service HTTP restituisce il payload completo, incluso `pythonCleanup`. Gli handler UI attuali usano soprattutto `ok` e non espongono integralmente la summary `pythonCleanup` ai componenti.
 
-```txt
-Stop failed: <errore>
-```
+Il backend usa `scope=tracking`: preserva `betfair_login`, backend, frontend e CDP. Il frontend non presenta lo stop come selettivo.
 
-Il backend mantiene il significato globale di `POST /api/match/stop`; il frontend non deve presentarlo come stop selettivo.
+Lo stop non svuota dashboard, URL, snapshot o dati persistiti. Gli hook Betfair, Evidence e Source Identity possono restare montati e continuare a leggere dati già persistiti o ricevere `404`, ma non riavviano il tracking backend.
 
-Lo stop non svuota dashboard, URL, snapshot, dati già visibili o stato Source Identity. Non interrompe esplicitamente il polling Betfair frontend in questa task.
+## Logging runtime frontend
+
+Il runtime log frontend usa soltanto campi allow-list. Non inoltra `Error` raw, URL operative complete, profili, command line o segreti.
 
 ## Viste
 

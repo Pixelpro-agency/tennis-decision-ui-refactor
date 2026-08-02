@@ -36,23 +36,29 @@ backend/src/routes/
     ├── moneyFlowHistory.js
     ├── moneyFlowHistorySeries.js
     ├── oddsResponse.js
-    ├── logReader.js
-    └── loginWindow.js
+    ├── loginWindow.js
+    └── loginWindowLifecycle.js
+
+backend/src/runtime/
+├── pythonProcessRegistry.js
+└── runtimeLogger.js
 
 backend/src/sofa/
 └── matchHistory.js
 ```
 
-| Modulo                      | Responsabilità                                                                 |
-| --------------------------- | ------------------------------------------------------------------------------ |
-| `latestPayload.js`          | Costruisce latest, health, metadata, serie Money Flow e `integrity` read-only  |
-| `moneyFlowHistory.js`       | Costruisce e valida il point `matchedVolume` non direzionale                   |
-| `moneyFlowHistorySeries.js` | Deriva serie per `selectionId` dagli ultimi tick validi                        |
-| `oddsResponse.js`           | Valida query e delega il fetch Betfair esplicito                               |
-| `cdpStatus.js`              | Verifica CDP soltanto quando `mode=cdp`                                        |
-| `logReader.js`              | Legge un numero limitato di righe dal log                                      |
-| `loginWindow.js`            | Avvia il flusso Python di login separato                                       |
-| `matchHistory.js`           | Espone letture canoniche Betfair e adapter `getBetfairPersistenceIntegrity`    |
+| Modulo | Responsabilità |
+| --- | --- |
+| `latestPayload.js` | Costruisce latest, health, metadata, Money Flow e `integrity` read-only |
+| `moneyFlowHistory.js` | Costruisce e valida il point `matchedVolume` non direzionale |
+| `moneyFlowHistorySeries.js` | Deriva serie per `selectionId` dagli ultimi tick validi |
+| `oddsResponse.js` | Valida query e delega il fetch Betfair esplicito |
+| `cdpStatus.js` | Verifica CDP soltanto quando `mode=cdp` |
+| `loginWindow.js` | Costruisce argomenti e runtime identity del login Python |
+| `loginWindowLifecycle.js` | Deduplica il login-only e coordina `spawnReady` e stato attivo |
+| `pythonProcessRegistry.js` | Possiede fisicamente il figlio `betfair_login` |
+| `runtimeLogger.js` | Logging strutturato, lettura bounded e redazione |
+| `matchHistory.js` | Espone letture canoniche Betfair e adapter `getBetfairPersistenceIntegrity` |
 
 ## Endpoint
 
@@ -593,40 +599,42 @@ Il contratto HTTP resta invariato: cambia solo il contenuto diagnostico persisti
 GET /api/betfair/log
 ```
 
-L’endpoint legge:
+La route legge il path fisso `backend/betfair_scraper.log`; la richiesta non può scegliere il file o aumentare i limiti.
 
-```txt
-backend/betfair_debug.log
-```
-
-Risposta riuscita:
+La risposta usa sempre HTTP `200`:
 
 ```json
 {
+  "status": "ok | not_found | read_failed",
   "lines": []
 }
 ```
 
-Comportamento:
+Contratto:
 
 ```txt
-file assente
-→ 200 con lines vuoto
-
-file disponibile
-→ ultime 100 righe non vuote, nell’ordine originale
-
-errore di lettura
-→ 500 con error.message
+massimo 200 linee
+massimo 1000 caratteri per linea
+lettura bounded sugli ultimi 512 KiB
+redazione applicata anche in lettura
+Cache-Control: no-store
 ```
 
-L’endpoint non accetta parametri per aumentare il limite.
+```txt
+file disponibile
+→ status: ok
+→ righe non vuote nell'ordine originale
 
-Le righe prodotte dal logger Betfair devono essere già redatte prima della scrittura su file.
+file assente
+→ status: not_found
+→ lines: []
 
-La route legge il file log e non deve essere usata per esporre cookie, token, chiavi applicative, header sensibili, payload raw, dump diagnostici o payload journalizzati.
+errore di lettura
+→ status: read_failed
+→ lines: []
+```
 
-Nota sul comportamento attuale: in caso di errore di lettura, il router restituisce direttamente `error.message`. Questo può contenere dettagli del filesystem; prima di esporre la route oltre l’ambiente locale, il codice dovrebbe sostituirlo con un errore pubblico redatto.
+Non vengono esposti `error.message`, path locali, cookie, token, chiavi applicative, header sensibili, payload raw, dump diagnostici o payload journalizzati.
 
 ## Login Betfair
 
@@ -634,56 +642,34 @@ Nota sul comportamento attuale: in caso di errore di lettura, il router restitui
 POST /api/betfair/login-window
 ```
 
-Payload minimo:
-
-```json
-{
-  "url": "<betfair-url>"
-}
-```
-
-Campi opzionali:
+Campi:
 
 ```txt
+url
 mode
 profileDir
 cdpUrl
 ```
 
-`mode` usa `persistent` come default.
+`mode` usa `persistent` come default. `profileDir` viene normalizzata soltanto in modalità `persistent`; `cdpUrl` è richiesta e validata soltanto in modalità `cdp`.
 
-`profileDir` viene passato allo scraper soltanto con modalità `persistent` e valore non vuoto.
+| Caso | HTTP | Body pubblico |
+| --- | ---: | --- |
+| Target vuoto | `200` | `{ ok: true, status: "no_target", opened: false, reused: false }` |
+| URL Betfair non valida | `400` | `{ ok: false, code: "betfair_url_invalid", error: "Invalid Betfair URL" }` |
+| CDP assente in `mode=cdp` | `400` | `{ ok: false, code: "cdp_url_required", error: "CDP URL required" }` |
+| CDP non valida | `400` | `{ ok: false, code: "cdp_url_invalid", error: "Invalid CDP URL" }` |
+| Scraper assente | `500` | `{ ok: false, code: "scraper_not_found", error: "Betfair scraper not available" }` |
+| Primo avvio compatibile | `200` | `{ ok: true, status: "started", opened: true, reused: false }` |
+| Login compatibile già attivo | `200` | `{ ok: true, status: "already_active", opened: true, reused: true }` |
+| Runtime incompatibile | `409` | `{ ok: false, code: "login_runtime_conflict", error: "An incompatible login session is already active." }` |
+| Spawn fallito | `500` | `{ ok: false, code: "login_spawn_failed", error: "Unable to open Betfair login window." }` |
 
-`cdpUrl` viene passato allo scraper soltanto con modalità `cdp` e valore non vuoto.
+`started` viene restituito soltanto dopo `spawnReady` e registrazione fisica del processo. `already_active` riusa lo stesso processo logico e non esegue un secondo spawn. `login_runtime_conflict` non esegue kill, restart o nuovo spawn.
 
-| Condizione                       | Status | Risposta                                    |
-| -------------------------------- | ------ | ------------------------------------------- |
-| `url` assente                    | `400`  | `Missing Betfair URL`                       |
-| `betfair_scraper.py` non trovato | `500`  | Errore con percorso cercato                 |
-| Richiesta accettata              | `200`  | `ok: true` e messaggio di apertura finestra |
+Il login usa il ruolo `betfair_login`, distinto dai ruoli tracking. `POST /api/match/stop` usa `scope=tracking` e non termina il login; lo shutdown backend usa `scope=all` e lo termina.
 
-Risposta riuscita:
-
-```json
-{
-  "ok": true,
-  "message": "Login window opened. Log in and close it when done."
-}
-```
-
-Il router avvia il flusso Python in modo asincrono.
-
-Un `200` conferma che la richiesta di avvio è stata eseguita dal router. Non conferma che:
-
-* il processo Python sia rimasto attivo;
-* il browser sia disponibile;
-* il login sia stato completato;
-* la sessione sia autenticata;
-* il processo sia terminato con successo.
-
-Gli errori di spawn o l’exit code successivi vengono registrati dal processo Node e non possono modificare una risposta `200` già inviata.
-
-Non esistono ancora test automatici dedicati per `logReader.js` e `loginWindow.js`.
+Un `200` non conferma che l’utente abbia completato l’autenticazione. La route non espone PID, `executionId`, runtime identity, URL complete o dettagli del processo.
 
 ## Confini
 
@@ -710,7 +696,6 @@ node routes/betfair/oddsResponse.test.mjs
 node sofa/matchHistory/commitJournal.test.mjs
 node sofa/matchHistory/recovery.test.mjs
 
-node --check routes/betfair/logReader.js
 node --check routes/betfair/loginWindow.js
 ```
 
@@ -777,12 +762,15 @@ oddsResponse.test.mjs
 
 verifica manuale log
 → file assente: lines vuoto
-→ file disponibile: massimo 100 righe non vuote
+→ file disponibile: massimo 200 linee non vuote
 → nessun payload journalizzato o segreto raw
 
-verifica manuale login-window
-→ url assente: 400
-→ 200: richiesta avvio ricevuta, non login verificato
+verifica login-window
+→ target vuoto: 200 con no_target, opened false e reused false
+→ started: restituito soltanto dopo spawnReady
+→ already_active: stesso processo logico e nessun secondo spawn
+→ login_runtime_conflict: 409 senza kill, restart o nuovo spawn
+→ HTTP 200 non equivale a login utente completato
 ```
 
 Nota di evidenza logout Graph:

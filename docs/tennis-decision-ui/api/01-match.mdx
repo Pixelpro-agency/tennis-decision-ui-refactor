@@ -284,28 +284,55 @@ chromeProfilePath
 cdpUrl
 ```
 
-I valori Betfair possono essere vuoti quando il tracking deve usare soltanto SofaScore.
+I valori Betfair possono essere vuoti quando il tracking usa soltanto SofaScore.
 
-In modalità `cdp`, `cdpUrl` deve essere presente e non vuoto. Non viene applicato automaticamente il fallback:
+In modalità `persistent`, `cdpUrl` non è richiesta. In modalità `cdp`, `cdpUrl` è obbligatoria e deve essere una URL HTTP locale con porta esplicita. Non esiste fallback.
 
-```txt
-http://127.0.0.1:9222
+| Caso | HTTP | `code` | Effetto |
+| --- | ---: | --- | --- |
+| CDP assente o vuoto | `400` | `cdp_url_required` | Nessun tracker e nessun figlio Python avviato |
+| CDP non valida | `400` | `cdp_url_invalid` | Nessun tracker e nessun figlio Python avviato |
+| Runtime Betfair incompatibile già attivo | `409` | `scraper_runtime_conflict` | Nessun kill, restart o nuovo spawn |
+| Richiesta valida | `200` | — | `{ ok: true, eventId }` |
+
+Body degli errori CDP:
+
+```json
+{
+  "code": "cdp_url_required",
+  "error": "CDP non disponibile. Seleziona Profilo Persistent o attendi Chrome."
+}
 ```
 
-In assenza di un `cdpUrl` valido, il router restituisce:
-
-```txt
-400
-CDP non disponibile. Seleziona Profilo Persistent o attendi Chrome.
+```json
+{
+  "code": "cdp_url_invalid",
+  "error": "URL CDP non valido."
+}
 ```
 
-Il tracker non viene avviato.
+Il conflitto runtime restituisce:
+
+```json
+{
+  "code": "scraper_runtime_conflict",
+  "error": "An incompatible Betfair scraper is already active."
+}
+```
+
+Un rifiuto di validazione o un conflitto avvengono prima di `trackMatch(...)`: non viene avviato alcun tracker o nuovo figlio Python.
 
 Le modifiche a `integrity` non cambiano il comportamento di `track`, `untrack`, `stop`, `analyze`, `snapshot`, `source-identity-status` o `debug-last`.
 
 ### Untrack
 
-`POST /api/match/untrack` usa `eventId` e ferma soltanto il tracker richiesto. Rimuove il gate relativo a quell’evento senza modificare sessioni o timeline di altri match.
+`POST /api/match/untrack` usa `eventId`, ferma soltanto il tracker richiesto e rimuove il gate relativo a quell’evento.
+
+```json
+{
+  "ok": true
+}
+```
 
 ### Stop globale
 
@@ -313,9 +340,7 @@ Le modifiche a `integrity` non cambiano il comportamento di `track`, `untrack`, 
 POST /api/match/stop
 ```
 
-Lo stop è globale e idempotente.
-
-Il body è facoltativo:
+Lo stop è globale e idempotente. Il body è facoltativo:
 
 ```json
 {}
@@ -325,46 +350,47 @@ oppure:
 
 ```json
 {
-  "eventId": "16305613"
+  "eventId": "<eventId>"
 }
 ```
 
-Quando presente, `eventId` è soltanto informativo e viene restituito nella risposta. Lo scope resta sempre globale.
-
-Risposta prevista:
+Quando presente, `eventId` è informativo. La risposta HTTP resta `200` e include il riepilogo del cleanup fisico:
 
 ```json
 {
   "ok": true,
-  "eventId": "16305613",
+  "eventId": "<eventId|null>",
   "stopped": true,
-  "scope": "all-live-tracking"
+  "scope": "all-live-tracking",
+  "pythonCleanup": {
+    "ok": true,
+    "scope": "tracking",
+    "requested": 0,
+    "graceful": 0,
+    "forceKilled": 0,
+    "alreadyExited": 0,
+    "remaining": 0,
+    "errors": []
+  }
 }
 ```
 
-Con body vuoto, `eventId` restituito è `null`.
+Flusso:
 
-Il cleanup tenta sia lo stop dei tracker sia la terminazione degli scraper Betfair figli del progetto.
-
-Lo stop non:
-
-* chiude backend, frontend o Chrome CDP;
-* cancella timeline, history o conferme Source Identity;
-* cancella journal o stato `integrity`;
-* esegue recovery;
-* cancella URL di sessione o dashboard già visibili.
-
-Rimuove invece le sessioni gate attive.
-
-Il solo percorso `mismatch` conserva temporaneamente il proprio gate terminale, così che lo status resti leggibile:
-
-```json
-{
-  "active": false,
-  "phase": "mismatch",
-  "persistence": "blocked"
-}
+```txt
+stopAllMatchTrackers()
+→ tracker, scheduler e gate attivi fermati
+→ terminatePythonProcesses("tracking")
+→ generation tracking invalidata
+→ sofa_tracking e betfair_tracking terminati
+→ attesa bounded della completion fisica
 ```
+
+`pythonCleanup.ok` descrive il cleanup dei figli Python; il campo top-level `ok: true` indica che la route ha gestito la richiesta.
+
+Lo stop non termina `betfair_login`, backend, frontend o Chrome/CDP. Non cancella timeline, history, journal, conferme Source Identity o stato `integrity` e non esegue recovery.
+
+Il percorso `mismatch` resta distinto: può preservare temporaneamente il proprio gate terminale affinché lo status sia leggibile.
 
 ## Analisi SofaScore
 

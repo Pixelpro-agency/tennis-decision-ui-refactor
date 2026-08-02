@@ -73,36 +73,42 @@ Dati mancanti o ambigui restano indisponibili.
 
 Lo stop globale del live tracking e il cleanup backend su `SIGINT` o `SIGTERM` sono implementati e validati live.
 
-### Task A — launcher locale sicuro e automatico
+### Task 2 runtime launcher e lifecycle processi
 
-**Implementato, con verifica live parziale.**
+**Implementato e validato nel percorso ordinario.**
 
-Il launcher non termina processi in base alla sola porta. Riuso, manifest runtime e shutdown restano limitati ai servizi identificati e ai processi owned dalla sessione. Chrome/CDP, riusato o avviato dall’helper, resta escluso dalla ownership e non viene chiuso dal launcher.
-
-Verificato live:
+Completati:
 
 ```txt
-python avvio.py
-→ backend avviato
-→ frontend Vite avviato
-→ browser aperto dal launcher
+launcher runtime Task 2
+registry centralizzato processi Python
+login-only deduplicato
+scope tracking
+scope all
+propagazione CDP senza fallback
+logging strutturato e redatto
+collaudo 9A-R
+collaudo 9B
+percorso ordinario JSON-safe live
 ```
 
-Il falso timeout frontend causato dal wrapper batch npm è stato corretto.
-
-Restano da validare live:
+Restano aperti:
 
 ```txt
-porte backend e frontend preferite occupate da processi esterni
-→ fallback su porte alternative
-
-doppio avvio ravvicinato
-
-Ctrl+C
-→ arresto dei soli processi owned
-
-CDP alternativo su porta diversa da 9222
+porte alternative reali con processi esterni
+CDP alternativo reale
+force-kill reale
+login_runtime_conflict live
+partial_persistence reale controllata
+recovery_failed reale
+failure filesystem reale
+pending Source Identity reale, se ancora aperto
+test automatico dedicato JSON-safe
 ```
+
+Questa voce è distinta dalla precedente Task 2A–2F Money Flow e non rinumera retroattivamente le task.
+
+Limite del collaudo 9B: Stop e login-only sono stati verificati in sequenze separate; la continuità live `login già attivo → Stop → login ancora attivo` non è stata osservata direttamente nella stessa sequenza.
 
 ### Task 4 completata e validata
 
@@ -131,7 +137,9 @@ mismatch
 → tick causale bloccato
 → arresto di tutti i tracker attivi
 → preservazione del solo gate mismatch dell’evento causale
-→ terminazione degli scraper Betfair figli del progetto
+→ invalidazione della generation tracking
+→ terminazione del Betfair tracking attivo
+→ eventuale SofaScore in flight reso obsoleto
 → Chrome/CDP lasciato aperto
 ```
 
@@ -329,7 +337,7 @@ Non è archiviato un payload `/latest` post-fix e non esiste un test automatico 
 
 ### Hardening diagnostica e configurazione Betfair
 
-**Implementato, da validare su runtime reale.**
+**Implementato e validato nel percorso ordinario.**
 
 La chiave applicativa Betfair è risolta da `BETFAIR_APP_KEY` nell’ambiente o dal file `.env` locale della root, senza valore letterale nei file Python.
 
@@ -347,7 +355,7 @@ test lifecycle Node/Python
 probe locali con marker fittizi
 ```
 
-Resta aperta la validazione controllata su diagnostica runtime reale con Chrome/CDP e Betfair, senza condividere segreti, cookie, dump o payload reali.
+Il logging strutturato e redatto, la configurazione e il percorso runtime ordinario sono coperti dai test e dai collaudi `9A-R`/`9B`. Restano aperti soltanto gli scenari specifici di rete, browser e mercato elencati nell’hardening operativo Betfair; non costituiscono una nuova validazione diagnostica generica.
 
 ### Retention cache runtime offline
 
@@ -374,8 +382,6 @@ Non esistono job schedulati, cron, avvio automatico dal launcher o cleanup perio
 
 | Priorità | Lavoro                                                                            | Motivo                                                                                                                               |
 | -------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Alta     | Validare hardening diagnostico Betfair su runtime reale controllato               | Confermare la redazione su Chrome/CDP e Betfair reali senza esporre segreti, cookie, dump o payload                                  |
-| Alta     | Validare il launcher locale sicuro e automatico (Task A)                          | Confermare fallback porte, doppio avvio, shutdown owned e CDP alternativo su live reale                                              |
 | Alta     | Validare pending reale Source Identity                                            | Confermare mapping, bootstrap, conferma manuale e decline su fonti confrontabili                                                     |
 | Alta     | Validare Contesto locale su match reale                                           | Verificare almeno un caso con punti e finestra recente disponibili e un caso reale di indisponibilità, senza valori fittizi nella UI |
 | Alta     | Validare persistence integrity e recovery journal su scenario controllato         | Confermare commit completo, partial persistence, recovery riuscita, recovery failed, 409 read-only, Evidence degradata e UI coerente  |
@@ -389,8 +395,7 @@ Non esistono job schedulati, cron, avvio automatico dal launcher o cleanup perio
 ## Ordine consigliato
 
 ```txt
-validazione hardening diagnostico Betfair su runtime reale controllato
-→ validazione pending reale Source Identity
+validazione pending reale Source Identity
 → validazione persistence integrity e recovery journal su scenario controllato
 → apply offline controllato della retention cache runtime
 → eventuale rotazione futura log/dump

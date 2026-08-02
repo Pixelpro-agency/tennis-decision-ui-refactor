@@ -63,84 +63,166 @@ deferPersistence
 | `persistent` | Avvia lo scraper con profilo browser persistente      |
 | `cdp`        | Collega lo scraper a un Chrome già aperto tramite CDP |
 
-## Lifecycle del processo
+## Registry fisico e lifecycle logico
+
+Il backend separa ownership fisica e deduplicazione logica:
+
+```txt
+backend/src/runtime/pythonProcessRegistry.js
+→ possiede il child Python registrato
+
+lifecycle Betfair
+→ deduplica richieste per mercato e runtime identity
+```
+
+Ruoli distinti:
+
+```txt
+betfair_tracking
+betfair_login
+```
+
+Il login non appartiene al tracking e non viene terminato da `scope=tracking`.
+
+Flusso tracking:
 
 ```txt
 tracker update
 → fetchBetfairData
 → chiave di deduplicazione
 → eventuale restore stato da history
-→ spawn betfair_scraper.py
-→ raccolta stdout e stderr
-→ estrazione JSON finale
+→ spawn betfair_scraper.py registrato
+→ raccolta stdout JSON e stderr diagnostico
 → delega al processor Betfair
 → esito di commit strutturato
-→ risultato elaborato al chiamante
-→ cleanup del processo attivo
+→ risultato pubblico
+→ completion fisica e cleanup logico
 ```
 
-Per la stessa chiave di scraper, richieste concorrenti restituiscono la stessa promise. Non viene avviato un secondo processo.
+Il runner non decide mercato concluso, utilizzabilità tecnica, Source Identity Gate o persistibilità canonica. Il polling viene fermato soltanto quando `trackerUpdate.js` riceve `event_status.hasFinished === true`.
 
-Il runner non decide:
+Il bridge Node/Python non registra URL complete, Graph URL complete, argomenti completi, key derivate dall’URL, stdout o stderr raw.
+
+## Runtime identity e deduplicazione
 
 ```txt
-mercato concluso
-utilizzabilità tecnica del campione
-autorizzazione del Source Identity Gate
-persistibilità canonica
+mode=cdp
+→ identity con cdpUrl canonica
+
+mode=persistent
+→ identity con profileDir normalizzato
 ```
 
-Il polling Betfair viene fermato soltanto quando `trackerUpdate.js` riceve:
+I valori reali non vengono esposti nella documentazione o nello snapshot pubblico.
 
 ```txt
-event_status.hasFinished === true
+stesso mercato
++ stessa runtime identity
+→ stessa promise
+→ nessun secondo spawn
+
+stesso mercato
++ runtime identity incompatibile
+→ scraper_runtime_conflict
+→ nessun kill
+→ nessun restart
+→ nessun nuovo spawn
 ```
 
-Errori di processo, timeout, JSON assente, JSON non valido o exit code diverso da zero fanno fallire la promise e rimuovono il processo dai registri attivi.
-
-### Diagnostica sicura del bridge Node/Python
-
-Il bridge Node/Python non deve registrare contenuti raw potenzialmente sensibili.
-
-Non devono essere registrati:
+## Spawn, promise pubblica e completion fisica
 
 ```txt
-URL complete
-ladder URL complete
-argomenti completi dello spawn
-key derivabili da URL
-stdout Python raw
-stderr Python raw
-messaggi raw del child process
+spawn richiesto
+→ registrazione fisica nel registry
+→ evento spawn
+→ spawnReady
+→ processo considerato avviato
 ```
 
-Restano ammessi log strutturali non sensibili:
+La promise pubblica dello scraper e la completion fisica del processo sono contratti distinti.
 
 ```txt
-mode
-numero Graph URL
-networkCapture
-pid
-durata
-byte stdout/stderr
-exit code
-signal code
-killed
-reason tecnica
+errore post-spawn
+→ promise pubblica rigettata
+→ entry logica conservata in modo conservativo
+→ nessun secondo spawn
+→ cleanup soltanto dopo close, exit o completion fisica
 ```
 
-Gli errori del child process devono restare messaggi statici sicuri, senza includere stdout o stderr raw.
+Execution token e generation impediscono che una callback tardiva elimini una nuova entry. Errori di processo, timeout, JSON assente o invalido ed exit code non zero fanno fallire la promise, ma l’entry fisica viene rimossa soltanto dopo una terminazione confermata.
 
-`betfairFetch.js` può mantenere log strutturali di restore e cleanup, ma non deve registrare key derivate dall’URL o messaggi raw di errore.
+## Terminazione e scope
 
-Default correnti:
+La terminazione passa dal registry fisico:
 
 ```txt
-timeout: 90 secondi
-escalation automatica dopo SIGTERM: 5 secondi
+graceful
+→ SIGTERM al solo processo registrato
+→ attesa bounded
+→ eventuale SIGKILL del solo PID registrato
+→ summary strutturata
 ```
 
-L’escalation riguarda il cleanup per timeout o errore. La terminazione esplicita globale invia `SIGTERM` ai soli figli Python attivi del progetto.
+La summary espone:
+
+```txt
+ok
+scope
+requested
+graceful
+forceKilled
+alreadyExited
+remaining
+errors
+```
+
+`scope=tracking` termina `sofa_tracking` e `betfair_tracking` e preserva `betfair_login`. `scope=all`, usato dallo shutdown backend, termina anche il login-only. L’evento `error` non prova da solo l’uscita del processo.
+
+Non vengono terminati Chrome/CDP, processi Python esterni o processi non presenti nel registry.
+
+## Login-only
+
+```txt
+prima richiesta compatibile
+→ started
+
+richiesta compatibile successiva
+→ already_active
+→ stesso processo logico
+→ nessun secondo spawn
+
+richiesta incompatibile
+→ login_runtime_conflict
+→ nessun kill
+→ nessun restart
+→ nessun nuovo spawn
+```
+
+Il figlio usa il ruolo `betfair_login`. Resta attivo finché l’utente chiude le pagine/browser oppure fino allo shutdown backend con `scope=all`.
+
+## Stato Task 2
+
+Validato live nel collaudo `9B`:
+
+```txt
+login started
+login already_active
+un solo PID
+un solo executionId
+tracking senza sovrapposizione
+stop dei ruoli tracking senza respawn per 10 secondi
+shutdown completo
+```
+
+Il collaudo Stop e il collaudo login-only sono stati eseguiti in sequenze separate. Non è stata osservata direttamente, nella stessa sequenza live, la continuità `login già attivo → Stop → login ancora attivo`. L’esclusione di `betfair_login` da `scope=tracking` è coperta dal contratto e dai test automatici.
+
+Validato soltanto da test automatici:
+
+```txt
+login_runtime_conflict
+force-kill realmente necessario
+errore post-spawn reale
+```
 
 ## Restore stato e persistenza differita
 
@@ -235,48 +317,29 @@ Le API Betfair possono esporre `integrity` come stato read-only, ma questo non d
 
 Le route read-only non eseguono repair, non scrivono journal, non avviano fetch e non modificano `marketState`.
 
-## Terminazione
-
-Funzione pubblica:
-
-```txt
-terminateActiveBetfairScrapers()
-```
-
-Deve terminare soltanto processi Python figli avviati dal progetto.
-
-Non deve:
-
-* chiudere Chrome;
-* chiudere processi Python esterni;
-* cancellare timeline o history;
-* cancellare conferme Source Identity;
-* eliminare dump o cache senza una policy esplicita.
-
-### Cleanup legacy Betfair
+## Cleanup legacy Betfair
 
 Il cleanup legacy Betfair viene eseguito solo dopo commit canonico riuscito e rimozione journal completata.
 
-Un fallimento del cleanup legacy deve restare osservabile tramite `legacyWarning`.
+Un fallimento del cleanup legacy resta osservabile tramite `legacyWarning`. `legacyWarning` non invalida un commit canonico già riuscito e non è un errore del commit.
 
-`legacyWarning` non invalida un commit canonico già riuscito e non deve essere documentato come errore del commit.
+## Terminazione da mismatch Source Identity
 
-### Terminazione da mismatch Source Identity
-
-Il gate rileva il mismatch e richiama la callback configurata dal tracker.
-
-La sequenza è:
+Il gate rileva il mismatch, ferma i tracker logici e invalida la generation tracking prima del cleanup.
 
 ```txt
 campione Betfair valido
 → gate rileva mismatch
 → azione blocked
 → tick causale non persistito
-→ stop di tutti i match tracker
-→ preservazione del gate terminale dell’evento
-→ SIGTERM ai figli Betfair attivi
-→ Chrome e CDP lasciati aperti
+→ stopAllMatchTrackers({ preserveGateEventId })
+→ invalidatePythonGeneration("tracking")
+→ terminazione del betfair_tracking attivo
+→ eventuale sofa_tracking in flight reso obsoleto dalla generation
+→ Chrome/CDP lasciato aperto
 ```
+
+Il callback di mismatch non esegue il cleanup globale `scope=tracking`: l’eventuale processo SofaScore in corso non può più produrre effetti della generation invalidata, mentre il lifecycle Betfair termina il proprio ruolo attivo.
 
 La terminazione non cancella cache, timeline, history o conferme Source Identity.
 
@@ -360,8 +423,8 @@ Verificare almeno:
 deduplicazione per chiave
 → stessa promise e un solo spawn
 
-cleanup dopo successo, errore e timeout
-→ registri attivi rimossi
+cleanup dopo completion fisica
+→ entry rimossa soltanto dopo close, exit o completion confermata
 
 log strutturali sicuri
 → nessun stdout raw, stderr raw, URL completa, ladder URL completa o argomento completo dello spawn nei log
@@ -370,7 +433,8 @@ errori child process
 → messaggi statici senza body raw
 
 terminazione esplicita
-→ SIGTERM ai soli figli Betfair del progetto
+→ graceful bounded sui soli processi registrati
+→ eventuale force-kill del solo PID registrato
 
 network capture
 → attiva solo con true booleano

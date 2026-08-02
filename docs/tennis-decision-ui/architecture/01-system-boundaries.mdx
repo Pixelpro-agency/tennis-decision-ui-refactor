@@ -99,6 +99,41 @@ Esempi:
 * una modifica alla route Betfair può delegare a un modulo puro, ma non incorporare lifecycle Python nel controller;
 * una modifica allo scraper deve conservare CLI, JSON output e wrapper compatibili.
 
+## Ownership runtime e processi Python
+
+Il runtime separa ownership operativa, lifecycle logico e persistenza canonica.
+
+| Livello | Ownership | Confine |
+| --- | --- | --- |
+| `launcher/` | Possiede soltanto backend e frontend avviati dalla sessione corrente | Può terminare esclusivamente PID `owned`; non termina servizi `reused`, `external` o `unknown` |
+| backend Node | È l’owner esclusivo dei figli Python registrati | Spawn, stato e terminazione passano da `backend/src/runtime/pythonProcessRegistry.js` |
+| Chrome/CDP | È esterno all’ownership di launcher e backend | Non viene registrato come owned e non viene chiuso dallo shutdown |
+| frontend | Non possiede processi | Invia richieste HTTP e rende lo stato; non avvia runtime Python |
+| scraper Python | È un adattatore esterno controllato dal backend | Produce campioni o diagnostica; non possiede timeline, history o journal |
+
+Il registry fisico backend-wide espone tre ruoli pubblici:
+
+```txt
+sofa_tracking
+betfair_tracking
+betfair_login
+```
+
+Il registry fisico conserva PID, `executionId`, stato, `startedAt`, generation e terminazione dei figli Python. Il lifecycle logico Betfair resta distinto: deduplica le richieste per mercato e runtime identity, ma non sostituisce il registry fisico.
+
+Invarianti:
+
+```txt
+nessun kill per porta
+nessuna scansione globale per trovare processi da terminare
+nessuna terminazione di processi non registrati
+Chrome/CDP mai owned
+frontend mai owner di processi Python
+scraper Python mai owner della persistenza canonica
+```
+
+I lifecycle completi SofaScore e Betfair restano nei rispettivi documenti owner.
+
 ## Documenti collegati
 
 * [Ciclo di vita dei dati](./02-data-lifecycle.mdx)

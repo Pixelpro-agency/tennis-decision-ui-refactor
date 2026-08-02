@@ -22,34 +22,33 @@ Il launcher può avviare e coordinare backend e frontend, ma non crea dati canon
 
 ## Stato
 
-**Implementato nel codice.**
+**Implementato.**
 
-La verifica live deve essere registrata dopo un’esecuzione reale del launcher.
-
-```txt
-python avvio.py
-→ backend avviato o riusato
-→ frontend Vite avviato o riusato
-→ browser aperto dal launcher
-```
-
-Restano **Implementato, da validare**:
+Il percorso ordinario è stato validato con il collaudo runtime `9A-R`:
 
 ```txt
-porte preferite occupate da processi esterni
-→ fallback backend e frontend
-
-doppio avvio ravvicinato
-
+avvio canonico
+lock e manifest schema 2
+riuso della sessione
+seconda invocazione session_reuse
 shutdown Ctrl+C
-→ verifica dei soli processi owned
-
-CDP alternativo su porta diversa da 9222
-
-journal pending già presente al momento dell’avvio
-→ nessuna cancellazione da parte del launcher
-→ stato osservabile tramite superfici applicative
+terminazione dei soli backend/frontend owned
+rilascio lock
+rimozione manifest
+riavvio con nuove identità
+preservazione CDP reused
 ```
+
+Restano **Implementato, da validare live**:
+
+```txt
+backend preferito occupato da un processo esterno
+frontend preferito occupato da un processo esterno
+CDP reale su una porta diversa da 9222
+fallback force-kill realmente necessario
+```
+
+Questi casi sono coperti da test automatici, ma non vengono dichiarati validati live.
 
 ## Prerequisiti
 
@@ -104,7 +103,7 @@ avvio.py
 
 Il launcher apre il browser usando l’URL frontend effettivamente scelto.
 
-L’avvio non esegue recovery dei journal pending. Se esiste uno stato di persistenza incompleta, deve restare osservabile dai documenti owner della persistenza e dalle superfici read-only.
+Il launcher non legge né ripara i journal pending. Il backend esegue `runPendingCommitRecovery(...)` nel proprio bootstrap, prima di `listen`; un esito fatal impedisce l’ascolto. Gli esiti non fatali restano osservabili dai documenti owner della persistenza e dalle superfici read-only.
 
 ## Servizi e porte
 
@@ -159,21 +158,26 @@ Il manifest non è una fonte canonica per history, timeline, journal, Evidence o
 
 ## CDP
 
-Il launcher riusa un endpoint CDP valido già disponibile.
-
-Quando non trova un endpoint valido, può avviare Chrome dedicato su una porta libera senza bloccare backend e frontend.
-
-L’URL candidato viene passato al frontend anche mentre Chrome è ancora in avvio.
-
-Un CDP non disponibile resta vuoto e non viene sostituito automaticamente con:
+La porta `9222` è la porta preferita del launcher, non un fallback applicativo.
 
 ```txt
-http://127.0.0.1:9222
+endpoint CDP locale valido già disponibile
+→ reused
+
+porta libera selezionata
+→ helper Chrome richiesto
+→ external
+→ non owned
+→ non chiuso dal launcher
 ```
 
-Il launcher non garantisce apertura o focus di una tab Betfair quando riusa un CDP già esistente.
+La risoluzione verifica un endpoint browser reale. Un listener non CDP viene lasciato intatto. Se la risoluzione fallisce:
 
-Chrome/CDP non viene mai chiuso né registrato come processo owned, sia quando l’endpoint viene riusato sia quando il launcher avvia Chrome dedicato tramite lo script helper.
+```txt
+cdpUrl = ""
+```
+
+Nessun componente inventa `http://127.0.0.1:9222`. La URL scelta viene propagata esattamente a frontend, backend e scraper.
 
 ## Tracker, scraper e processor
 
@@ -275,6 +279,125 @@ Il cleanup operativo di file legacy, dump o cache appartiene ai documenti di ret
 | `persistenceComplete:false` in Evidence       | Non riavviare runtime automaticamente; verificare journal e recovery nei documenti owner.      |
 | Graph health o freshness Betfair degradati   | Non confonderli con `partial_persistence` o `recovery_failed`.                                |
 
+## Lock e manifest canonici
+
+Gli artefatti effimeri vivono sotto:
+
+```txt
+launcher/.runtime/
+├── launcher.lock
+├── launcher.lock.guard
+└── manifest.json
+```
+
+La directory è ignorata da Git. Il guard usa un lock advisory del sistema operativo; lock e manifest sono UTF-8 e condividono la stessa identità di sessione.
+
+Lock schema 2:
+
+```js
+{
+  schema: 2,
+  project: "tennis-decision-ui",
+  sessionId,
+  pid,
+  createdAt,
+  processIdentity: {
+    startFingerprint,
+    executable
+  }
+}
+```
+
+Manifest schema 2:
+
+```js
+{
+  schema: 2,
+  project: "tennis-decision-ui",
+  session: {
+    sessionId,
+    launcherPid,
+    processIdentity: {
+      startFingerprint,
+      executable
+    },
+    startedAt,
+    status,
+    reason
+  },
+  services: {
+    backend: {},
+    frontend: {},
+    cdp: {}
+  }
+}
+```
+
+Valori ammessi:
+
+```txt
+session.status
+→ starting | ready | stopping | stopped | failed
+
+service.status
+→ pending | starting | ready | failed | unavailable
+
+ownership
+→ owned | reused | external | unknown
+```
+
+I servizi registrano, secondo il ruolo, `requestedPort`, `selectedPort`, `pid`, URL o health URL, `instanceId`, `startedAt`, `resolvedAt`, `source` e `reason`. Il frontend registra anche `backendTarget`. CDP non può avere ownership `owned` né un PID.
+
+Un lock positivamente stale può essere recuperato. Uno stato attivo o non verificabile non viene rimosso in modo aggressivo.
+
+## Riuso della sessione
+
+Una sessione è riusabile soltanto quando lock, manifest schema 2 e identità dei servizi sono coerenti.
+
+```txt
+manifest reusable
++ backend identity valida
++ frontend identity valida
+→ session_reuse
+→ apertura del frontend esistente
+→ nessun nuovo lock
+→ nessun nuovo backend o frontend
+→ seconda invocazione terminata autonomamente
+```
+
+L’evento `browser_open` sul frontend esistente è corretto: riapre l’interfaccia senza acquisire ownership sui servizi già attivi.
+
+## Ownership runtime
+
+```txt
+owned
+→ processo avviato dalla sessione corrente e terminabile dal launcher
+
+reused
+→ servizio Tennis Decision UI verificato ma non posseduto
+
+external
+→ servizio esterno riconosciuto e non terminabile
+
+unknown
+→ ownership non dimostrata
+```
+
+Il launcher registra come owned soltanto backend e frontend che ha avviato. Il backend registra separatamente i propri figli Python. Chrome/CDP resta sempre `reused`, `external` o `unknown`.
+
+## Processi Python backend-owned
+
+Il launcher avvia o riusa il backend; non mantiene un registry concorrente degli scraper.
+
+```txt
+launcher
+→ backend Express
+→ backend/src/runtime/pythonProcessRegistry.js
+→ figli Python registrati
+```
+
+Lo snapshot pubblico è disponibile tramite [API Runtime Health](../api/06-runtime-health.mdx). I lifecycle completi restano nei documenti SofaScore e Betfair.
+
 ## Verifica
 
 Verificare almeno:
@@ -303,12 +426,15 @@ shutdown Ctrl+C
 → file canonici e journal non cancellati
 
 journal pending preesistente
-→ launcher non esegue recovery
-→ stato osservabile tramite API/Evidence/storage owner
+→ launcher non lo legge né lo modifica
+→ backend bootstrap esegue recovery prima di listen
+→ esito osservabile tramite API/Evidence/storage owner
 ```
 
 ## Documenti collegati
 
+
+* [API Runtime Health](../api/06-runtime-health.mdx)
 * [Confini del sistema](../architecture/01-system-boundaries.mdx)
 * [Entry point e runtime Python](../modules/python/01-entrypoints-and-runtime.mdx)
 * [Tracking live](../modules/sofa/01-live-tracking.mdx)
