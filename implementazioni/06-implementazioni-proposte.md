@@ -215,6 +215,29 @@ Il token non deve sostituire `eventId`, generation processi o Source Identity. D
 
 Creare due token non coordinati, uno backend e uno frontend, senza contratto comune.
 
+### Estensione emersa dal backlog runtime
+
+La futura authority deve distinguere almeno:
+
+```txt
+sessionId/generationId
+→ identità della sessione logica
+
+commandId/requestId
+→ identità della singola operazione asincrona
+```
+
+Ogni callback deve ricontrollare l’autorità immediatamente prima di:
+
+- osservare Source Identity;
+- aggiornare health;
+- modificare stato runtime;
+- persistere;
+- pubblicare latest;
+- eseguire `setState` nel frontend.
+
+Lo stop deve invalidare prima l’autorità e solo dopo avviare il cleanup fisico.
+
 ---
 
 ### IMPL-007 — Boundary pubblico per diagnostica ed errori
@@ -460,6 +483,40 @@ Il toolkit futuro può includere:
 
 Non riusare direttamente la vecchia Strategy UI come base obbligatoria.
 
+### Contratti da preservare dal backlog strategico
+
+Il toolkit deve restare offline e versionato.
+
+Ogni studio deve poter dichiarare:
+
+```txt
+studyId
+version
+conditionSetVersion
+input provenance
+reason code
+status
+```
+
+Livelli consentiti inizialmente:
+
+```txt
+A — osservazione descrittiva
+B — condizioni e motivi di blocco
+```
+
+Non introdurre nei primi livelli:
+
+- probabilità;
+- fair odds;
+- raccomandazioni;
+- automazione;
+- interpretazioni certe del Money Flow.
+
+La stessa fixture deve poter confrontare due versioni e produrre una differenza esplicita.
+
+Una modalità shadow può calcolare una versione candidata senza mostrarla nella dashboard live e senza modificare la persistenza canonica.
+
 ### IMPL-011 — Authority di manutenzione per cleanup offline
 
 **Stato:** `NECESSARIA`
@@ -494,3 +551,237 @@ Questa struttura non esiste oggi e non deve essere simulata con un controllo gen
 ```
 
 Il backlog UI resta separato dalle task di isolamento sessione, hardening e persistence.
+
+---
+
+## 16. Implementazioni assorbite dal backlog operativo storico
+
+### IMPL-012 — Fixture versionate e replay offline deterministico
+
+**Classificazione:** `NECESSARIA PRIMA DI BACKTESTING E STUDI STRATEGICI`
+**Stato:** `STRUTTURA ASSENTE`
+**Priorità:** dopo isolamento sessione e contratti pubblici prioritari
+
+### Problema
+
+Molti casi importanti dipendono ancora da una partita live, Chrome, CDP, login e disponibilità del mercato.
+
+Manca una base comune per riprodurre:
+
+- Source Identity pending/mismatch;
+- epoch Betfair;
+- tick fuori ordine;
+- timestamp coincidenti;
+- Graph invariati ma acquisiti nuovamente;
+- un solo Graph aggiornato;
+- Graph disallineati;
+- response tardive;
+- partial persistence;
+- recovery failed;
+- Evidence degradate.
+
+### Responsabilità minima
+
+```txt
+schema fixture versionato
+→ fixture corte e anonimizzate
+→ validator
+
+runner offline
+→ ordine deterministico
+→ tie-breaker esplicito
+→ cursore storico
+→ nessun dato futuro
+→ epoch al cursore
+→ policy Source Identity storica
+→ freshness e Graph skew
+→ Evidence e reason
+```
+
+Fonti consentite:
+
+- fixture equivalenti alle timeline canoniche;
+- copie anonimizzate e ridotte;
+- timeline canoniche lette in sola lettura.
+
+Fonti vietate:
+
+- cache;
+- dump;
+- browser;
+- fetch live;
+- stato runtime corrente.
+
+### Relazione con IMPL-008
+
+`IMPL-008` resta specializzato su journal e recovery.
+
+`IMPL-012` è più ampio e copre il dominio temporale, Source Identity, Graph e Evidence.
+
+I due harness possono condividere utility pure, ma non devono diventare un unico mega-runner.
+
+### Criterio di prontezza
+
+- policy storica Source Identity decisa;
+- tie-breaker temporale deciso;
+- schema fixture definito;
+- builder live riutilizzabili senza I/O;
+- output reason stabile.
+
+---
+
+### IMPL-013 — Baseline end-to-end di prestazioni, freshness e osservabilità
+
+**Classificazione:** `NECESSARIA PRIMA DI QUALUNQUE OTTIMIZZAZIONE BETFAIR`
+**Stato:** `STRUTTURA ASSENTE`
+**Priorità:** dopo IMPL-006 e IMPL-012
+
+### Obiettivo
+
+Misurare senza ottimizzare:
+
+```txt
+scheduler
+→ Python
+→ Playwright
+→ CDP
+→ pagina mercato
+→ Graph 1 / Graph 2
+→ parsing
+→ bridge Node/Python
+→ persistenza
+→ API
+→ frontend
+```
+
+### Metriche minime
+
+Per fase:
+
+- durata;
+- stato;
+- reason;
+- righe;
+- request count;
+- acquisition timestamp;
+- freshness;
+- Graph skew;
+- payload size.
+
+Per sessione:
+
+- p50/p95;
+- tick validi/rifiutati;
+- timeout/retry;
+- partial/recovery;
+- CPU/memoria;
+- crescita file;
+- processi e pagine residue.
+
+### Vincoli
+
+- log strutturali e redatti;
+- nessun payload completo;
+- nessuna URL sensibile;
+- nessun aumento del traffico;
+- nessuna modifica ai timeout;
+- nessuna nuova cache;
+- nessun worker persistente;
+- nessuna ottimizzazione nello stesso task.
+
+### Output
+
+```txt
+baseline locale
+→ JSONL o report strutturato
+→ cold start vs steady state
+→ p50 / p95
+→ colli di bottiglia osservati
+→ nessuna conclusione inventata
+```
+
+---
+
+### IMPL-014 — Ottimizzazione prudente e reversibile dello scraper Betfair
+
+**Classificazione:** `FUTURA E CONDIZIONATA`
+**Stato:** `NON PRONTA`
+**Dipendenze:** IMPL-006, IMPL-012 e IMPL-013
+
+### Regola
+
+Ogni fase segue:
+
+```txt
+baseline
+→ singola modifica
+→ test
+→ benchmark
+→ traffico remoto
+→ freshness
+→ keep / rollback / needs_more_data
+```
+
+### Ordine candidato
+
+1. parsing DOM aggregato;
+2. attese basate su condizioni reali;
+3. worker Python persistente backend-owned;
+4. riuso verificato delle pagine Graph;
+5. misurazione e classificazione Graph skew;
+6. riduzione delle navigazioni della pagina principale;
+7. persistenza più efficiente solo se collo di bottiglia;
+8. concorrenza Graph limitata soltanto come ultima opzione.
+
+### Invarianti
+
+- un solo match;
+- un solo comando Betfair mutante;
+- Chrome non owned;
+- Source Identity invariata;
+- stessa timeline canonica;
+- vecchio DOM non è una nuova acquisizione;
+- un solo Graph aggiornato non si combina con il precedente;
+- nessun retry aggressivo;
+- nessun aumento automatico della frequenza;
+- feature flag o rollback per ogni fase.
+
+---
+
+### IMPL-015 — Invariante single-writer per `match_history`
+
+**Classificazione:** `DA VERIFICARE / CONDIZIONALE`
+**Stato:** `ASSUNZIONE ARCHITETTURALE NON FORMALIZZATA`
+
+### Problema
+
+Il journal protegge i commit multi-file nello stesso processo, ma la documentazione storica segnala che due backend distinti potrebbero effettuare contemporaneamente:
+
+```txt
+scan journal
+→ nessun pending visto
+→ creazione di due commit diversi
+```
+
+### Decisione necessaria dopo la nuova lettura del codice
+
+Se il progetto garantisce:
+
+```txt
+un solo backend writer
+```
+
+allora occorre:
+
+- documentare l’invariante;
+- impedirne il riuso ambiguo nei runbook;
+- verificare che launcher e avvio manuale non creino due writer inconsapevoli.
+
+Se in futuro sono ammessi più writer, servirà:
+
+- creazione esclusiva;
+- lock atomico project-owned;
+- ownership della directory;
+- test cross-process.
+
+Non introdurre un lock cross-process finché il requisito multi-writer non esiste.

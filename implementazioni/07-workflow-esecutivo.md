@@ -296,3 +296,38 @@ Una task è chiusa quando:
 - documentazione aggiornata quando richiesta;
 - commit e push effettuati dall’utente;
 - nuovo SHA verificato.
+
+
+
+## 12. Impatto documentale nel report di ogni task
+
+Ogni consegna deve includere:
+
+```txt
+modifiche funzionali
+contratti coinvolti
+documenti owner da aggiornare
+documenti invariati
+link da verificare
+nuovi documenti eventualmente necessari
+informazioni mancanti o limiti
+```
+
+Questa sezione sostituisce i vecchi file `_work/change-brief.md` e `_work/01-documentation-impact-request.md`.
+
+## 13. Modularizzazione
+
+Non dividere un file soltanto perché è lungo.
+
+Una separazione è giustificata quando cambia almeno uno fra:
+
+- responsabilità;
+- contratto;
+- stato;
+- side effect;
+- dipendenza;
+- owner;
+- tipo di test;
+- contesto minimo necessario.
+
+Preservare facade ed entry point pubblici fino alla migrazione completa e ai test positivi.

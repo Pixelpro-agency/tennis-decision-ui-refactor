@@ -350,3 +350,56 @@ Non sono comprese in questo checkpoint:
 - nuova UI persistence;
 - migrazione dei documenti canonici;
 - eliminazione di planning o materiali locali.
+
+---
+
+## 8.4 Audit dei materiali locali esterni alla documentazione canonica
+
+Archivio ricevuto:
+
+```txt
+docs.zip
+```
+
+Perimetro:
+
+```txt
+tutti i file inclusi
+esclusa docs/tennis-decision-ui/
+```
+
+Esito:
+
+```txt
+9 file letti
+→ Prompt: 1
+→ _work: 2
+→ legacy: 1
+→ percorsi: 1
+→ planning: 4
+```
+
+Sono state completate:
+
+- classificazione file per file;
+- distinzione fra storico, processo superato e requisito futuro;
+- assorbimento delle regole utili nei registri;
+- individuazione di nuove strutture mancanti;
+- separazione fra ciò che può essere deprecato e ciò che va archiviato.
+
+Non sono state eseguite:
+
+- cancellazioni locali;
+- modifiche alle cartelle ignorate;
+- rimozioni da `.gitignore`;
+- migrazione della documentazione canonica;
+- implementazioni di codice.
+
+Nuove proposte registrate:
+
+```txt
+IMPL-012 — fixture e replay offline deterministico
+IMPL-013 — baseline end-to-end e freshness
+IMPL-014 — ottimizzazione Betfair misurata e reversibile
+IMPL-015 — invariante single-writer match_history
+```

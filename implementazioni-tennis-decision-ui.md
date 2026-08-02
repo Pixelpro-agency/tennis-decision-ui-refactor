@@ -65,8 +65,10 @@ decisioni di prodotto e cleanup
 workflow multi-esecutore
 → definito
 
-planning e materiali di processo accessibili
+nove materiali locali fuori dalla documentazione canonica
+→ letti integralmente
 → classificati
+→ contenuti utili assorbiti nei registri
 → nessuna eliminazione eseguita
 
 checkpoint corrente
@@ -77,7 +79,9 @@ checkpoint corrente
 Dopo la pubblicazione del checkpoint:
 
 ```txt
-nuova lettura approfondita del codice
+checkpoint audit materiali locali
+→ pubblicazione
+→ nuova lettura approfondita del codice
 → precisione
 → robustezza
 → utilità

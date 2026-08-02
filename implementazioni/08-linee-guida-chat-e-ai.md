@@ -209,3 +209,75 @@ Non chiedere per:
 Nessuna chat o Desktop esegue commit/push.
 
 L’utente pubblica su `main` soltanto dopo la revisione della Chat Analisi.
+
+
+
+## 13. Navigazione del codice
+
+Ordine preferito:
+
+1. indice o repository map;
+2. documento owner;
+3. file target;
+4. import indispensabili;
+5. consumer diretti se il contratto cambia;
+6. test più vicino;
+7. fixture/helper locale.
+
+Non leggere automaticamente test fratelli o intere directory.
+
+## 14. Diagnosi del confine
+
+Prima di proporre una divisione identificare:
+
+- responsabilità primaria;
+- export pubblici;
+- input/output;
+- stato e durata;
+- side effect;
+- dipendenze;
+- consumer;
+- test;
+- confine naturale.
+
+Classificare il file come:
+
+```txt
+facade/orchestratore
+logica pura
+adapter I/O
+persistenza
+stato runtime
+fixture/helper
+test unitario
+test integrazione
+test sicurezza/recovery
+```
+
+## 15. Modularizzazione del codice
+
+- lasciare nel file principale facade, composizione o entry point;
+- estrarre funzioni pure;
+- separare filesystem, rete, processi, clock e log;
+- separare stato runtime e policy;
+- usare dependency injection quando riduce I/O reale nei test;
+- evitare cartelle intermedie senza owner chiaro;
+- non rompere export pubblici prima della migrazione dei consumer.
+
+## 16. Modularizzazione dei test
+
+- un file test copre un contratto coerente;
+- non creare un file per assertion;
+- separare unit, integration, security, timeout e recovery;
+- mantenere fixture e harness vicini al modulo;
+- evitare mega-helper globali;
+- il runner generale scopre i test ma non contiene assertion o logica di dominio;
+- il pacchetto minimo per una chat include target, test e helper indispensabile.
+
+La futura mappa test deve essere:
+
+```txt
+reference/02-test-map.md
+```
+
+e deve contenere una riga per gruppo di test, non output PASS/FAIL storici.

@@ -1,321 +1,269 @@
-# Tennis Decision UI — Audit di `docs/planning` e materiali storici
+# Tennis Decision UI — Audit dei materiali locali in `docs/`
 
 ## Scopo
 
-`docs/planning` è una fonte storica e progettuale separata. Non prevale sul codice, sui test correnti o sui documenti owner.
+Questo registro classifica tutti i file ricevuti fuori dalla documentazione canonica `docs/tennis-decision-ui/`.
 
-Baseline usata:
+Baseline del codice e dei documenti canonici usata per il confronto:
 
 ```txt
-Repository: Pixelpro-agency/tennis-decision-ui-refactor
-SHA GitHub verificato: b277bd9b7373dfd8702e65446c88bab7a0f64dcc
+3b5fcd9437469c71e887e42d77ac5065adbe1071
 ```
 
-## Limite della fonte
+Nessun file locale è stato cancellato, rinominato o pubblicato.
 
-I percorsi planning e `_work` esaminati non risultano risolvibili come file tracciati sullo SHA GitHub corrente tramite il connettore.
-
-La classificazione è quindi basata su:
-
-- copie testuali disponibili nella libreria della conversazione;
-- inventari terminale precedenti;
-- brief e report forniti dall’utente;
-- confronto già concluso con codice, test e documentazione canonica.
-
-Non è stata eseguita alcuna eliminazione, rinomina o modifica dei file planning locali.
-
-## Esclusioni decise dall’utente
-
-I seguenti file non sono stati letti e non sono classificati:
+## Inventario
 
 ```txt
-docs.rar
-idee future.odt
-idee per stream api betfair.odt
+Prompt/
+→ Navigazione del repository e modularizzazione di codice e test.txt
+
+_work/
+→ 01-documentation-impact-request.md
+→ change-brief.md
+
+legacy/briefs/
+→ task-1b-source-identity-frontend-closure-brief.md
+
+percorsi.txt
+
+planning/
+→ 04-07-2026 backlog-operativo.md
+→ 05-07-2026 - Task 6 - Pacchetto prompt esecutivi.md
+→ 05-07-2026 - Task 6 - Report di verifica.md
+→ 14-07-2026 - Task 2 - Pacchetto prompt esecutivi.md
 ```
 
-Stato:
+Totale:
 
 ```txt
-ESCLUSI PER DECISIONE UTENTE
+9 file
 ```
 
-Nessuna conclusione di questo audit deriva dal loro contenuto.
+## Decisione per file
 
-## Classificazioni
+### 1. Prompt di navigazione e modularizzazione
 
-### 1. Pacchetto prompt esecutivi Task 6
+**Classificazione:** `SINTETIZZARE + DEPRECARE`
 
-Materiale:
+Da conservare nei registri:
+
+- contesto minimo;
+- navigazione per owner;
+- separazione per responsabilità e side effect;
+- facade pubblica stabile;
+- dependency injection;
+- test separati per tipo;
+- fixture locali;
+- runner generale senza logica di dominio;
+- test map.
+
+Destinazioni:
 
 ```txt
-05-07-2026 - Task 6 - Pacchetto prompt esecutivi.md
+08-linee-guida-chat-e-ai.md
+06-implementazioni-proposte.md → IMPL-003
 ```
 
-Classificazione:
+Dopo l’assorbimento non deve restare un secondo prompt generale concorrente.
+
+### 2. `_work/01-documentation-impact-request.md`
+
+**Classificazione:** `DEPRECARE`
+
+Il file era utile quando la chat non poteva leggere il repository.
+
+I suoi campi sono ora coperti da:
+
+- scope della task;
+- file consultabili;
+- impatto documentale;
+- link;
+- documenti invariati;
+- decisioni mancanti.
+
+Può essere rimosso senza archivio.
+
+### 3. `_work/change-brief.md`
+
+**Classificazione:** `SINTETIZZARE + DEPRECARE`
+
+Campi da preservare nei report:
 
 ```txt
-REALIZZATA
-DUPLICATA ALTROVE
-STORICA
+obiettivo
+file modificati
+modifiche funzionali
+contratti
+test
+impatto documentale
+dubbi/limiti
 ```
 
-Motivo:
+Può essere rimosso dopo l’assorbimento.
 
-- descrive l’ordine dei prompt 6.1–6.x;
-- gran parte del contenuto è confluita nel codice e nei documenti owner;
-- contiene istruzioni operative e path legati allo stato dell’epoca;
-- non deve essere usato come contratto corrente.
+### 4. Brief Source Identity legacy
 
-Decisione:
+**Classificazione:** `ARCHIVIARE TEMPORANEAMENTE`
+
+Contiene:
+
+- verifiche live reali;
+- casi pending ancora aperti;
+- dettaglio UX;
+- simulazione successivamente rimossa.
+
+Azione:
 
 ```txt
-archiviare
-→ non mantenere nel planning attivo
-→ preservare soltanto come cronologia della Task 6
+estrarre prove live
+→ creare validation con data e SHA
+→ segnalare la simulazione come superata
+→ eliminare il brief duplicato
 ```
 
-### 2. Report di verifica Task 6
+Non deve tornare documento canonico.
 
-Materiale:
+### 5. `percorsi.txt`
+
+**Classificazione:** `DEPRECARE DOPO MIGRAZIONE`
+
+È una mappa manuale e ormai divergente:
+
+- usa `.mdx`;
+- include Strategy;
+- duplica index e repository map;
+- richiede manutenzione manuale.
+
+Fino alla migrazione non va aggiornato. Dopo il nuovo indice `.md` può essere rimosso.
+
+### 6. Backlog operativo 04-07-2026
+
+**Classificazione:** `SINTETIZZARE + ARCHIVIARE`
+
+Non deve restare planning attivo.
+
+Contenuti assorbiti:
 
 ```txt
-05-07-2026 - Task 6 - Report di verifica.md
+Task 4 → IMPL-012
+Task 5 → IMPL-010
+Task 7 → IMPL-006
+Task 8 → IMPL-013
+Task 9 → IMPL-014
+single-writer Task 6 → IMPL-015
 ```
 
-Classificazione:
+Le sezioni completate 1, 2, 3 e 6 restano cronologia.
+
+### 7. Pacchetto prompt Task 6
+
+**Classificazione:** `ARCHIVIARE`
+
+È un documento di esecuzione, non una specifica corrente.
+
+Molti P0/P1/P2 descrivono problemi risolti dai passaggi successivi.
+
+L’unico punto da mantenere come assunzione esplicita è il modello single-writer di `match_history`, registrato in IMPL-015.
+
+### 8. Report di verifica Task 6
+
+**Classificazione:** `ARCHIVIARE COME VALIDAZIONE INTERMEDIA`
+
+Il report è utile perché distingue:
+
+- verificato;
+- non verificato;
+- failure path;
+- limiti della snapshot.
+
+Non descrive lo stato finale della Task 6 e contiene finding poi corretti.
+
+Destinazione futura:
 
 ```txt
-REALIZZATA
-STORICA
-PARZIALMENTE SUPERATA DAL CODICE SUCCESSIVO
+docs/validations/
+→ report intermedio
+→ data e SHA
+→ nota di superseded
 ```
 
-Il report è utile perché distingue risultati, limiti e questioni aperte. Alcune mancanze indicate sono state risolte dai prompt successivi e dal recovery consolidato.
+### 9. Pacchetto prompt Task 2
 
-Decisione:
+**Classificazione:** `ARCHIVIARE`
+
+Il launcher corrente è stato riconfermato con limiti in D9.
+
+Dal pacchetto restano utili soltanto gli scenari di validazione non ancora osservati:
+
+- porte alternative reali;
+- servizi esterni sulle porte preferite;
+- CDP alternativo reale;
+- force-kill owned;
+- login-only;
+- segnali Windows.
+
+Questi scenari appartengono a un futuro collaudo, non a planning attivo.
+
+## Ordine futuro risultante
+
+Dopo la nuova lettura del codice:
 
 ```txt
-spostare nel futuro archivio docs/validations/
-→ mantenere data e SHA
-→ conservare una sola copia canonica
-→ eliminare duplicati numerati dopo confronto hash/contenuto
+1. autorità sessione live e risposte tardive — IMPL-006
+2. boundary diagnostica pubblico — IMPL-007
+3. persistence frontend — IMPL-009
+4. fixture/replay offline — IMPL-012
+5. baseline end-to-end — IMPL-013
+6. ottimizzazione Betfair condizionata — IMPL-014
+7. toolkit strategie offline — IMPL-010
 ```
 
-### 3. Brief Source Identity Task 1A e 1B
-
-Materiali rappresentativi:
+In parallelo, quando necessario:
 
 ```txt
-task-1a-source-identity-backend-brief.md
-task-1b-source-identity-frontend-closure-brief.md
+IMPL-003 — test runner e test map
+IMPL-008 — harness recovery
+IMPL-011 — maintenance authority
+IMPL-015 — single-writer invariant
 ```
 
-Classificazione:
+## Piano di pulizia locale proposto
+
+### Deprecare ed eliminare dopo revisione
 
 ```txt
-REALIZZATA
-DUPLICATA ALTROVE
-CON LIMITI LIVE ANCORA APERTI
+Prompt/Navigazione del repository e modularizzazione di codice e test.txt
+_work/01-documentation-impact-request.md
+_work/change-brief.md
 ```
 
-Da preservare nell’archivio:
-
-- nascita del gate;
-- bootstrap;
-- sessione `pending`;
-- verifiche live eseguite;
-- casi pending/decline ancora non osservati.
-
-Non devono restare owner del comportamento corrente.
-
-Owner correnti:
-
-- codice;
-- documenti Source Identity;
-- registro D1/D2;
-- futuro report di validazione live.
-
-### 4. Brief Money Flow 2A–2F
-
-Materiali disponibili:
+### Eliminare dopo migrazione `.md`
 
 ```txt
-Brief 2B
-Brief 2C
-Brief 2D
-Brief pre2-F
-e relative copie
-```
-
-Classificazione:
-
-```txt
-REALIZZATA
-DUPLICATA ALTROVE
-2F CON LIMITI DI VALIDAZIONE LIVE
-```
-
-Decisione:
-
-- archiviare i brief di implementazione;
-- conservare il report live più completo;
-- non usarli come specifica del Money Flow corrente;
-- mantenere aperto `TEST-001`.
-
-### 5. Journal e recovery
-
-Materiali rappresentativi:
-
-```txt
-Change brief — Task 6.2 Journal dei commit e stato di integrità interno
-Change brief — Task 6.5 recovery bootstrap journal
-```
-
-Classificazione:
-
-```txt
-REALIZZATA
-STORICA
-DUPLICATA NEI DOCUMENTI OWNER
-```
-
-Da preservare:
-
-- decisione recovery prima di `listen`;
-- errori per-file non fatali;
-- limiti single-process/cross-process;
-- test e collaudi mancanti.
-
-Le procedure correnti appartengono ai documenti Storage/recovery e al registro D12/D13.
-
-### 6. Diagnostica Betfair
-
-Materiali:
-
-```txt
-Change brief — Task 1A hardening diagnostica e configurazione Betfair
-Change brief — Task 1B hardening esteso della diagnostica Betfair
-```
-
-Classificazione:
-
-```txt
-PARZIALMENTE REALIZZATA
-ANCORA VALIDA COME STORIA
-```
-
-Motivo:
-
-il core di redazione e configurazione è stato implementato, ma D17 ha riaperto il solo perimetro:
-
-- path pubblico `dump_dir`;
-- filename cache derivato dall’URL;
-- errori HTTP raw;
-- task capture non attese.
-
-Decisione:
-
-```txt
-mantenere fino alla chiusura D17
-→ poi archiviare come validazione storica
-```
-
-### 7. Retention cache
-
-Materiale:
-
-```txt
-Change brief — Task 3 retention cache offline
-```
-
-Classificazione:
-
-```txt
-PARZIALMENTE REALIZZATA
-ANCORA VALIDA
-```
-
-Sono confermati utility, allow-list, dry-run e test.
-
-Restano aperti:
-
-- apply reale;
-- porte alternative;
-- authority di manutenzione;
-- recheck metadata prima della cancellazione.
-
-Decisione:
-
-```txt
-mantenere come materiale di riferimento fino alla chiusura CLEANUP-002 / IMPL-011
-→ poi archiviare
-```
-
-### 8. `docs/_work`
-
-Materiali:
-
-```txt
-01-documentation-impact-request.md
-change-brief.md
 percorsi.txt
 ```
 
-Classificazione:
+### Trasformare in validation e poi rimuovere il duplicato
 
 ```txt
-SUPERATA COME PROCEDURA ORDINARIA
-DUPLICATA ALTROVE
+legacy/briefs/task-1b-source-identity-frontend-closure-brief.md
+planning/05-07-2026 - Task 6 - Report di verifica.md
 ```
 
-Le informazioni utili sono state assorbite in:
-
-- workflow esecutivo;
-- linee guida chat/AI;
-- template di report;
-- repository map;
-- documenti owner;
-- registri di audit.
-
-Non ricreare `_work` sul branch corrente.
-
-## Esito complessivo
+### Archiviare come storia di esecuzione
 
 ```txt
-planning accessibile
-→ classificato per gruppi
-
-materiali completati
-→ archivio storico o validations
-
-materiali parziali
-→ restano fino alla chiusura dei rilievi collegati
-
-materiali di processo
-→ assorbiti nel nuovo workflow
-
-tre file esclusi
-→ non letti e non classificati
+planning/04-07-2026 backlog-operativo.md
+planning/05-07-2026 - Task 6 - Pacchetto prompt esecutivi.md
+planning/14-07-2026 - Task 2 - Pacchetto prompt esecutivi.md
 ```
 
-## Operazioni non autorizzate in questo checkpoint
+## Stato
 
-- cancellare planning locale;
-- aggiungere planning al commit;
-- rinominare file storici;
-- creare `docs/validations/`;
-- migrare documentazione canonica;
-- eliminare duplicati senza confronto locale.
-
-## Criterio di chiusura
-
-L’audit planning è sufficiente per procedere al checkpoint dei registri.
-
-L’eventuale cleanup fisico richiederà un task locale separato con:
-
-- inventario reale della cartella;
-- `git status`;
-- file tracciati e non tracciati;
-- confronto duplicati;
-- lista esatta di mantenimento, archivio ed eliminazione.
+```txt
+LETTURA COMPLETATA
+CLASSIFICAZIONE COMPLETATA
+ASSORBIMENTO NEI REGISTRI COMPLETATO
+PULIZIA FISICA NON ESEGUITA
+```

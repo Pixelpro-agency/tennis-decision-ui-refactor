@@ -84,6 +84,7 @@ FUTURO
 > - [x] Audit statico codice per settori — test non rieseguiti
 > - [x] Ricontrollo task dichiarate completate — **D1–D18 COMPLETATI**
 > - [x] Integrazione workflow dell’altro progetto — **QUATTRO RUOLI DEFINITI**
+> - [x] Audit dei materiali locali `docs/` fuori dalla documentazione canonica — **9 FILE CLASSIFICATI**
 > - [x] Inventario implementazioni consigliate — **IMPL-001…011**
 > - [ ] Selezione della prima task esecutiva
 > - [ ] Revisione delle modifiche
@@ -529,23 +530,20 @@ DA RIAPRIRE
 
 ---
 
-# BLOCCO F0 — Audit di `docs/planning`
+# BLOCCO F0 — Audit dei materiali locali `docs/`
 
-- [x] Planning trattato come fonte non canonica
-- [x] Copie testuali accessibili inventariate per gruppi
-- [x] Pacchetto Task 6 — `REALIZZATA / DUPLICATA / STORICA`
-- [x] Report Task 6 — `REALIZZATA / VALIDAZIONE STORICA`
-- [x] Brief Source Identity — `REALIZZATA / DUPLICATA / LIMITI LIVE`
-- [x] Brief Money Flow — `REALIZZATA / 2F CON LIMITI`
-- [x] Journal/recovery — `REALIZZATA / STORICA`
-- [x] Diagnostica Betfair — `PARZIALMENTE REALIZZATA`
-- [x] Retention — `PARZIALMENTE REALIZZATA / ANCORA VALIDA`
-- [x] `_work`, change brief e percorsi — `SUPERATA / ASSORBITA NEL WORKFLOW`
-- [x] `docs.rar` — escluso e non letto
-- [x] `idee future.odt` — escluso e non letto
-- [x] `idee per stream api betfair.odt` — escluso e non letto
-- [x] Nessuna eliminazione o modifica planning eseguita
-- [ ] Cleanup fisico planning locale — solo con inventario locale e task separata
+- [x] Inventario reale ricevuto — 9 file
+- [x] Prompt navigazione/modularizzazione — sintetizzato e deprecabile
+- [x] `_work/01-documentation-impact-request.md` — deprecabile
+- [x] `_work/change-brief.md` — sintetizzato e deprecabile
+- [x] brief Source Identity legacy — da trasformare in validation
+- [x] `percorsi.txt` — da eliminare dopo migrazione `.md`
+- [x] backlog operativo — sintetizzato nelle IMPL
+- [x] pacchetto Task 6 — archivio storico
+- [x] report Task 6 — validation intermedia
+- [x] pacchetto Task 2 — archivio storico
+- [x] nessun file locale cancellato o pubblicato
+- [ ] cleanup fisico dei materiali locali — task separata dopo approvazione
 
 # BLOCCO F — Implementazioni utili
 
@@ -560,6 +558,10 @@ DA RIAPRIRE
 - [x] `IMPL-009` — Adapter persistence + stati locali + pannello sidebar — **NECESSARIA**
 - [~] `IMPL-010` — Toolkit autonomo studio strategie offline — **FUTURO**
 - [x] `IMPL-011` — Authority di manutenzione cleanup offline — **NECESSARIA**
+- [x] `IMPL-012` — Fixture versionate e replay offline — **NECESSARIA PRIMA DI BACKTESTING**
+- [x] `IMPL-013` — Baseline end-to-end e freshness — **NECESSARIA PRIMA DI OTTIMIZZARE**
+- [~] `IMPL-014` — Ottimizzazione Betfair misurata e reversibile — **FUTURA/CONDIZIONATA**
+- [?] `IMPL-015` — Invariante single-writer `match_history` — **DA VERIFICARE**
 - [x] Inventario delle implementazioni emerse
 - [x] Classificazione necessaria/consigliata
 - [ ] Preparazione delle task separate
@@ -675,14 +677,14 @@ Per ogni rilievo approvato:
 ## Prossimo punto
 
 ```txt
-1. inserire questo checkpoint nella root
-2. verificare la diff
-3. commit e push su main eseguiti dall’utente
-4. verificare il nuovo SHA remoto
-5. nuova lettura approfondita del codice
+1. pubblicare il checkpoint audit materiali locali
+2. verificare il nuovo SHA remoto
+3. nuova lettura approfondita del codice
    → precisione
    → robustezza
    → utilità
-   → strutture mancanti
-6. preparare le task esecutive separate
+   → verifica IMPL-015
+4. preparare la prima task esecutiva
+   → isolamento sessione live
+5. pianificare separatamente la pulizia fisica dei file locali
 ```
