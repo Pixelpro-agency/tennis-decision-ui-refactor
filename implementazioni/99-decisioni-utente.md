@@ -606,3 +606,48 @@ IMPL-005
 → raggruppamento e priorità delle task Punti 1–7
 ```
 
+
+
+## DEC-025 — Riscrittura documentale corrente, per batch e senza anticipazioni
+
+**Stato:** approvata integralmente.
+
+1. la nuova documentazione canonica descrive soltanto il comportamento realmente presente nel codice corrente;
+2. una decisione tecnica approvata ma non ancora implementata resta nei registri e non viene presentata come funzionalità esistente;
+3. le funzionalità future non restano nella documentazione canonica attiva; vengono documentate quando implementate;
+4. i contenuti futuri o storici utili possono essere archiviati come non canonici, con stato esplicito;
+5. la migrazione `.mdx` → `.md` procede in più batch piccoli e revisionabili;
+6. il Batch 0 crea inventario, manifest, owner matrix, link report, piano batch e checklist senza sostituire file canonici;
+7. ogni documento deve avere un owner unico e rimandare agli altri moduli senza duplicarne l’intero contratto;
+8. i report di collaudo storico vengono separati dai runbook correnti e spostati in `docs/validations/`;
+9. Strategy e altri elementi deprecati restano documentati come presenti finché il codice esiste, poi vengono rimossi insieme alla relativa task;
+10. nessun `.mdx` viene eliminato prima della disponibilità del sostituto completo, della verifica dei link e del controllo dei duplicati;
+11. non usare conversioni automatiche di massa non revisionate;
+12. ogni consegna deve essere controllata prima del download e includere limiti e rollback;
+13. la riscrittura strutturale viene prima delle nuove funzionalità;
+14. i documenti comportamentali destinati a cambiare vengono finalizzati insieme alla relativa task di codice;
+15. dopo la stabilizzazione del nucleo si potrà riaprire l’analisi di nuove funzionalità.
+
+### Ordine approvato
+
+```txt
+Batch 0 inventario e manifest
+→ Batch 1 struttura e navigazione
+→ controlli documentali read-only
+→ runner minimo
+→ task critiche di robustezza
+→ aggiornamento dei documenti owner insieme al codice
+→ baseline e replay
+→ nuova analisi funzionale
+```
+
+### Confini
+
+La decisione non autorizza:
+
+- cancellazioni immediate di `.mdx`;
+- riscrittura simultanea di tutta la documentazione;
+- documentazione di feature non implementate come stato corrente;
+- rimozione di contenuti unici senza assorbimento o archivio;
+- modifica del codice applicativo nel Batch 0;
+- commit o push automatici.

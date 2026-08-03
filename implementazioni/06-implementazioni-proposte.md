@@ -3460,3 +3460,121 @@ IMPL-005 esteso
 → raggruppamento delle task Punti 1–7
 ```
 
+
+
+---
+
+## 22. Fase documentale post-audit
+
+### IMPL-032 — Manifest e pipeline di migrazione documentale per batch
+
+**Classificazione:** `NECESSARIA`  
+**Stato:** `APPROVATA; BATCH 0 PREPARATO`  
+**Priorità:** critica prima della riscrittura canonica
+
+### Problema
+
+La documentazione canonica usa `.mdx`, metadata JavaScript e link espliciti alle estensioni correnti.
+
+Una rinomina massiva rischierebbe di:
+
+- lasciare JavaScript nei nuovi `.md`;
+- rompere link relativi;
+- mantenere duplicati `.mdx`/`.md`;
+- perdere contenuti unici;
+- promuovere contratti approvati ma non implementati;
+- conservare come attivi documenti storici o futuri.
+
+### Obiettivo
+
+Creare una migrazione verificabile e reversibile:
+
+```txt
+inventario
+→ manifest
+→ owner matrix
+→ batch piccoli
+→ file completi
+→ verifica contenuti e link
+→ sostituzione
+→ eliminazione finale dei vecchi .mdx
+```
+
+### Workspace preparatorio
+
+```txt
+docs/migration/tennis-decision-ui/
+├── README.md
+├── DOCUMENT-INVENTORY.md
+├── MIGRATION-MANIFEST.md
+├── OWNER-MATRIX.md
+├── LINK-REPORT.md
+├── BATCH-PLAN.md
+└── VALIDATION-CHECKLIST.md
+```
+
+Questa cartella è temporanea e non diventa documentazione tecnica canonica del prodotto.
+
+### Stati di migrazione
+
+```txt
+KEEP_CURRENT
+REWRITE_NOW
+REWRITE_WITH_CODE
+MOVE_TO_VALIDATIONS
+ARCHIVE_NON_CANONICAL
+DEPRECATE_THEN_REMOVE
+REMOVE_AFTER_REPLACEMENT
+```
+
+### Regole
+
+1. la documentazione canonica descrive il codice corrente;
+2. una decisione approvata ma non implementata resta nei registri;
+3. il futuro non resta nell’indice canonico attivo;
+4. un documento storico viene spostato in `docs/validations/` o archivio, non mescolato a un runbook;
+5. un file deprecato ma ancora collegato al codice resta disponibile fino alla task di rimozione;
+6. nessun `.mdx` viene eliminato prima di `TEST-077…079`;
+7. ogni batch ha rollback tramite ripristino dei file precedenti;
+8. le sostituzioni vengono consegnate come file completi o ZIP strutturato.
+
+### Batch iniziali
+
+```txt
+Batch 0
+→ registri + inventario + manifest
+
+Batch 1
+→ convenzioni + indice + README + repository map + context selection
+
+Batch 2
+→ architettura + current state + struttura validations
+
+Batch comportamentali
+→ API e moduli aggiornati insieme al codice quando il relativo contratto cambia
+
+Batch finale
+→ verifica globale link
+→ rimozione .mdx sostituiti
+→ rimozione riferimenti legacy
+→ eliminazione workspace migration
+```
+
+### Test minimi
+
+```txt
+TEST-076
+TEST-077
+TEST-078
+TEST-079
+```
+
+### Criterio di chiusura
+
+- tutti i documenti canonici finali sono `.md`;
+- nessun `export const meta` nei file finali;
+- indice e README puntano soltanto a file esistenti;
+- nessun duplicato canonico `.mdx`/`.md`;
+- storico e validazioni separati;
+- futuro non presentato come stato corrente;
+- workspace di migrazione rimosso o archiviato dopo il completamento.

@@ -6200,3 +6200,182 @@ IMPL-005 esteso
 → raggruppamento delle task esecutive Punti 1–7
 ```
 
+
+
+---
+
+## 23. Controllo finale post-audit e avvio della migrazione documentale
+
+**Baseline del codice verificato:** `275008a5cd6451f24c6895068639ee3055395986`  
+**Checkpoint dei registri:** `eef267aab3c138395a5ca3d644a942190c5360e8`  
+**Stato:** `COMPLETATO E APPROVATO`
+
+### Scopo
+
+Dopo i Punti 1–7 è stato eseguito un controllo trasversale finale sul percorso:
+
+```txt
+acquisizione SofaScore / Betfair
+→ scheduler e processi Python
+→ Source Identity Gate
+→ commit history/timeline
+→ journal e recovery
+→ API read-only
+→ Evidence e Market Reactions
+→ polling e presentazione frontend
+→ test e documentazione
+```
+
+Il controllo non ha eseguito suite o collaudi live. Ha confrontato codice corrente, documenti owner, test presenti e decisioni approvate.
+
+### Esito di completezza
+
+Non è emersa una nuova area critica della raccolta dati dimenticata dai Punti 1–7.
+
+Sono già registrati i gap principali relativi a:
+
+```txt
+writer authority
+session authority
+Betfair runtime authority
+local control-plane
+storage/recovery verificati
+provenance temporale
+eligibility Evidence
+polling session-scoped
+integrity UI
+runner e fixture
+```
+
+La distinzione obbligatoria è:
+
+```txt
+decisione o contratto approvato nei registri
+≠
+comportamento già implementato nel prodotto
+```
+
+Esempi ancora non implementati al checkpoint:
+
+- `trackingSessionId` e `commandId` end-to-end;
+- writer lock backend-owned prima della recovery;
+- scraper Betfair legato alla sessione logica;
+- Stop con esito completo/parziale;
+- canonical document contract con revision/head/digest;
+- polling frontend con abort e generation guard uniformi;
+- UI persistence locale e globale;
+- eligibility e provenance complete delle Market Reactions;
+- runner canonico di validazione.
+
+### Decisione sulle nuove funzionalità
+
+Non aprire nuove funzionalità prima della stabilizzazione del nucleo.
+
+Ordine:
+
+```txt
+struttura documentale
+→ validazione minima ripetibile
+→ autorità runtime e storage
+→ frontend ed Evidence
+→ baseline e replay
+→ nuova analisi funzionale
+```
+
+Le idee future possono restare nei registri o in archivio storico, ma non devono essere presentate come stato corrente della documentazione canonica.
+
+### DOC-033 — Documentazione canonica che anticipa contratti non implementati
+
+**Classificazione:** `BUG DOCUMENTALE CONFERMATO`  
+**Stato:** `POLICY DI CORREZIONE APPROVATA`  
+**Priorità:** critica per la riscrittura
+
+Alcuni documenti owner descrivono come già collegati o completi comportamenti che il codice non possiede ancora, in particolare:
+
+```txt
+session authority frontend
+polling protetto da response tardive
+persistence integrity UI completa
+Market Reactions eligibility e availability uniformi
+storage contract verificato esteso
+```
+
+#### Policy approvata
+
+La documentazione canonica nuova descrive soltanto:
+
+```txt
+implementato
+implementato con limiti espliciti
+validato
+validazione aperta
+deprecato ma ancora presente
+```
+
+Le voci soltanto approvate o pianificate restano nei registri fino alla relativa implementazione.
+
+### WORKFLOW-005 — Migrazione documentale per batch
+
+**Classificazione:** `WORKFLOW APPROVATO`  
+**Stato:** `BATCH 0 PREPARATO`
+
+La migrazione non viene eseguita con una rinomina massiva.
+
+Ogni batch deve includere:
+
+```txt
+SHA base
+file completi
+mapping vecchio → nuovo
+owner e stato
+link da aggiornare
+controlli eseguiti
+limiti
+rollback
+```
+
+Prima della consegna verificare:
+
+1. completezza dell’inventario;
+2. assenza di informazioni tecniche uniche perse;
+3. coerenza col codice corrente;
+4. distinzione fra corrente, storico, deprecato e futuro;
+5. link relativi;
+6. assenza di duplicati canonici;
+7. nessuna cancellazione anticipata.
+
+### TEST-076…079 — Controlli della migrazione
+
+```txt
+TEST-076
+→ tutti i documenti indicizzati inventariati una sola volta
+
+TEST-077
+→ mapping univoco .mdx → .md e nessun duplicato canonico
+
+TEST-078
+→ link dei file migrati validi e nessun riferimento a path rimossi
+
+TEST-079
+→ stato corrente/deprecato/storico/futuro coerente con codice e registri
+```
+
+`TEST-076` è stato eseguito nel Batch 0 sui quaranta documenti elencati dall’indice canonico.
+
+`TEST-077…079` devono essere ripetuti per ogni batch e prima della rimozione finale dei `.mdx`.
+
+### Confini del Batch 0
+
+Il Batch 0 produce soltanto:
+
+```txt
+aggiornamento dei registri
+inventario documenti
+manifest di migrazione
+owner matrix
+link report
+piano dei batch
+checklist di validazione
+```
+
+Non sostituisce, rinomina o elimina alcun documento canonico.

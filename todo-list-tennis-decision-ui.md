@@ -30,7 +30,8 @@ La Todo:
 Repository: Pixelpro-agency/tennis-decision-ui-refactor
 Branch: main
 SHA iniziale: ae9766dde97de08425d65cf62fe929aece3ba6a2
-SHA corrente verificato: 275008a5cd6451f24c6895068639ee3055395986
+SHA codice verificato: 275008a5cd6451f24c6895068639ee3055395986
+SHA checkpoint registri e avvio migrazione: eef267aab3c138395a5ca3d644a942190c5360e8
 ```
 
 - [x] Accesso alla repository verificato
@@ -39,12 +40,12 @@ SHA corrente verificato: 275008a5cd6451f24c6895068639ee3055395986
 - [x] Prima scansione architetturale
 - [x] Metodo a due file approvato
 - [x] Seconda analisi approfondita della documentazione canonica — B1–B6 completati
-- [-] Verifica migrazione documentale `.mdx` → `.md` — struttura confermata; link checker e manifest ancora da realizzare
+- [-] Migrazione documentale `.mdx` → `.md` — **BATCH 0 PREPARATO**; inventario e manifest creati, sostituzioni non ancora iniziate
 - [x] Audit statico del codice per settori — suite non rieseguite
 - [x] Ricontrollo delle task completate — D1–D18 classificati
 - [x] Integrazione completa del metodo dell’altro progetto — incluso `CHAT_ESECUTORE`
-- [x] Valutazione delle implementazioni utili — IMPL-001…031 classificate
-- [ ] Definizione della prima task esecutiva — dopo raggruppamento e priorità dei Punti 1–7
+- [x] Valutazione delle implementazioni utili — IMPL-001…032 classificate
+- [x] Prima fase operativa selezionata — migrazione documentale Batch 0
 
 ---
 
@@ -85,8 +86,10 @@ FUTURO
 > - [x] Ricontrollo task dichiarate completate — **D1–D18 COMPLETATI**
 > - [x] Integrazione workflow dell’altro progetto — **QUATTRO RUOLI DEFINITI**
 > - [x] Audit dei materiali locali `docs/` fuori dalla documentazione canonica — **9 FILE CLASSIFICATI**
-> - [x] Inventario implementazioni consigliate — **IMPL-001…031**
-> - [ ] Selezione della prima task esecutiva
+> - [x] Inventario implementazioni consigliate — **IMPL-001…032**
+> - [x] Selezione della prima fase operativa — **BATCH 0 DOCUMENTAZIONE**
+> - [ ] Applicazione e push del Batch 0
+> - [ ] Riscrittura Batch 1 strutturale
 > - [ ] Revisione delle modifiche
 > - [ ] Collaudo indipendente, quando necessario
 > - [ ] Commit e push eseguiti dall’utente
@@ -119,8 +122,10 @@ planning e materiali di processo
 
 checkpoint
 → Punti 1–7 completati e approvati
-→ soli registri
-→ pronto per raggruppamento delle task esecutive
+→ controllo finale post-audit completato
+→ DEC-025 e IMPL-032 registrate
+→ Batch 0 documentazione preparato
+→ nessun .mdx ancora sostituito o eliminato
 ```
 
 ---
@@ -140,9 +145,9 @@ checkpoint
 - [ ] A11 — Inventario completo package Python
 - [ ] A12 — Inventario script operativi
 - [ ] A13 — Inventario test
-- [ ] A14 — Inventario documenti canonici
-- [ ] A15 — Inventario legacy e file generati
-- [ ] A16 — Matrice iniziale codice ↔ documentazione
+- [x] A14 — Inventario documenti canonici — 40 documenti indicizzati verificati sullo SHA checkpoint
+- [-] A15 — Inventario legacy e file generati — materiali locali classificati; riferimenti canonici `chapters/` e `sections/` verificati assenti
+- [-] A16 — Matrice codice ↔ documentazione — owner matrix Batch 0 creata; completamento progressivo per i batch comportamentali
 
 ---
 
@@ -162,6 +167,15 @@ checkpoint
 - [-] Planning classificato per gruppi accessibili; esclusi tre file per decisione utente
 - [x] Requisiti ancora validi collegati a rilievi e IMPL
 - [x] Storico, futuro e stato corrente separati
+
+## Regole aggiuntive della migrazione post-audit
+
+- [x] La documentazione canonica descrive soltanto comportamento implementato e verificato nel codice corrente.
+- [x] Decisioni approvate ma non implementate restano nei registri, non vengono presentate come stato corrente.
+- [x] Funzionalità future non restano nella documentazione canonica attiva; vengono archiviate o deprecate fino all’implementazione.
+- [x] La migrazione procede per batch piccoli e revisionabili.
+- [x] Nessun `.mdx` viene eliminato prima della sostituzione completa, della verifica dei link e del controllo dei duplicati.
+- [x] Ogni batch include file completi, manifest, controlli eseguiti, limiti e rollback.
 
 # BLOCCO B — Audit documentazione
 
@@ -513,6 +527,7 @@ DA RIAPRIRE
 - [x] `DOC-030` — UI Betfair/Market Reactions descritta come integrity-aware senza wiring reale — **CONFERMATO; CORREZIONE APPROVATA**
 - [x] `DOC-031` — Runbook Validation monolitico e non verificabile automaticamente — **CONFERMATO; REFACTOR APPROVATO**
 - [x] `DOC-032` — Semantica di stato dei test non formalizzata — **CONFERMATO; CORREZIONE APPROVATA**
+- [x] `DOC-033` — Documenti canonici possono anticipare contratti approvati ma non implementati — **CONFERMATO; POLICY APPROVATA**
 
 ## Workflow e regole
 
@@ -520,6 +535,7 @@ DA RIAPRIRE
 - [x] `WORKFLOW-002` — Todo e registro analitico divergenti — **COMPLETATO NEL CHECKPOINT B6**
 - [x] `WORKFLOW-003` — Prefissi `SECURITY-`/`PYTHON-` non dichiarati — **COMPLETATO NEL CHECKPOINT B6**
 - [ ] `WORKFLOW-004` — SHA, range e stato sintetico dei registri possono divergere — **CONFERMATO; ESTENSIONE IMPL-005 APPROVATA**
+- [x] `WORKFLOW-005` — Migrazione documentale per batch con controlli prima della consegna — **APPROVATO; BATCH 0 PREPARATO**
 - [x] `RUNTIME-001` — Non riaprire runtime Task 2 senza discrepanza — **REGOLA APPROVATA**
 
 ## Bug e incoerenze di codice
@@ -674,6 +690,10 @@ DA RIAPRIRE
 - [ ] `TEST-073` — Profilo `fast` non avvia browser, rete esterna o tracking — **MANCANTE**
 - [ ] `TEST-074` — Benchmark registra mediana/p95 senza dati live — **MANCANTE**
 - [ ] `TEST-075` — Comando lint eseguibile oppure rimosso dalla superficie ufficiale — **MANCANTE**
+- [x] `TEST-076` — Tutti i documenti canonici indicizzati sono inventariati una sola volta — **ESEGUITO NEL BATCH 0**
+- [ ] `TEST-077` — Ogni sostituzione `.mdx` → `.md` ha mapping univoco e nessun duplicato canonico — **DA ESEGUIRE PER OGNI BATCH**
+- [ ] `TEST-078` — Tutti i link relativi dei file migrati risolvono e non puntano a percorsi rimossi — **DA ESEGUIRE PER OGNI BATCH**
+- [ ] `TEST-079` — Stato corrente, deprecato, storico e futuro sono coerenti con codice e registri — **DA ESEGUIRE PER OGNI BATCH**
 
 ---
 
@@ -725,6 +745,7 @@ DA RIAPRIRE
 - [x] `IMPL-029` — Fixture catalog e sandbox condivisa — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
 - [x] `IMPL-030` — Frontend interaction test harness — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA PER IL PUNTO 6**
 - [x] `IMPL-031` — Validation result ledger e artefatti JSON — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
+- [x] `IMPL-032` — Manifest e pipeline di migrazione documentale per batch — **APPROVATA; BATCH 0 PREPARATO**
 - [x] Inventario delle implementazioni emerse
 - [x] Classificazione necessaria/consigliata
 - [ ] Preparazione delle task separate
@@ -777,13 +798,13 @@ oppure rilettura troppo costosa
 - [x] Metodo preferito: file completi scaricabili
 - [x] Inserimento nel repository eseguito dall’utente
 - [x] Nessun frontmatter predefinito; Markdown ordinario
-- [ ] Preparare manifest vecchio percorso → nuovo percorso
-- [ ] Preparare elenco `.mdx` da eliminare dopo verifica
-- [ ] Preparare elenco link aggiornati
-- [ ] Consegnare ZIP per batch numerosi
-- [ ] Verificare struttura dello ZIP
-- [ ] Verificare contenuto completo
-- [ ] Verificare link
+- [x] Preparare manifest vecchio percorso → nuovo percorso — **BATCH 0**
+- [x] Preparare elenco `.mdx` da eliminare dopo verifica — **MAPPING COMPLETO NEL MANIFEST**
+- [-] Preparare elenco link aggiornati — link report creato; aggiornamenti effettivi per batch
+- [x] Consegnare ZIP per batch numerosi — **BATCH 0**
+- [x] Verificare struttura dello ZIP — **BATCH 0**
+- [x] Verificare contenuto completo — **BATCH 0**
+- [-] Verificare link — 40 target dell’indice verificati; link checker ricorsivo ancora da implementare
 - [ ] Rimuovere vecchi `.mdx` solo alla fine
 
 # BLOCCO I — Preparazione delle task esecutive
@@ -841,10 +862,10 @@ Per ogni rilievo approvato:
 ## Prossimo punto
 
 ```txt
-1. pubblicare il checkpoint cumulativo Punti 1–7
+1. applicare e pubblicare il Batch 0
 2. verificare il nuovo SHA remoto
-3. raggruppare i finding e le implementazioni per dipendenza
-4. definire priorità, confini e ordine delle task esecutive
-5. preparare il primo brief esecutivo completo
-6. nessuna implementazione automatica prima dell’approvazione del raggruppamento
+3. Batch 1: convenzioni, indice, README, repository map e context selection
+4. eseguire TEST-077…079 sul Batch 1
+5. non eliminare ancora i documenti owner comportamentali destinati a cambiare con le task di robustezza
+6. dopo il Batch 1, introdurre il runner minimo e avviare le task critiche nell’ordine approvato
 ```

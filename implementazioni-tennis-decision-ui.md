@@ -17,7 +17,8 @@ Non è:
 Repository: Pixelpro-agency/tennis-decision-ui-refactor
 Branch canonico: main
 SHA iniziale esaminato: ae9766dde97de08425d65cf62fe929aece3ba6a2
-SHA corrente verificato: 275008a5cd6451f24c6895068639ee3055395986
+SHA codice verificato: 275008a5cd6451f24c6895068639ee3055395986
+SHA checkpoint registri e avvio migrazione: eef267aab3c138395a5ca3d644a942190c5360e8
 ```
 
 ## Registri
@@ -34,6 +35,7 @@ SHA corrente verificato: 275008a5cd6451f24c6895068639ee3055395986
 - [Workflow esecutivo](./implementazioni/07-workflow-esecutivo.md)
 - [Linee guida per chat e AI](./implementazioni/08-linee-guida-chat-e-ai.md)
 - [Decisioni dell’utente](./implementazioni/99-decisioni-utente.md)
+- [Workspace migrazione documentale Batch 0](./docs/migration/tennis-decision-ui/README.md)
 
 ## Regole di utilizzo
 
@@ -74,7 +76,9 @@ nove materiali locali fuori dalla documentazione canonica
 checkpoint corrente
 → Punti 1–7 registrati
 → audit tecnico completo
-→ pronto per raggruppamento e priorità delle task esecutive
+→ controllo finale post-audit completato
+→ riscrittura documentale per batch approvata
+→ Batch 0: inventario e manifest di migrazione
 ```
 
 Dopo la pubblicazione del checkpoint:
@@ -97,10 +101,33 @@ checkpoint audit materiali locali
 → session controller, polling session-scoped e integrity UI approvati
 → Punto 7 completato
 → runner, fixture, test map, result ledger e baseline approvati
-→ prossimo passo: raggruppamento e priorità delle task esecutive
+→ controllo finale della raccolta dati e della robustezza completato
+→ nessuna nuova area critica dimenticata rispetto ai Punti 1–7
+→ DEC-025: documentazione canonica solo sullo stato reale
+→ IMPL-032: migrazione documentale per batch con manifest e controlli
+→ prossimo passo: applicare Batch 0, poi riscrivere il Batch 1 strutturale
 → precisione
 → robustezza
 → utilità
 → strutture mancanti
 → preparazione delle task esecutive prioritarie
+```
+
+
+## Fase documentale post-audit
+
+```txt
+Batch 0
+→ registrazione delle decisioni
+→ inventario dei documenti indicizzati
+→ manifest vecchio percorso → nuovo percorso
+→ owner matrix
+→ link report
+→ nessuna sostituzione o cancellazione .mdx
+
+Batch successivi
+→ file .md completi
+→ contenuti verificati sul codice corrente
+→ futuro escluso dalla documentazione canonica finché non implementato
+→ rimozione .mdx soltanto dopo verifica dei link e assenza di duplicati
 ```
