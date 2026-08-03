@@ -30,7 +30,7 @@ La Todo:
 Repository: Pixelpro-agency/tennis-decision-ui-refactor
 Branch: main
 SHA iniziale: ae9766dde97de08425d65cf62fe929aece3ba6a2
-SHA corrente verificato: b277bd9b7373dfd8702e65446c88bab7a0f64dcc
+SHA corrente verificato: 2959fba5bc3e0480cc3ea03f4469361cbb629ae6
 ```
 
 - [x] Accesso alla repository verificato
@@ -43,8 +43,8 @@ SHA corrente verificato: b277bd9b7373dfd8702e65446c88bab7a0f64dcc
 - [x] Audit statico del codice per settori — suite non rieseguite
 - [x] Ricontrollo delle task completate — D1–D18 classificati
 - [x] Integrazione completa del metodo dell’altro progetto — incluso `CHAT_ESECUTORE`
-- [x] Valutazione delle implementazioni utili — IMPL-001…011 classificate
-- [ ] Definizione della prima task esecutiva — dopo push e seconda lettura codice
+- [x] Valutazione delle implementazioni utili — IMPL-001…024 classificate
+- [ ] Definizione della prima task esecutiva — dopo completamento dei Punti 5–7
 
 ---
 
@@ -85,7 +85,7 @@ FUTURO
 > - [x] Ricontrollo task dichiarate completate — **D1–D18 COMPLETATI**
 > - [x] Integrazione workflow dell’altro progetto — **QUATTRO RUOLI DEFINITI**
 > - [x] Audit dei materiali locali `docs/` fuori dalla documentazione canonica — **9 FILE CLASSIFICATI**
-> - [x] Inventario implementazioni consigliate — **IMPL-001…011**
+> - [x] Inventario implementazioni consigliate — **IMPL-001…024**
 > - [ ] Selezione della prima task esecutiva
 > - [ ] Revisione delle modifiche
 > - [ ] Collaudo indipendente, quando necessario
@@ -97,7 +97,7 @@ FUTURO
 ## Checkpoint corrente
 
 ```txt
-SHA verificato: b277bd9b7373dfd8702e65446c88bab7a0f64dcc
+SHA verificato: 2959fba5bc3e0480cc3ea03f4469361cbb629ae6
 
 B1–B6
 → audit completato
@@ -472,7 +472,9 @@ DA RIAPRIRE
 - [x] Punto 2 — tracking, Start/Stop, generazioni e callback tardive
 - [x] Punto 3 — Betfair lifecycle, Graph, diagnostica, concorrenza e cleanup — **COMPLETATO E APPROVATO**
 - [x] Punto 4 — Storage, journal e recovery — **COMPLETATO E APPROVATO**
-- [ ] Punto successivo — **DA DEFINIRE DOPO IL CHECKPOINT DEL PUNTO 4**
+- [x] Punto 5 — Evidence e Market Reactions — **COMPLETATO E APPROVATO**
+- [ ] Punto 6 — Frontend — **PROSSIMO**
+- [ ] Punto 7 — Test e strutture mancanti — **DOPO IL PUNTO 6**
 
 # BLOCCO E — Rilievi registrati
 
@@ -503,6 +505,8 @@ DA RIAPRIRE
 - [x] `DOC-023` — Collaudi storici mescolati ai runbook — **CONFERMATO**
 - [x] `DOC-024` — Ownership processo distinta da writer authority — **CONFERMATO**
 - [x] `DOC-025` — Generation Python distinta dalla session authority — **CONFERMATO**
+- [x] `DOC-026` — Temporal provenance e policy di alignment non documentate — **CONFERMATO; CORREZIONE APPROVATA**
+- [x] `DOC-027` — Availability, activity/response e threshold non documentati — **CONFERMATO; CORREZIONE APPROVATA**
 
 ## Workflow e regole
 
@@ -566,10 +570,22 @@ DA RIAPRIRE
 - [ ] `STORAGE-011` — Atomicità process-level non equivale a durabilità power-loss — **LIMITE CONFERMATO; DA MISURARE**
 - [ ] `STORAGE-012` — Writer raw non journalizzati ancora esportati — **SUPERFICIE CONFERMATA; INVENTARIO E CHIUSURA APPROVATI**
 
+
+## Evidence e Market Reactions
+
+- [ ] `EVIDENCE-001` — Fallback nome nei confronti runner Field → Market — **DEC-010 APPROVATA; IMPLEMENTAZIONE MANCANTE**
+- [ ] `EVIDENCE-002` — Tick degradati/status-only possono diventare nuovi eventi Market Reactions — **CONFERMATO; IMPL-023 APPROVATA; PRIORITÀ CRITICA**
+- [ ] `EVIDENCE-003` — Attività matched generale classificata come market response — **CONFERMATO; SEMANTICA DA SEPARARE**
+- [ ] `EVIDENCE-004` — Marker persistente confuso con nuova comparsa successiva — **CONFERMATO; TRANSITION GATE APPROVATO**
+- [ ] `EVIDENCE-005` — `maxTickGapSec` non misura il source skew e timestamp futuri risultano freschi — **CONFERMATO; IMPL-022 APPROVATA**
+- [ ] `EVIDENCE-006` — Confronti prezzo con source diverse e baseline non bounded — **CONFERMATO; IMPL-024 APPROVATA**
+- [ ] `EVIDENCE-007` — Qualità globale positiva con un solo runner affidabile — **CONFERMATO; COVERAGE ESPLICITA APPROVATA**
+- [ ] `EVIDENCE-008` — Baseline Significant Flow/cluster e threshold non sufficientemente definiti — **LIMITE CONFERMATO; POLICY APPROVATA**
+- [ ] `EVIDENCE-009` — `available` e stato delle finestre hanno semantiche non uniformi — **CONFERMATO; BRANCH STATE APPROVATO**
+
 ## Decisioni e verifiche residue
 
 - [ ] `SOFA-001` — Ultimo game PBP considerato aperto — **DA VERIFICARE LIVE**
-- [x] `EVIDENCE-001` — Field → Market — **SELECTIONID OBBLIGATORIO; NESSUN IMPATTO SUL GATE/START**
 - [x] `CLEANUP-001` — Authority Source Identity legacy frontend — **RIMOZIONE APPROVATA; AUTHORITY GLOBALE UNICA**
 - [ ] `TEST-001` — Test dedicato tick Betfair `status-only` — **MANCANTE**
 - [ ] `TEST-002` — Test lifecycle cambio sessione/Start fallito — **MANCANTE**
@@ -601,6 +617,19 @@ DA RIAPRIRE
 - [ ] `TEST-028` — EventId e target confinement — **MANCANTE**
 - [ ] `TEST-029` — Nessun consumer runtime dei writer raw — **MANCANTE**
 - [ ] `TEST-030` — Retry, escalation e rearm recovery — **MANCANTE**
+- [ ] `TEST-031` — Tick `status-only` non crea nuovo Significant Flow/source event — **MANCANTE**
+- [ ] `TEST-032` — Eligibility tecnica Market Reactions su stale/Graph/ladder/skew — **MANCANTE**
+- [ ] `TEST-033` — `selectionId` obbligatorio senza fallback nome — **MANCANTE**
+- [ ] `TEST-034` — Market activity distinta da qualified observation — **MANCANTE**
+- [ ] `TEST-035` — Marker presente distinto da marker transition — **MANCANTE**
+- [ ] `TEST-036` — Price source change degradata/unavailable — **MANCANTE**
+- [ ] `TEST-037` — Baseline gap oltre soglia — **MANCANTE**
+- [ ] `TEST-038` — Coverage runner complete/partial/none — **MANCANTE**
+- [ ] `TEST-039` — Acquisition timestamp, source skew e clock skew — **MANCANTE**
+- [ ] `TEST-040` — Baseline Significant Flow per `selectionId` — **MANCANTE**
+- [ ] `TEST-041` — Cluster temporali non sovrapposti — **MANCANTE**
+- [ ] `TEST-042` — Semantica computed/available/observed — **MANCANTE**
+- [ ] `TEST-043` — Finestre open/closed e provisional/final — **MANCANTE**
 
 ---
 
@@ -642,6 +671,9 @@ DA RIAPRIRE
 - [x] `IMPL-019` — Event persistence authority — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
 - [x] `IMPL-020` — Canonical document contract e verified recovery — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
 - [x] `IMPL-021` — Recovery control plane — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
+- [x] `IMPL-022` — Evidence temporal provenance and alignment policy — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
+- [x] `IMPL-023` — Market Reaction eligibility e branch state — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
+- [x] `IMPL-024` — Runner temporal identity e price comparability — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
 - [x] Inventario delle implementazioni emerse
 - [x] Classificazione necessaria/consigliata
 - [ ] Preparazione delle task separate
@@ -757,10 +789,16 @@ Per ogni rilievo approvato:
 ## Prossimo punto
 
 ```txt
-1. pubblicare il checkpoint cumulativo Punto 1 + Punto 2 + Punto 3 + Punto 4
+1. pubblicare il checkpoint cumulativo Punti 1–5
 2. verificare il nuovo SHA remoto
-3. definire con l’utente il prossimo perimetro del secondo audit
-   oppure, se il secondo audit viene considerato sufficiente,
-   raggruppare le task prioritarie senza ancora eseguirle
-4. nessuna modifica al codice prima della decisione sul prossimo perimetro
+3. analizzare il Punto 6 — Frontend
+   → session lifecycle
+   → polling
+   → response tardive
+   → integrity UI
+   → cleanup legacy
+   → responsive e piccole correzioni separate
+4. analizzare il Punto 7 — Test e strutture mancanti
+5. soltanto dopo il Punto 7 raggruppare e ordinare le task esecutive
+6. nessuna modifica al codice durante l’audit dei Punti 6 e 7
 ```

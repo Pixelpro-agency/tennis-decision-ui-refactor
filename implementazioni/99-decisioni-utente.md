@@ -350,3 +350,85 @@ writer authority
 → eventuale evoluzione formato
 ```
 
+
+## DEC-022 — Evidence e Market Reactions verificati del Punto 5
+
+**Stato:** approvata integralmente.
+
+1. i tick `status-only` restano nella timeline per health e diagnostica, ma non generano nuovi Significant Flow, cluster, source event o Market Reaction;
+2. Market Reactions usa una eligibility tecnica esplicita oltre a Source Identity e persistence integrity;
+3. applicare `DEC-010`: nessun fallback sul nome nel ramo Field → Market quando manca `selectionId`;
+4. estendere `selectionId` obbligatorio a tutti i confronti temporali dello stesso runner Betfair;
+5. separare attività matched generale, variazione prezzo/volume del runner e osservazione qualificata;
+6. un marker già presente prima del source market event non viene classificato come nuovo evento successivo;
+7. separare età delle fonti, source skew, pipeline delay e gap baseline/first-post;
+8. un timestamp futuro produce clock-skew/degradazione e non viene clampato a freshness zero;
+9. conservare e confrontare la sorgente del prezzo;
+10. introdurre un limite massimo versionato per la distanza baseline→anchor;
+11. la qualità globale espone copertura esplicita dei due runner e non diventa completa con un solo runner affidabile;
+12. Significant Flow usa una baseline runner-specific per `selectionId` e, separatamente, una baseline di mercato;
+13. i cluster usano un gap temporale massimo, provenance dei tick, `selectionId` obbligatorio e nessun doppio conteggio;
+14. le soglie Significant Flow correnti restano provvisorie, versionate, non calibrate e non operative fino al Punto 7;
+15. separare `computed`, `inputAvailable`, `sourceEventAvailable`, `observationAvailable`, `observationDetected`, `provisional` e `stale`;
+16. mantenere invariati `causalityClaimed:false` e `interpretation: temporal_proximity_only`.
+
+### Confini
+
+La decisione non introduce:
+
+- strategie;
+- segnali operativi;
+- fair odds;
+- suggerimenti di trade;
+- attribuzione di intenzione ai trader;
+- causalità dichiarata;
+- nuovi blocchi a Start;
+- nuove condizioni del Source Identity Gate;
+- recovery o scritture dal builder Evidence;
+- rimozione dei tick diagnostici dalla timeline.
+
+### Strutture approvate
+
+```txt
+IMPL-022
+→ Evidence temporal provenance and alignment policy
+
+IMPL-023
+→ Market Reaction eligibility e branch state
+
+IMPL-024
+→ Runner temporal identity e price comparability
+```
+
+### Relazioni
+
+```txt
+IMPL-018
+→ produce acquisition provenance Betfair
+
+IMPL-022
+→ interpreta timestamp, freshness, skew e finestre
+
+IMPL-024
+→ rende affidabili identità runner e confronti prezzo
+
+IMPL-023
+→ decide eligibility e stato dei rami Market Reactions
+
+IMPL-012/013
+→ fixture, replay, baseline e calibrazione futura
+```
+
+### Ordine approvato
+
+```txt
+IMPL-018
+→ IMPL-022
+→ IMPL-024
+→ IMPL-023
+→ TEST-031…043
+→ Punto 6 Frontend
+→ Punto 7 test e strutture mancanti
+→ definizione delle task esecutive prioritarie
+```
+

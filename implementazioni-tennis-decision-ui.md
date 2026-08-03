@@ -17,7 +17,7 @@ Non è:
 Repository: Pixelpro-agency/tennis-decision-ui-refactor
 Branch canonico: main
 SHA iniziale esaminato: ae9766dde97de08425d65cf62fe929aece3ba6a2
-SHA corrente verificato: d797d0ee9ec70d4b2f85f6aa51b91af8f71227a1
+SHA corrente verificato: 2959fba5bc3e0480cc3ea03f4469361cbb629ae6
 ```
 
 ## Registri
@@ -72,7 +72,7 @@ nove materiali locali fuori dalla documentazione canonica
 → nessuna eliminazione eseguita
 
 checkpoint corrente
-→ Punti 1–4 registrati
+→ Punti 1–5 registrati
 → solo registri
 → pronto per inserimento e push su main
 ```
@@ -91,7 +91,11 @@ checkpoint audit materiali locali
 → hardening e autorità Betfair approvati
 → Punto 4 completato
 → autorità persistence per evento e recovery verificata approvate
-→ prossimo perimetro da definire dopo il checkpoint
+→ Punto 5 completato
+→ eligibility, provenance temporale e semantica Market Reactions approvate
+→ Punto 6 successivo: Frontend
+→ Punto 7 successivo: test e strutture mancanti
+→ dopo il Punto 7: raggruppamento e priorità delle task esecutive
 → precisione
 → robustezza
 → utilità
