@@ -14,7 +14,7 @@ Audit documentazione/codice B1–B6: completato in lettura
 ### IMPL-001 — Controllo automatico dei link Markdown/MDX
 
 **Classificazione:** `NECESSARIA PRIMA DELLA MIGRAZIONE DOCUMENTALE`
-**Stato:** `CONFERMATO`
+**Stato:** `IMPLEMENTATA E VERIFICATA`
 
 L’indice canonico corrente è stato percorso durante l’audit e non è stato confermato alcun target mancante fra i collegamenti elencati direttamente.
 
@@ -111,7 +111,7 @@ Rischio da evitare:
 ### IMPL-005 — Controllo di coerenza Todo ↔ registri
 
 **Classificazione:** `NECESSARIA`
-**Stato:** `CONFERMATO`
+**Stato:** `IMPLEMENTATA E VERIFICATA`
 
 B6 ha rilevato concretamente:
 
@@ -504,7 +504,7 @@ L’ordine definitivo dipende dal raggruppamento delle task e dalle decisioni de
 
 ## 15. Implementazioni emerse dalle decisioni finali
 
-### IMPL-009 — Estensione approvata: persistence locale e pannello globale
+### Estensione approvata di IMPL-009 — Persistence locale e pannello globale
 
 La struttura proposta deve produrre:
 
@@ -1529,9 +1529,9 @@ IMPL-015
 
 ### IMPL-022 — Evidence temporal provenance and alignment policy
 
-**Classificazione:** `NECESSARIA`  
-**Stato:** `STRUTTURA COMPLETAMENTE ASSENTE`  
-**Priorità:** critica  
+**Classificazione:** `NECESSARIA`
+**Stato:** `STRUTTURA COMPLETAMENTE ASSENTE`
+**Priorità:** critica
 **Decisione:** approvata
 
 ### Problema
@@ -1713,9 +1713,9 @@ Inoltre:
 
 ### IMPL-023 — Market Reaction eligibility e branch state
 
-**Classificazione:** `NECESSARIA`  
-**Stato:** `STRUTTURA COMPLETAMENTE ASSENTE`  
-**Priorità:** critica  
+**Classificazione:** `NECESSARIA`
+**Stato:** `STRUTTURA COMPLETAMENTE ASSENTE`
+**Priorità:** critica
 **Decisione:** approvata
 
 ### Problema
@@ -1952,9 +1952,9 @@ TEST-043
 
 ### IMPL-024 — Runner temporal identity e price comparability
 
-**Classificazione:** `NECESSARIA`  
-**Stato:** `STRUTTURA COMPLETAMENTE ASSENTE`  
-**Priorità:** alta  
+**Classificazione:** `NECESSARIA`
+**Stato:** `STRUTTURA COMPLETAMENTE ASSENTE`
+**Priorità:** alta
 **Decisione:** approvata
 
 ### Problema
@@ -2181,9 +2181,9 @@ IMPL-018
 
 ### IMPL-025 — Frontend live-session controller
 
-**Classificazione:** `NECESSARIA`  
-**Stato:** `STRUTTURA COMPLETAMENTE ASSENTE; APPROVATA`  
-**Priorità:** critica  
+**Classificazione:** `NECESSARIA`
+**Stato:** `STRUTTURA COMPLETAMENTE ASSENTE; APPROVATA`
+**Priorità:** critica
 **Dipendenze:** `IMPL-006`, contratti Start/Stop backend, Source Identity Gate
 
 ### Problema
@@ -2364,9 +2364,9 @@ TEST-056
 
 ### IMPL-026 — Polling runtime session-scoped
 
-**Classificazione:** `NECESSARIA`  
-**Stato:** `STRUTTURA COMPLETAMENTE ASSENTE; APPROVATA`  
-**Priorità:** critica  
+**Classificazione:** `NECESSARIA`
+**Stato:** `STRUTTURA COMPLETAMENTE ASSENTE; APPROVATA`
+**Priorità:** critica
 **Dipendenze:** `IMPL-006`, `IMPL-025`
 
 ### Problema
@@ -2510,9 +2510,9 @@ TEST-058
 
 ### IMPL-027 — Market Reactions frontend view model
 
-**Classificazione:** `NECESSARIA`  
-**Stato:** `STRUTTURA COMPLETAMENTE ASSENTE; APPROVATA`  
-**Priorità:** alta  
+**Classificazione:** `NECESSARIA`
+**Stato:** `STRUTTURA COMPLETAMENTE ASSENTE; APPROVATA`
+**Priorità:** alta
 **Dipendenze:** `IMPL-023`, `IMPL-024`, `IMPL-009`
 
 ### Problema
@@ -2778,13 +2778,13 @@ TEST-044…058
 
 ## 21. Implementazioni approvate dal Punto 7
 
-**Baseline:** `275008a5cd6451f24c6895068639ee3055395986`  
+**Baseline:** `275008a5cd6451f24c6895068639ee3055395986`
 **Stato:** `APPROVATE`
 
 ### IMPL-028 — Manifest e runner canonico di validazione
 
-**Classificazione:** `NECESSARIA`  
-**Stato:** `CONFERMATA E APPROVATA`  
+**Classificazione:** `NECESSARIA`
+**Stato:** `IMPLEMENTATA E VALIDATA LOCALMENTE`
 **Priorità:** critica
 
 ### Problema
@@ -3005,12 +3005,93 @@ TEST-068
 TEST-073
 ```
 
+### Implementazione iniziale — 2026-08-03
+
+File introdotti:
+
+```txt
+scripts/validation/test-manifest.json
+scripts/validation/manifest-schema.json
+scripts/validation/result-schema.json
+scripts/validation/run.mjs
+scripts/validation/run.test.mjs
+scripts/validation/support/
+scripts/validation/README.md
+```
+
+Profili eseguibili:
+
+```txt
+fast
+backend
+frontend
+python
+full-offline
+```
+
+Profili riconosciuti ma non eseguibili:
+
+```txt
+persistence → dipende da IMPL-008
+benchmark → dipende da IMPL-013
+live → non implementato e mai implicito
+```
+
+Contratti applicati:
+
+```txt
+manifest preflight completo
+→ ID e comando univoci
+→ cwd/path/fixture interne alla repository
+→ command allow-list con shell:false
+→ child process separato
+→ timeout con escalation bounded
+→ stdout/stderr redatti e limitati
+→ artifact JSON sotto test-results/
+```
+
+Il manifest iniziale registra la superficie verificata nel Punto 7 e i checker documentali. Non viene dichiarato inventario completo di ogni test legacy: il completamento della mappa test ↔ owner ↔ documento resta `IMPL-003`.
+
+Esito dei test isolati del runner nel pacchetto di consegna:
+
+```txt
+17 passati
+0 falliti
+```
+
+È stata eseguita anche una prova strutturale dei cinque profili su repository sintetica: `fast 6/6`, `backend 6/6`, `frontend 5/5`, `python 5/5`, `full-offline 19/19`. La prova non contiene il codice applicativo e non viene registrata come PASS delle suite reali.
+
+La chiusura operativa richiede ancora l'esecuzione dei profili sulla working tree Windows dell'utente. Nessun profilo live è stato eseguito o simulato.
+
+#### Addendum post-validazione locale — 2026-08-03
+
+Il primo preflight reale ha correttamente bloccato tutti i profili con exit code `2`, perché il manifest conteneva due percorsi storici inesistenti:
+
+```txt
+backend/src/sofa/matchHistory/commitJournal.test.mjs
+backend/src/sofa/matchHistory/recovery.test.mjs
+```
+
+La prova sintetica precedente aveva creato i path dichiarati dal manifest e quindi validava il runner, non la correttezza dell'inventario applicativo. Le due entry sono state rimosse; non sono state sostituite con percorsi dedotti.
+
+Conteggi correnti delle entry abilitate:
+
+```txt
+fast → 6
+backend → 4
+frontend → 5
+python → 5
+full-offline → 17
+```
+
+Journal e recovery restano una lacuna esplicita da coprire con `IMPL-003` e `IMPL-008`. La baseline reale deve essere rieseguita dopo questa correzione.
+
 ---
 
 ### IMPL-029 — Fixture catalog e sandbox condivisa
 
-**Classificazione:** `NECESSARIA`  
-**Stato:** `CONFERMATA E APPROVATA`  
+**Classificazione:** `NECESSARIA`
+**Stato:** `CONFERMATA E APPROVATA`
 **Priorità:** alta
 
 ### Problema
@@ -3137,8 +3218,8 @@ TEST-067
 
 ### IMPL-030 — Frontend interaction test harness
 
-**Classificazione:** `NECESSARIA`  
-**Stato:** `CONFERMATA E APPROVATA`  
+**Classificazione:** `NECESSARIA`
+**Stato:** `CONFERMATA E APPROVATA`
 **Priorità:** critica per il Punto 6
 
 ### Problema
@@ -3232,8 +3313,8 @@ TEST-071
 
 ### IMPL-031 — Validation result ledger e artefatti JSON
 
-**Classificazione:** `NECESSARIA`  
-**Stato:** `CONFERMATA E APPROVATA`  
+**Classificazione:** `NECESSARIA`
+**Stato:** `CONFERMATA E APPROVATA`
 **Priorità:** alta
 
 ### Problema
@@ -3468,8 +3549,8 @@ IMPL-005 esteso
 
 ### IMPL-032 — Manifest e pipeline di migrazione documentale per batch
 
-**Classificazione:** `NECESSARIA`  
-**Stato:** `APPROVATA; BATCH 0 PREPARATO`  
+**Classificazione:** `NECESSARIA`
+**Stato:** `IMPLEMENTATA E COMPLETATA`
 **Priorità:** critica prima della riscrittura canonica
 
 ### Problema
@@ -3578,3 +3659,138 @@ TEST-079
 - storico e validazioni separati;
 - futuro non presentato come stato corrente;
 - workspace di migrazione rimosso o archiviato dopo il completamento.
+
+---
+
+## 23. Checkpoint implementazione dei controlli documentali read-only
+
+`IMPL-001` e `IMPL-005` sono ora implementate come utility Python locali,
+offline e senza scritture:
+
+```txt
+scripts/check_documentation_links.py
+scripts/check_registry_consistency.py
+```
+
+### Contratto effettivo
+
+Il link checker:
+
+- scansiona `.md` e `.mdx` ricorsivamente;
+- esclude runtime, cache, build, dipendenze e `legacy/` per default;
+- riporta file sorgente, riga e target;
+- distingue `target_missing`, `anchor_missing` e `anchor_unverifiable`;
+- tratta i link `.mdx` come warning durante la migrazione;
+- può promuoverli a errore con `--forbid-mdx-links`;
+- non modifica i documenti.
+
+Il registry checker:
+
+- confronta le righe canoniche dei Blocchi E/F con le schede owner;
+- rileva ID duplicati, owner mancanti e righe sintetiche senza owner;
+- verifica prefissi dichiarati e contraddizioni di stato strette;
+- confronta SHA sintetici, ultimo Punto, ultimi TEST/IMPL/DEC, range e prossimo passo;
+- produce output testo o JSON;
+- non rinumera né modifica i registri.
+
+### Test implementati
+
+```txt
+scripts/tests/test_check_documentation_links.py
+scripts/tests/test_check_registry_consistency.py
+```
+
+Le suite usano directory temporanee e non accedono a history, timeline, cache,
+profili browser o servizi live.
+
+### Baseline rilevata
+
+La prima esecuzione sui registri del checkpoint ha rilevato finding reali, non
+errori dello strumento:
+
+```txt
+29 ID con più schede owner
+4 TEST sintetici senza scheda owner
+1 prefisso DATA- non dichiarato
+ultimo TEST-ID sintetico diverso dall'ultimo owner
+```
+
+Il primo pacchetto dei checker ha corretto soltanto le quattro schede `TEST-076…079` mancanti e la dichiarazione del prefisso `DATA-`. La baseline dei 29 owner duplicati è stata conservata come finding esplicito e normalizzata nella task separata descritta nella sezione 24.
+
+### Stato
+
+```txt
+IMPL-001 → IMPLEMENTATA E VERIFICATA
+IMPL-005 → IMPLEMENTATA E VERIFICATA
+normalizzazione delle schede duplicate → COMPLETATA
+IMPL-028 → IMPLEMENTATA E VALIDATA
+IMPL-032 → MIGRAZIONE COMPLETATA
+```
+
+---
+
+## 24. Normalizzazione controllata degli owner duplicati
+
+La baseline prodotta da `IMPL-005` conteneva 29 `duplicate_owner_card`. La normalizzazione è stata eseguita senza rinumerare ID e senza eliminare evidenze o decisioni.
+
+### Regola applicata
+
+```txt
+scheda più completa e aggiornata
+→ owner canonico
+
+scoperta iniziale o ampliamento intermedio
+→ nota/addendum collegato
+
+riferimento nel registro codice a una implementazione proposta
+→ riferimento audit, non secondo owner
+```
+
+Per `IMPL-016…027` l’owner canonico resta in `implementazioni/06-implementazioni-proposte.md`; le sezioni corrispondenti dell’audit codice restano riferimenti analitici.
+
+Per i finding ampliati durante i Punti successivi, l’owner è stato scelto in base a completezza e stato corrente, non alla sola posizione cronologica. Quando la scheda iniziale era più completa, il suo stato è stato aggiornato e le occorrenze successive sono rimaste addendum.
+
+### Matrice degli owner normalizzati
+
+| ID | Owner canonico | Trattamento delle altre occorrenze |
+| --- | --- | --- |
+| `CLEANUP-002` | `03-audit-codice.md` — offline check e authority | ampliamento successivo conservato come addendum |
+| `CODE-002` | `03-audit-codice.md` — preflight Betfair | ampliamento sulla validazione condivisa conservato |
+| `CODE-005` | `03-audit-codice.md` — lint frontend | ampliamento finale conservato come addendum |
+| `DOC-017` | `02-audit-documentazione.md` | riferimento nel registro codice non owner |
+| `EVIDENCE-001` | `03-audit-codice.md` — implementazione mancante | decisione iniziale conservata come nota collegata |
+| `FRONTEND-001` | `03-audit-codice.md` — risposte tardive | due ampliamenti conservati come addendum |
+| `FRONTEND-002` | `03-audit-codice.md` — persistence integrity UI | ampliamento finale conservato |
+| `FRONTEND-003` | `03-audit-codice.md` — Start fallito | due ampliamenti conservati come addendum |
+| `FRONTEND-005` | `03-audit-codice.md` — loop dopo cleanup | nota iniziale conservata |
+| `FRONTEND-006` | `03-audit-codice.md` — Start/Stop concorrenti | nota iniziale conservata |
+| `FRONTEND-007` | `03-audit-codice.md` — modalità statica dopo Stop | nota iniziale conservata |
+| `IMPL-009` | `06-implementazioni-proposte.md` — adapter persistence | estensione pannello globale conservata |
+| `IMPL-016…027` | `06-implementazioni-proposte.md` | riferimenti sintetici del registro codice non owner |
+| `PYTHON-001` | `03-audit-codice.md` — network capture | ampliamento successivo conservato |
+| `RUNTIME-002` | `03-audit-codice.md` — invalidazione sessione | ampliamento successivo conservato |
+| `SECURITY-002` | `03-audit-codice.md` — cache Betfair | ampliamento successivo conservato |
+| `TEST-002` | `03-audit-codice.md` — copertura lifecycle hook | requisiti aggiuntivi conservati come addendum |
+| `TEST-003` | `03-audit-codice.md` — inventario e runner test | nota iniziale conservata |
+
+### Esito
+
+```txt
+duplicate_owner_card → 0
+owner_without_synthetic_row → 0
+synthetic_row_without_owner → 0
+unknown_prefix → 0
+state_mismatch → 0
+checkpoint mismatch → 0
+```
+
+La normalizzazione modifica esclusivamente titoli di ownership e aggiornamenti di stato del registro. I contenuti sostanziali delle 29 occorrenze restano presenti.
+
+### Passo successivo
+
+```txt
+commit e push del blocco documentale e di validazione
+→ verifica remota
+→ IMPL-015 writer authority
+→ report machine-readable
+```

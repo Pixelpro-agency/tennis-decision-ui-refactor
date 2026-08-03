@@ -56,11 +56,6 @@ playwright-report/
 kilo.json
 .idea/
 .vscode/
-docs/_work/
-docs/Prompt/
-docs/percorsi.txt
-docs/planning/
-docs/legacy/
 
 # Machine-specific files
 .DS_Store

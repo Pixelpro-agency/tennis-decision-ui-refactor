@@ -40,7 +40,7 @@ SHA checkpoint registri e avvio migrazione: eef267aab3c138395a5ca3d644a942190c53
 - [x] Prima scansione architetturale
 - [x] Metodo a due file approvato
 - [x] Seconda analisi approfondita della documentazione canonica — B1–B6 completati
-- [-] Migrazione documentale `.mdx` → `.md` — **BATCH 0 PREPARATO**; inventario e manifest creati, sostituzioni non ancora iniziate
+- [x] Migrazione documentale `.mdx` → `.md` — **COMPLETATA**; 40 owner legacy rimossi, link strict verde e workspace temporaneo eliminato
 - [x] Audit statico del codice per settori — suite non rieseguite
 - [x] Ricontrollo delle task completate — D1–D18 classificati
 - [x] Integrazione completa del metodo dell’altro progetto — incluso `CHAT_ESECUTORE`
@@ -124,8 +124,8 @@ checkpoint
 → Punti 1–7 completati e approvati
 → controllo finale post-audit completato
 → DEC-025 e IMPL-032 registrate
-→ Batch 0 documentazione preparato
-→ nessun .mdx ancora sostituito o eliminato
+→ migrazione documentale completata
+→ 40 file .mdx rimossi dopo mapping, sostituzione e controllo strict
 ```
 
 ---
@@ -156,12 +156,12 @@ checkpoint
 
 - [x] Nuovi documenti tecnici soltanto in formato `.md`
 - [x] Non creare nuovi documenti `.mdx`
-- [ ] Verificare il loader o generatore della documentazione
+- [x] Verificare il loader o generatore della documentazione — nessun loader MDX richiesto
 - [x] Formato metadata deciso — Markdown ordinario, nessun frontmatter predefinito
-- [ ] Convertire eventuale sintassi MDX
-- [ ] Aggiornare link `.mdx` → `.md`
-- [ ] Evitare duplicati canonici `.mdx` e `.md`
-- [ ] Eliminare i vecchi `.mdx` soltanto dopo verifica completa
+- [x] Convertire eventuale sintassi MDX — metadata JavaScript rimossi
+- [x] Aggiornare link `.mdx` → `.md`
+- [x] Evitare duplicati canonici `.mdx` e `.md`
+- [x] Eliminare i vecchi `.mdx` soltanto dopo verifica completa
 - [x] Lettura planning differita fino al termine dell’audit
 - [x] Materiali planning accessibili analizzati dopo audit e D1–D18
 - [-] Planning classificato per gruppi accessibili; esclusi tre file per decisione utente
@@ -534,8 +534,8 @@ DA RIAPRIRE
 - [x] `WORKFLOW-001` — Context selection con troppe responsabilità — **CONFERMATO**
 - [x] `WORKFLOW-002` — Todo e registro analitico divergenti — **COMPLETATO NEL CHECKPOINT B6**
 - [x] `WORKFLOW-003` — Prefissi `SECURITY-`/`PYTHON-` non dichiarati — **COMPLETATO NEL CHECKPOINT B6**
-- [ ] `WORKFLOW-004` — SHA, range e stato sintetico dei registri possono divergere — **CONFERMATO; ESTENSIONE IMPL-005 APPROVATA**
-- [x] `WORKFLOW-005` — Migrazione documentale per batch con controlli prima della consegna — **APPROVATO; BATCH 0 PREPARATO**
+- [x] `WORKFLOW-004` — SHA, range e stato sintetico dei registri possono divergere — **COMPLETATO; IMPL-005 ATTIVA E REGISTRI NORMALIZZATI**
+- [x] `WORKFLOW-005` — Migrazione documentale per batch con controlli prima della consegna — **COMPLETATO**
 - [x] `RUNTIME-001` — Non riaprire runtime Task 2 senza discrepanza — **REGOLA APPROVATA**
 
 ## Bug e incoerenze di codice
@@ -617,7 +617,7 @@ DA RIAPRIRE
 - [x] `CLEANUP-001` — Authority Source Identity legacy frontend — **RIMOZIONE APPROVATA; AUTHORITY GLOBALE UNICA**
 - [ ] `TEST-001` — Test dedicato tick Betfair `status-only` — **MANCANTE**
 - [ ] `TEST-002` — Test lifecycle cambio sessione/Start fallito — **MANCANTE**
-- [ ] `TEST-003` — Inventario, manifest e comando test canonico — **CONFERMATO E AMPLIATO; IMPL-028 APPROVATA**
+- [x] `TEST-003` — Inventario, manifest e comando test canonico — **IMPLEMENTATO NELLA PRIMA VERSIONE; VALIDAZIONE LOCALE DEI PROFILI APERTA**
 - [x] `TEST-004` — Manca esclusione verificata tra due backend writer — **CONFERMATO**
 - [ ] `TEST-005` — Matrice sostituzione sessione backend — **MANCANTE**
 - [ ] `TEST-006` — Riuso Betfair session-safe — **MANCANTE**
@@ -691,9 +691,9 @@ DA RIAPRIRE
 - [ ] `TEST-074` — Benchmark registra mediana/p95 senza dati live — **MANCANTE**
 - [ ] `TEST-075` — Comando lint eseguibile oppure rimosso dalla superficie ufficiale — **MANCANTE**
 - [x] `TEST-076` — Tutti i documenti canonici indicizzati sono inventariati una sola volta — **ESEGUITO NEL BATCH 0**
-- [ ] `TEST-077` — Ogni sostituzione `.mdx` → `.md` ha mapping univoco e nessun duplicato canonico — **DA ESEGUIRE PER OGNI BATCH**
-- [ ] `TEST-078` — Tutti i link relativi dei file migrati risolvono e non puntano a percorsi rimossi — **DA ESEGUIRE PER OGNI BATCH**
-- [ ] `TEST-079` — Stato corrente, deprecato, storico e futuro sono coerenti con codice e registri — **DA ESEGUIRE PER OGNI BATCH**
+- [x] `TEST-077` — Ogni sostituzione `.mdx` → `.md` ha mapping univoco e nessun duplicato canonico — **PASS FINALE**
+- [x] `TEST-078` — Tutti i link relativi dei file migrati risolvono e non puntano a percorsi rimossi — **PASS FINALE**
+- [x] `TEST-079` — Stato corrente, deprecato, storico e futuro sono coerenti con codice e registri — **PASS FINALE**
 
 ---
 
@@ -714,11 +714,11 @@ DA RIAPRIRE
 
 # BLOCCO F — Implementazioni utili
 
-- [x] `IMPL-001` — Link checker Markdown/MDX — **NECESSARIA PRIMA DELLA MIGRAZIONE**
+- [x] `IMPL-001` — Link checker Markdown/MDX — **IMPLEMENTATA; SCAN READ-ONLY DISPONIBILE**
 - [x] `IMPL-002` — Inventario endpoint — **CONSIGLIATA**
 - [x] `IMPL-003` — Matrice test ↔ modulo ↔ documento — **NECESSARIA**
 - [x] `IMPL-004` — Archivio collaudi storici — **CONSIGLIATA; STRUTTURA DA APPROVARE**
-- [x] `IMPL-005` — Coerenza Todo ↔ registri — **NECESSARIA**
+- [x] `IMPL-005` — Coerenza Todo ↔ registri — **IMPLEMENTATA; BASELINE CON FINDING DA NORMALIZZARE**
 - [x] `IMPL-006` — Session authority end-to-end — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
 - [x] `IMPL-007` — Serializer pubblico diagnostica/errori — **NECESSARIA**
 - [x] `IMPL-008` — Harness offline persistence/recovery — **CONSIGLIATA**
@@ -741,7 +741,7 @@ DA RIAPRIRE
 - [x] `IMPL-025` — Frontend live-session controller — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
 - [x] `IMPL-026` — Polling runtime session-scoped — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
 - [x] `IMPL-027` — Market Reactions frontend view model — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
-- [x] `IMPL-028` — Manifest e runner canonico di validazione — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
+- [x] `IMPL-028` — Manifest e runner canonico di validazione — **IMPLEMENTATA E VALIDATA LOCALMENTE; FAST/BACKEND/FRONTEND/PYTHON/FULL-OFFLINE VERDI**
 - [x] `IMPL-029` — Fixture catalog e sandbox condivisa — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
 - [x] `IMPL-030` — Frontend interaction test harness — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA PER IL PUNTO 6**
 - [x] `IMPL-031` — Validation result ledger e artefatti JSON — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
@@ -800,12 +800,12 @@ oppure rilettura troppo costosa
 - [x] Nessun frontmatter predefinito; Markdown ordinario
 - [x] Preparare manifest vecchio percorso → nuovo percorso — **BATCH 0**
 - [x] Preparare elenco `.mdx` da eliminare dopo verifica — **MAPPING COMPLETO NEL MANIFEST**
-- [-] Preparare elenco link aggiornati — link report creato; aggiornamenti effettivi per batch
+- [x] Preparare elenco link aggiornati — aggiornamento globale completato
 - [x] Consegnare ZIP per batch numerosi — **BATCH 0**
 - [x] Verificare struttura dello ZIP — **BATCH 0**
 - [x] Verificare contenuto completo — **BATCH 0**
-- [-] Verificare link — 40 target dell’indice verificati; link checker ricorsivo ancora da implementare
-- [ ] Rimuovere vecchi `.mdx` solo alla fine
+- [x] Verificare link — scansione finale strict completata
+- [x] Rimuovere vecchi `.mdx` solo alla fine
 
 # BLOCCO I — Preparazione delle task esecutive
 
@@ -842,7 +842,7 @@ Per ogni rilievo approvato:
 - [x] Secondo audit del codice Punti 1–7 completato e approvato
 - [x] Todo coerente con registri al checkpoint D1–D18
 - [ ] Prima serie di task esecutive completata
-- [ ] Documentazione canonica aggiornata
+- [x] Documentazione canonica aggiornata
 - [ ] Collaudi necessari conclusi
 - [ ] Stato finale verificato sul nuovo SHA
 
@@ -862,10 +862,9 @@ Per ogni rilievo approvato:
 ## Prossimo punto
 
 ```txt
-1. applicare e pubblicare il Batch 0
-2. verificare il nuovo SHA remoto
-3. Batch 1: convenzioni, indice, README, repository map e context selection
-4. eseguire TEST-077…079 sul Batch 1
-5. non eliminare ancora i documenti owner comportamentali destinati a cambiare con le task di robustezza
-6. dopo il Batch 1, introdurre il runner minimo e avviare le task critiche nell’ordine approvato
+1. commit e push del blocco documentazione + checker + runner
+2. verifica remota del commit pubblicato
+3. avvio IMPL-015 — writer authority
 ```
+
+Prossimo passo: IMPL-015 dopo commit, push e verifica remota del checkpoint documentale e del runner validato.

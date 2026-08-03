@@ -1,0 +1,569 @@
+{
+  "schemaVersion": "1.0.0",
+  "profiles": {
+    "fast": {
+      "enabled": true,
+      "status": "implemented",
+      "description": "Controlli puri e rapidi, senza browser, rete esterna o tracking."
+    },
+    "backend": {
+      "enabled": true,
+      "status": "implemented",
+      "description": "Test backend offline registrati nel manifest."
+    },
+    "frontend": {
+      "enabled": true,
+      "status": "implemented",
+      "description": "Test Node frontend registrati e build Vite."
+    },
+    "python": {
+      "enabled": true,
+      "status": "implemented",
+      "description": "Compile check e unittest Python enumerati esplicitamente."
+    },
+    "full-offline": {
+      "enabled": true,
+      "status": "implemented",
+      "description": "Tutte le entry offline abilitate, eseguite serialmente."
+    },
+    "persistence": {
+      "enabled": false,
+      "status": "planned",
+      "description": "Harness isolato di persistence e recovery.",
+      "reason": "Dipende da IMPL-008 e dalla sandbox persistence dedicata."
+    },
+    "benchmark": {
+      "enabled": false,
+      "status": "planned",
+      "description": "Baseline ripetibili su fixture controllate.",
+      "reason": "Dipende da IMPL-013; non è un gate ordinario."
+    },
+    "live": {
+      "enabled": false,
+      "status": "planned",
+      "description": "Collaudi espliciti con fonti e browser reali.",
+      "reason": "Non implementato e mai incluso nei profili predefiniti.",
+      "liveRequired": true
+    }
+  },
+  "entries": [
+    {
+      "id": "validation-runner-self-test",
+      "label": "Runner manifest, isolation, timeout and fast-profile tests",
+      "area": "validation",
+      "owner": "scripts/validation",
+      "requirementIds": [
+        "TEST-060",
+        "TEST-061",
+        "TEST-062",
+        "TEST-063",
+        "TEST-064",
+        "TEST-068",
+        "TEST-073"
+      ],
+      "command": [
+        "${NODE}",
+        "scripts/validation/run.test.mjs"
+      ],
+      "cwd": ".",
+      "type": "runner-self-test",
+      "profiles": [
+        "fast",
+        "full-offline"
+      ],
+      "timeoutSec": 90,
+      "serialGroup": "validation-runner",
+      "fixtures": [],
+      "mutatesFilesystem": true,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "scripts/validation/run.test.mjs"
+      ],
+      "requires": []
+    },
+    {
+      "id": "documentation-registry-consistency",
+      "label": "Registry consistency checker",
+      "area": "documentation",
+      "owner": "implementazioni/00-metodo-e-stati.md",
+      "requirementIds": [],
+      "command": [
+        "${PYTHON}",
+        "scripts/check_registry_consistency.py"
+      ],
+      "cwd": ".",
+      "type": "documentation-check",
+      "profiles": [
+        "fast",
+        "full-offline"
+      ],
+      "timeoutSec": 60,
+      "serialGroup": "documentation-read-only",
+      "fixtures": [],
+      "mutatesFilesystem": false,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "scripts/check_registry_consistency.py"
+      ],
+      "requires": []
+    },
+    {
+      "id": "documentation-link-check",
+      "label": "Markdown and MDX link checker",
+      "area": "documentation",
+      "owner": "docs/tennis-decision-ui/ai/02-documentation-conventions.md",
+      "requirementIds": [],
+      "command": [
+        "${PYTHON}",
+        "scripts/check_documentation_links.py"
+      ],
+      "cwd": ".",
+      "type": "documentation-check",
+      "profiles": [
+        "fast",
+        "full-offline"
+      ],
+      "timeoutSec": 60,
+      "serialGroup": "documentation-read-only",
+      "fixtures": [],
+      "mutatesFilesystem": false,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "scripts/check_documentation_links.py"
+      ],
+      "requires": []
+    },
+    {
+      "id": "backend-server",
+      "label": "Backend server lifecycle and recovery bootstrap",
+      "area": "backend",
+      "owner": "backend/src/server.js",
+      "requirementIds": [],
+      "command": [
+        "${NODE}",
+        "backend/src/server.test.mjs"
+      ],
+      "cwd": ".",
+      "type": "node-test",
+      "profiles": [
+        "backend",
+        "full-offline"
+      ],
+      "timeoutSec": 120,
+      "serialGroup": "local-http-port",
+      "fixtures": [],
+      "mutatesFilesystem": true,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "backend/src/server.test.mjs"
+      ],
+      "requires": []
+    },
+    {
+      "id": "backend-match-tracker",
+      "label": "Match tracker and Source Identity gate integration",
+      "area": "backend",
+      "owner": "backend/src/sofa/matchTracker.js",
+      "requirementIds": [],
+      "command": [
+        "${NODE}",
+        "backend/src/sofa/matchTracker.test.mjs"
+      ],
+      "cwd": ".",
+      "type": "node-test",
+      "profiles": [
+        "backend",
+        "full-offline"
+      ],
+      "timeoutSec": 120,
+      "serialGroup": "tracker-global-state",
+      "fixtures": [],
+      "mutatesFilesystem": true,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "backend/src/sofa/matchTracker.test.mjs"
+      ],
+      "requires": []
+    },
+    {
+      "id": "backend-evidence-route",
+      "label": "Evidence route responses",
+      "area": "evidence",
+      "owner": "backend/src/routes/evidence.js",
+      "requirementIds": [],
+      "command": [
+        "${NODE}",
+        "backend/src/routes/evidence/evidenceRoute.test.mjs"
+      ],
+      "cwd": ".",
+      "type": "node-test",
+      "profiles": [
+        "backend",
+        "full-offline"
+      ],
+      "timeoutSec": 90,
+      "serialGroup": null,
+      "fixtures": [],
+      "mutatesFilesystem": false,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "backend/src/routes/evidence/evidenceRoute.test.mjs"
+      ],
+      "requires": []
+    },
+    {
+      "id": "backend-source-identity-confirmation",
+      "label": "Source Identity confirmation store and validation",
+      "area": "evidence",
+      "owner": "backend/src/sofa/matchEvidence/sourceIdentityConfirmation.js",
+      "requirementIds": [],
+      "command": [
+        "${NODE}",
+        "backend/src/sofa/matchEvidence/sourceIdentityConfirmation.test.mjs"
+      ],
+      "cwd": ".",
+      "type": "node-test",
+      "profiles": [
+        "fast",
+        "backend",
+        "full-offline"
+      ],
+      "timeoutSec": 90,
+      "serialGroup": "filesystem-confirmation-store",
+      "fixtures": [],
+      "mutatesFilesystem": true,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "backend/src/sofa/matchEvidence/sourceIdentityConfirmation.test.mjs"
+      ],
+      "requires": []
+    },
+    {
+      "id": "backend-commit-id",
+      "label": "Canonical commit ID",
+      "area": "persistence",
+      "owner": "backend/src/sofa/matchHistory/commitId.js",
+      "requirementIds": [],
+      "command": [
+        "${NODE}",
+        "backend/src/sofa/matchHistory/commitId.test.mjs"
+      ],
+      "cwd": ".",
+      "type": "node-test",
+      "profiles": [
+        "backend",
+        "full-offline"
+      ],
+      "timeoutSec": 60,
+      "serialGroup": "filesystem-persistence",
+      "fixtures": [],
+      "mutatesFilesystem": true,
+      "liveRequired": false,
+      "enabled": false,
+      "disabledReason": "Known test sandbox debt: writes virtual-commit-id-journal under process.cwd() without guaranteed cleanup (TEST-065).",
+      "pathChecks": [
+        "backend/src/sofa/matchHistory/commitId.test.mjs"
+      ],
+      "requires": []
+    },
+    {
+      "id": "frontend-use-match-polling",
+      "label": "Match polling pure contracts",
+      "area": "frontend",
+      "owner": "frontend/src/hooks/useMatchPolling.js",
+      "requirementIds": [],
+      "command": [
+        "${NODE}",
+        "frontend/src/hooks/useMatchPolling.test.mjs"
+      ],
+      "cwd": ".",
+      "type": "node-test",
+      "profiles": [
+        "frontend",
+        "full-offline"
+      ],
+      "timeoutSec": 60,
+      "serialGroup": null,
+      "fixtures": [],
+      "mutatesFilesystem": false,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "frontend/src/hooks/useMatchPolling.test.mjs"
+      ],
+      "requires": []
+    },
+    {
+      "id": "frontend-use-betfair-json",
+      "label": "Betfair JSON polling pure contracts",
+      "area": "frontend",
+      "owner": "frontend/src/hooks/useBetfairJson.js",
+      "requirementIds": [],
+      "command": [
+        "${NODE}",
+        "frontend/src/hooks/useBetfairJson.test.mjs"
+      ],
+      "cwd": ".",
+      "type": "node-test",
+      "profiles": [
+        "frontend",
+        "full-offline"
+      ],
+      "timeoutSec": 60,
+      "serialGroup": null,
+      "fixtures": [],
+      "mutatesFilesystem": false,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "frontend/src/hooks/useBetfairJson.test.mjs"
+      ],
+      "requires": []
+    },
+    {
+      "id": "frontend-dashboard-connections",
+      "label": "Dashboard connection view-model contracts",
+      "area": "frontend",
+      "owner": "frontend/src/utils/dashboardConnections.js",
+      "requirementIds": [],
+      "command": [
+        "${NODE}",
+        "frontend/src/utils/dashboardConnections.test.mjs"
+      ],
+      "cwd": ".",
+      "type": "node-test",
+      "profiles": [
+        "frontend",
+        "full-offline"
+      ],
+      "timeoutSec": 60,
+      "serialGroup": null,
+      "fixtures": [],
+      "mutatesFilesystem": false,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "frontend/src/utils/dashboardConnections.test.mjs"
+      ],
+      "requires": []
+    },
+    {
+      "id": "frontend-source-identity-presentation",
+      "label": "Source Identity presentation utility",
+      "area": "frontend",
+      "owner": "frontend/src/utils/sourceIdentityGatePresentation.js",
+      "requirementIds": [],
+      "command": [
+        "${NODE}",
+        "frontend/src/utils/sourceIdentityGatePresentation.test.mjs"
+      ],
+      "cwd": ".",
+      "type": "node-test",
+      "profiles": [
+        "fast",
+        "frontend",
+        "full-offline"
+      ],
+      "timeoutSec": 60,
+      "serialGroup": null,
+      "fixtures": [],
+      "mutatesFilesystem": false,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "frontend/src/utils/sourceIdentityGatePresentation.test.mjs"
+      ],
+      "requires": []
+    },
+    {
+      "id": "frontend-build",
+      "label": "Frontend production build",
+      "area": "frontend",
+      "owner": "frontend/package.json",
+      "requirementIds": [],
+      "command": [
+        "${NPM}",
+        "--prefix",
+        "frontend",
+        "run",
+        "build"
+      ],
+      "cwd": ".",
+      "type": "build",
+      "profiles": [
+        "frontend",
+        "full-offline"
+      ],
+      "timeoutSec": 300,
+      "serialGroup": "frontend-build",
+      "fixtures": [],
+      "mutatesFilesystem": true,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "frontend/package.json"
+      ],
+      "requires": []
+    },
+    {
+      "id": "python-compileall",
+      "label": "Compile launcher and scraper packages",
+      "area": "python",
+      "owner": "launcher/ and scrapers/",
+      "requirementIds": [],
+      "command": [
+        "${PYTHON}",
+        "-m",
+        "compileall",
+        "-q",
+        "launcher",
+        "scrapers"
+      ],
+      "cwd": ".",
+      "type": "compile-check",
+      "profiles": [
+        "python",
+        "full-offline"
+      ],
+      "timeoutSec": 120,
+      "serialGroup": "python-bytecode",
+      "fixtures": [],
+      "mutatesFilesystem": true,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "launcher",
+        "scrapers"
+      ],
+      "requires": []
+    },
+    {
+      "id": "python-launcher-unittest",
+      "label": "Launcher unittest suite",
+      "area": "launcher",
+      "owner": "launcher/tests/test_launcher.py",
+      "requirementIds": [],
+      "command": [
+        "${PYTHON}",
+        "-m",
+        "unittest",
+        "-v",
+        "launcher.tests.test_launcher"
+      ],
+      "cwd": ".",
+      "type": "python-unittest",
+      "profiles": [
+        "python",
+        "full-offline"
+      ],
+      "timeoutSec": 240,
+      "serialGroup": "launcher-global-state",
+      "fixtures": [],
+      "mutatesFilesystem": true,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "launcher/tests/test_launcher.py"
+      ],
+      "requires": []
+    },
+    {
+      "id": "python-betfair-graph-url",
+      "label": "Betfair Graph URL parser and mapping",
+      "area": "python-betfair",
+      "owner": "scrapers/betfair/graph_url.py",
+      "requirementIds": [],
+      "command": [
+        "${PYTHON}",
+        "-m",
+        "unittest",
+        "-v",
+        "scrapers.betfair.graph_url_test"
+      ],
+      "cwd": ".",
+      "type": "python-unittest",
+      "profiles": [
+        "fast",
+        "python",
+        "full-offline"
+      ],
+      "timeoutSec": 60,
+      "serialGroup": null,
+      "fixtures": [],
+      "mutatesFilesystem": false,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "scrapers/betfair/graph_url_test.py"
+      ],
+      "requires": []
+    },
+    {
+      "id": "python-betfair-diagnostic-redaction",
+      "label": "Betfair diagnostic redaction",
+      "area": "python-betfair",
+      "owner": "scrapers/betfair/diagnostic_redaction.py",
+      "requirementIds": [],
+      "command": [
+        "${PYTHON}",
+        "-m",
+        "unittest",
+        "-v",
+        "scrapers.betfair.diagnostic_redaction_test"
+      ],
+      "cwd": ".",
+      "type": "python-unittest",
+      "profiles": [
+        "python",
+        "full-offline"
+      ],
+      "timeoutSec": 120,
+      "serialGroup": "python-temp-files",
+      "fixtures": [],
+      "mutatesFilesystem": true,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "scrapers/betfair/diagnostic_redaction_test.py"
+      ],
+      "requires": []
+    },
+    {
+      "id": "python-betfair-cdp-url",
+      "label": "Betfair CDP URL and browser argument validation",
+      "area": "python-betfair",
+      "owner": "scrapers/betfair/cdp_url.py",
+      "requirementIds": [],
+      "command": [
+        "${PYTHON}",
+        "-m",
+        "unittest",
+        "-v",
+        "scrapers.betfair.cdp_url_test"
+      ],
+      "cwd": ".",
+      "type": "python-unittest",
+      "profiles": [
+        "python",
+        "full-offline"
+      ],
+      "timeoutSec": 120,
+      "serialGroup": "python-browser-mock",
+      "fixtures": [],
+      "mutatesFilesystem": false,
+      "liveRequired": false,
+      "enabled": true,
+      "pathChecks": [
+        "scrapers/betfair/cdp_url_test.py"
+      ],
+      "requires": []
+    }
+  ]
+}

@@ -35,7 +35,6 @@ SHA checkpoint registri e avvio migrazione: eef267aab3c138395a5ca3d644a942190c53
 - [Workflow esecutivo](./implementazioni/07-workflow-esecutivo.md)
 - [Linee guida per chat e AI](./implementazioni/08-linee-guida-chat-e-ai.md)
 - [Decisioni dell’utente](./implementazioni/99-decisioni-utente.md)
-- [Workspace migrazione documentale Batch 0](./docs/migration/tennis-decision-ui/README.md)
 
 ## Regole di utilizzo
 
@@ -79,6 +78,10 @@ checkpoint corrente
 → controllo finale post-audit completato
 → riscrittura documentale per batch approvata
 → Batch 0: inventario e manifest di migrazione
+→ Batch 1 e Batch 2: documentazione strutturale approvata
+→ Batch finale: 40 `.mdx` rimossi, link strict verde e workspace eliminato
+→ IMPL-001 e IMPL-005: utility read-only implementate e verificate
+→ 29 owner duplicati normalizzati; registry checker verde
 ```
 
 Dopo la pubblicazione del checkpoint:
@@ -105,7 +108,9 @@ checkpoint audit materiali locali
 → nessuna nuova area critica dimenticata rispetto ai Punti 1–7
 → DEC-025: documentazione canonica solo sullo stato reale
 → IMPL-032: migrazione documentale per batch con manifest e controlli
-→ prossimo passo: applicare Batch 0, poi riscrivere il Batch 1 strutturale
+→ IMPL-028 implementata e validata sulla working tree reale
+→ manifest corretto senza inventare test sostitutivi
+→ profili fast/backend/frontend/python/full-offline verdi, incluso hotfix Windows per npm.cmd
 → precisione
 → robustezza
 → utilità
@@ -123,11 +128,21 @@ Batch 0
 → manifest vecchio percorso → nuovo percorso
 → owner matrix
 → link report
-→ nessuna sostituzione o cancellazione .mdx
+→ sostituzioni e cancellazioni .mdx completate nel batch finale
+
+Batch 1 e 2
+→ fondazione, architettura, stato corrente, validations e archivio preparati
+
+Controlli read-only
+→ link checker ricorsivo implementato
+→ registry consistency checker implementato
+→ finding strutturali da normalizzare prima del runner
 
 Batch successivi
 → file .md completi
 → contenuti verificati sul codice corrente
 → futuro escluso dalla documentazione canonica finché non implementato
-→ rimozione .mdx soltanto dopo verifica dei link e assenza di duplicati
+→ rimozione .mdx completata dopo verifica dei link e assenza di duplicati
 ```
+
+Prossimo passo: IMPL-015 dopo commit, push e verifica remota del checkpoint documentale.

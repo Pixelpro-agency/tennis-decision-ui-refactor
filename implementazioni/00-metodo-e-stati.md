@@ -114,6 +114,7 @@ Prefissi stabili:
 | --- | --- |
 | `DOC-` | Errori, duplicazioni, obsolescenza o struttura documentale |
 | `CODE-` | Difetti o incoerenze nel codice |
+| `DATA-` | Provenance, timestamp, identità e qualità dei dati acquisiti |
 | `TEST-` | Copertura, test non eseguiti, test mancanti o test obsoleti |
 | `RUNTIME-` | Launcher, processi, porte, CDP, lifecycle e shutdown |
 | `SOFA-` | Acquisizione e tracking SofaScore |
@@ -254,7 +255,7 @@ Questa è una decisione di formato già approvata, ma la modalità tecnica di mi
 La directory:
 
 ```txt
-docs/planning/
+docs/archive/planning/
 ```
 
 contiene materiali relativi a implementazioni vecchie, future o pianificate.
@@ -397,75 +398,31 @@ ID DA DECIDERE
 → deve comparire anche nel registro decisioni quando la scelta diventa operativa
 ```
 
-Il controllo automatico è registrato come `IMPL-005`. Fino alla sua implementazione, la verifica resta manuale e deve essere eseguita prima di ogni pacchetto di checkpoint.
+Il controllo automatico è implementato da `IMPL-005` e deve essere eseguito prima di ogni pacchetto di checkpoint. Un esito non verde blocca la chiusura del checkpoint finché i finding non sono classificati o corretti.
+
+### 7.8 Owner canonico, note e addendum
+
+Ogni ID può avere una sola scheda owner riconoscibile dalla forma:
+
+```txt
+### <identificatore> — Titolo
+```
+
+Una scoperta iniziale, un ampliamento successivo o un riferimento trasversale non deve creare un secondo owner. Deve usare una forma esplicita che conservi l’ID senza replicare il pattern owner:
+
+```txt
+### Nota iniziale collegata a <identificatore> — Titolo
+### Estensione intermedia collegata a <identificatore> — Titolo
+### Riferimento audit a <identificatore> — Titolo
+### Estensione approvata di <identificatore> — Titolo
+```
+
+Regole:
+
+- la scheda owner conserva stato corrente, contratto completo e criterio di chiusura;
+- note e addendum preservano evidenze, cronologia e motivazioni senza diventare owner paralleli;
+- nessun ID viene rinumerato o riutilizzato;
+- la normalizzazione non elimina contenuti sostanziali; modifica soltanto ownership e navigazione;
+- `scripts/check_registry_consistency.py` deve restituire zero `duplicate_owner_card` prima della pubblicazione.
 
 ---
-
----
-
-## 8. Modalità operative approvate
-
-Le modalità sono distinte e non intercambiabili durante la stessa task.
-
-```txt
-CHAT_ANALISI
-→ analisi, decisioni, scope, prompt, revisione e approvazione
-
-CHAT_ESECUTORE
-→ legge GitHub in sola lettura
-→ non modifica la copia locale
-→ consegna file completi, script patch o comandi da eseguire
-
-DESKTOP_ESECUTORE
-→ modifica direttamente la copia locale autorizzata
-→ esegue controlli
-→ produce fileModificati.md
-
-DESKTOP_COLLAUDATORE
-→ esegue collaudo indipendente
-→ non modifica file
-→ produce finding e matrice PASS / FAIL / BLOCCATO
-
-UTENTE
-→ applica le consegne della Chat Esecutore
-→ esegue commit e push finali
-```
-
-La Chat Analisi sceglie una sola modalità esecutiva per task in base a:
-
-- disponibilità di ChatGPT Desktop;
-- necessità di modifiche locali dirette;
-- numero e dimensione dei file;
-- possibilità di consegnare file completi;
-- necessità di collaudo browser;
-- rischio della modifica.
-
-## 8.1 Strutture o procedure totalmente assenti
-
-Quando l’audit dimostra che una struttura utile non esiste:
-
-```txt
-non inventare che sia già implementata
-→ registrarla in 06-implementazioni-proposte.md
-→ indicare problema, utilità, confini e dipendenze
-→ non trasformarla automaticamente in task approvata
-```
-
-Una struttura assente diventa task soltanto dopo:
-
-- confronto con il codice corrente;
-- decisioni dell’utente;
-- definizione di file, test e criteri;
-- verifica che non duplichi un owner esistente.
-
-## 8.2 Regola sulle decisioni mancanti
-
-Se una scelta cambia comportamento, dati osservabili, UX, persistenza o risultato:
-
-```txt
-la Chat Analisi si ferma
-→ espone la decisione
-→ attende l’utente
-```
-
-Le scelte tecniche equivalenti che non cambiano il contratto possono invece essere risolte dalla Chat Analisi.

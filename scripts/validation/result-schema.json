@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.tennis-decision-ui/validation-result.schema.json",
+  "title": "Tennis Decision UI validation result",
+  "type": "object",
+  "required": [
+    "schemaVersion", "repositorySha", "profile", "startedAt", "completedAt",
+    "durationMs", "environment", "counts", "status", "warnings", "limits",
+    "workingTreeStatus", "perTestResults"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "repositorySha": { "type": "string" },
+    "profile": { "type": "string" },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "environment": {
+      "type": "object",
+      "required": ["platform", "architecture", "nodeVersion"],
+      "properties": {
+        "platform": { "type": "string" },
+        "architecture": { "type": "string" },
+        "nodeVersion": { "type": "string" }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "required": ["total", "passed", "failed", "timedOut", "skipped"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "timedOut": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "status": { "enum": ["passed", "failed"] },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "limits": { "type": "array", "items": { "type": "string" } },
+    "workingTreeStatus": { "enum": ["clean", "dirty", "unavailable"] },
+    "changedPathCount": { "type": ["integer", "null"], "minimum": 0 },
+    "perTestResults": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id", "status", "exitCode", "signal", "timedOut", "startedAt",
+          "completedAt", "durationMs", "stdout", "stderr"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "enum": ["passed", "failed", "timeout"] },
+          "exitCode": { "type": ["integer", "null"] },
+          "signal": { "type": ["string", "null"] },
+          "timedOut": { "type": "boolean" },
+          "durationMs": { "type": "integer", "minimum": 0 },
+          "stdout": { "type": "string" },
+          "stderr": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.tennis-decision-ui/validation-manifest.schema.json",
+  "title": "Tennis Decision UI validation manifest",
+  "type": "object",
+  "required": ["schemaVersion", "profiles", "entries"],
+  "properties": {
+    "schemaVersion": { "type": "string", "minLength": 1 },
+    "profiles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["enabled", "status", "description"],
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "status": { "enum": ["planned", "implemented"] },
+          "description": { "type": "string" },
+          "reason": { "type": "string" },
+          "liveRequired": { "type": "boolean" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id", "label", "area", "owner", "requirementIds", "command",
+          "cwd", "type", "profiles", "timeoutSec", "serialGroup",
+          "fixtures", "mutatesFilesystem", "liveRequired", "enabled"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "label": { "type": "string", "minLength": 1 },
+          "area": { "type": "string", "minLength": 1 },
+          "owner": { "type": "string", "minLength": 1 },
+          "requirementIds": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^TEST-[0-9]{3}$" },
+            "uniqueItems": true
+          },
+          "command": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+          "cwd": { "type": "string", "minLength": 1 },
+          "type": {
+            "enum": ["node-test", "python-unittest", "compile-check", "build", "documentation-check", "runner-self-test"]
+          },
+          "profiles": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true },
+          "timeoutSec": { "type": "integer", "minimum": 1, "maximum": 3600 },
+          "serialGroup": { "type": ["string", "null"] },
+          "fixtures": { "type": "array", "items": { "type": "string" } },
+          "mutatesFilesystem": { "type": "boolean" },
+          "liveRequired": { "type": "boolean" },
+          "enabled": { "type": "boolean" },
+          "disabledReason": { "type": "string" },
+          "pathChecks": { "type": "array", "items": { "type": "string" } },
+          "requires": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

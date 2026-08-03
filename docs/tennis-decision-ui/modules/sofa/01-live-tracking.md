@@ -1,0 +1,417 @@
+# Tracking live
+
+## Scopo
+
+Il tracker coordina scheduler, update SofaScore e Betfair e il Source Identity Gate live.
+
+Il tracker non implementa browser, persistenza file o route HTTP, ma decide se i callback di persistenza possono essere invocati.
+
+```txt
+backend/src/sofa/matchTracker.js
+```
+
+## Scheduler
+
+Il tracker mantiene una sola mappa dei match attivi.
+
+```txt
+trackedMatches
+→ scheduler ogni 1 secondo
+→ controllo intervalli e concorrenza
+→ update SofaScore e Betfair
+```
+
+Intervalli attuali:
+
+| Flusso    | Intervallo |
+| --------- | ---------- |
+| SofaScore | 5 secondi  |
+| Betfair   | 6 secondi  |
+
+SofaScore e Betfair usano flag di concorrenza distinti:
+
+```txt
+updatingSofa
+updatingBetfair
+```
+
+Un nuovo aggiornamento non parte finché l'aggiornamento precedente della stessa sorgente non è terminato.
+
+`trackMatch(...)` avvia immediatamente un primo `updateSofa(...)`; non attende il primo intervallo di 5 secondi.
+
+Betfair non riceve un fetch esplicito nel bootstrap. Il primo tentativo passa dallo scheduler, che trova `lastBetfairUpdate = 0` alla prima iterazione utile.
+
+### Runtime Betfair effimero
+
+Ogni match tracciato conserva in memoria il runtime Betfair della sessione corrente:
+
+```txt
+lastScrapeAttemptAt
+lastSuccessfulScrapeAt
+lastTechnicalErrorAt
+lastTechnicalErrorReason
+```
+
+Questi dati:
+
+```txt
+appartengono soltanto alla sessione tracker corrente
+→ non entrano in timeline, history, Evidence o Source Identity
+→ spariscono quando il tracker del match viene rimosso
+→ non sostituiscono il timestamp del tick canonico Betfair
+```
+
+Il runtime è leggibile tramite:
+
+```txt
+getBetfairTrackingRuntime(eventId)
+```
+
+La funzione restituisce una copia sicura dei soli quattro campi runtime. Non espone il match tracker completo, dati raw, cookie, token o dettagli del browser.
+
+## Avvio tracking
+
+Funzione pubblica:
+
+```txt
+trackMatch(
+  sofaUrl,
+  betfairUrl,
+  betfairGraphUrls,
+  chromeProfilePath,
+  betfairMode,
+  cdpUrl
+)
+```
+
+Il tracker:
+
+1. ricava l'event ID dall'URL SofaScore;
+2. elimina eventuali match diversi già tracciati;
+3. salva il contesto del match;
+4. pulisce la cache Betfair se sono presenti Graph URL;
+5. avvia lo scheduler;
+6. coordina gli update periodici.
+
+Il tracking può funzionare con solo SofaScore.
+
+`betfairUrl` e `betfairGraphUrls` possono essere vuoti.
+
+## Registry fisico, generation e barriera
+
+Il ruolo fisico è:
+
+```txt
+sofa_tracking
+```
+
+```txt
+scheduler
+→ directFetch
+→ capture della generation tracking corrente
+→ spawn Python registrato
+→ risposta pubblica
+→ completion fisica
+```
+
+`Stop` invalida la generation tramite `terminatePythonProcesses("tracking")`. Il mismatch la invalida esplicitamente prima del cleanup Betfair. Un nuovo Start successivo usa la generation corrente già aggiornata; `trackMatch(...)` non incrementa autonomamente la generation.
+
+Una callback appartenente a una generation precedente non può avviare un nuovo figlio o produrre un risultato valido per la sessione successiva.
+
+```txt
+risposta scraper disponibile
+≠
+processo fisicamente terminato
+```
+
+Retry e nuovo spawn rispettano la barriera di completion fisica precedente.
+
+## Source Identity Gate
+
+Con URL SofaScore e Betfair, ogni nuova sessione crea un gate in memoria.
+
+```txt
+collecting
+→ pending
+→ recording
+```
+
+Oppure:
+
+```txt
+mismatch
+not-applicable
+```
+
+Senza URL Betfair il gate è `not-applicable` e SofaScore persiste normalmente.
+
+Con URL Betfair, prima di `recording` il tracker conserva soltanto l’ultimo campione valido per fonte. Non deve creare timeline o history come workaround.
+
+## Update SofaScore
+
+Modulo:
+
+```txt
+backend/src/sofa/trackerUpdate.js
+```
+
+```txt
+loadSofaPayload(eventId)
+→ event + statistics + point-by-point
+→ validazione evento
+→ normalizeSnapshot
+→ snapshot con pointByPoint normalizzato
+→ buildLocalContext(snapshot)
+→ osservazione Source Identity
+→ persistenza solo quando autorizzata
+```
+
+L’update SofaScore usa esclusivamente i tre endpoint canonici:
+
+```txt
+/api/v1/event/<eventId>
+/api/v1/event/<eventId>/statistics
+/api/v1/event/<eventId>/point-by-point
+```
+
+Il sample osservato dal Source Identity Gate resta limitato a:
+
+```txt
+snapshot
+tournamentName
+dateStr
+```
+
+`localContext` non viene aggiunto al sample del gate.
+
+Durante il bootstrap Source Identity, `matchTracker.js` passa soltanto `sofaSample.snapshot`; `persistSofaTrackingSample(...)` calcola quindi `localContext` da quello snapshot prima della persistenza canonica.
+
+Azioni possibili del gate:
+
+```txt
+buffered
+persist-current
+bootstrapped
+blocked
+no-gate
+```
+
+| Azione            | Effetto                                         |
+| ----------------- | ----------------------------------------------- |
+| `buffered`        | Nessuna scrittura                               |
+| `blocked`         | Nessuna scrittura                               |
+| `bootstrapped`    | Il callback ha già scritto il campione iniziale |
+| `persist-current` | Persiste il tick corrente                       |
+| `no-gate`         | Persiste normalmente                            |
+
+## Update Betfair
+
+Modulo:
+
+```txt
+backend/src/sofa/betfair/trackerUpdate.js
+```
+
+Flusso:
+
+```txt
+aggiornamento lastScrapeAttemptAt
+→ fetchBetfairData
+→ hasFinished esplicito?
+  → sì: aggiornamento successful scrape, stop polling, nessun gate e nessuna persistenza
+  → no: classificazione tecnica
+→ campione tecnicamente utilizzabile?
+  → no: aggiornamento errore tecnico, polling attivo, nessun gate e nessuna persistenza
+  → sì: aggiornamento successful scrape
+        → tracking key
+        → Source Identity Gate observer
+        → persistenza secondo l'azione del gate
+```
+
+Regole:
+
+* `lastScrapeAttemptAt` viene aggiornato prima del fetch.
+* Una fetch rejection aggiorna soltanto il runtime tecnico: errore e reason. Il polling resta attivo.
+* Un campione tecnicamente non utilizzabile aggiorna soltanto il runtime tecnico: errore e reason. Non aggiorna il baseline, non entra nel gate e non crea dati canonici.
+* Solo `event_status.hasFinished === true` può fermare automaticamente il polling Betfair.
+* Con `hasFinished === true`, `lastSuccessfulScrapeAt` viene aggiornato, il polling viene fermato e il campione non passa al gate né alla persistenza.
+* Errore fetch, DNS, logout, `api_error`, runner mancanti o vuoti e `total_matched` non valido non fermano il tracking.
+* Un campione tecnico non deve chiamare `getBetfairTrackingKey`, l'observer del gate o la persistenza.
+* Un campione valido aggiorna `lastSuccessfulScrapeAt` prima della decisione del gate.
+* Un campione valido resta uno scrape riuscito anche quando il gate restituisce `buffered` o `blocked`.
+* Un campione valido successivo a un errore tecnico riprende il normale passaggio verso gate e persistenza.
+
+Il bootstrap cross-source persiste nell’ordine:
+
+```txt
+SofaScore
+→ Betfair
+```
+
+Il tracker non deve persistere nuovamente il tick che ha aperto `recording`.
+
+## Mismatch
+
+In caso di `mismatch`:
+
+```txt
+tick causale non persistito
+→ stopAllMatchTrackers({ preserveGateEventId: eventId })
+→ generation tracking invalidata
+→ terminateActiveBetfairScrapers()
+→ betfair_tracking attivo terminato
+→ eventuale sofa_tracking in flight reso obsoleto
+→ betfair_login preservato
+→ Chrome/CDP lasciato aperto
+→ gate mismatch leggibile dallo status endpoint
+```
+
+Il mismatch non usa il cleanup globale `scope=tracking`. Una callback della generation invalidata non può produrre effetti per la sessione successiva. Timeline, history e conferme già esistenti non vengono cancellate.
+
+## Stop
+
+| Funzione | Effetto |
+| --- | --- |
+| `untrackMatch(eventId)` | Rimuove un solo match e il relativo gate; è usata dal percorso `/untrack` |
+| `stopMatchTracker(eventId)` | Ferma un match quando presente; non è invocata dalla route HTTP globale |
+| `stopAllMatchTrackers()` | Svuota i match, ferma lo scheduler e rimuove i gate; non invalida da sola la generation |
+| `stopSchedulerIfEmpty()` | Ferma l'intervallo quando non restano match |
+
+Percorso globale corrente:
+
+```txt
+POST /api/match/stop
+→ stopAllMatchTrackers()
+→ terminatePythonProcesses("tracking")
+→ generation tracking invalidata
+→ sofa_tracking e betfair_tracking terminati
+→ betfair_login preservato
+```
+
+`stopAllMatchTrackers()` è idempotente. Dopo lo stop, un nuovo `trackMatch(...)` può riavviare lo scheduler e usa la generation aggiornata dal registry.
+
+La route non chiude backend, frontend o Chrome/CDP e non cancella timeline, history o journal.
+
+## Normalizzazione JSON-safe SofaScore
+
+I campi statistici opzionali vengono normalizzati dal producer:
+
+```txt
+homeTotal assente
+→ null
+
+awayTotal assente
+→ null
+```
+
+`null` indica dato assente, non equivale a zero, è serializzabile in JSON ed è compatibile con il journal. Non è un fallback numerico e non modifica la semantica statistica.
+
+Validato live:
+
+```txt
+timeline SofaScore avanzata
+commit completo
+seq finita
+integrity no_known_partial
+```
+
+## Confini
+
+Il tracker non deve:
+
+* creare route HTTP;
+* leggere o scrivere direttamente file JSON;
+* eseguire parsing browser;
+* implementare il decoder point-by-point;
+* comporre direttamente `snapshot` e `localContext`; la composizione è delegata ai moduli dedicati;
+* costruire componenti frontend;
+* costruire Evidence o calcolare internamente Source Identity; il tracker coordina soltanto il gate live;
+* modificare Source Identity, deduplicazione, timeline, history o browser lifecycle per calcolare runtime health;
+* trattare un errore tecnico come mercato concluso.
+
+Il frontend può fare polling delle timeline, ma non deve avviare acquisizione tramite polling read-only.
+
+## Verifica
+
+Dalla cartella `backend/src`:
+
+```txt
+node --check sofa/matchTracker.js
+node --check sofa/trackerUpdate.js
+node --check sofa/betfair/trackerUpdate.js
+node --check sofa/betfair/processor.js
+node --check sofa/sourceIdentityGate.js
+
+node sofa/sourceIdentityGate/lifecycle.test.mjs
+node sofa/sourceIdentityGate/epochRecovery.test.mjs
+node sofa/sourceIdentityGate/bootstrapFailures.test.mjs
+node sofa/sourceIdentityGate/mismatchAndIsolation.test.mjs
+node sofa/trackerUpdate.test.mjs
+node sofa/betfair/trackerUpdate.test.mjs
+node sofa/betfair/processor.test.mjs
+node sofa/matchTracker.test.mjs
+node sofa/pointByPoint.test.mjs
+node sofa/localContext.test.mjs
+node sofa/matchHistory/sofaUpdates.test.mjs
+```
+
+Verificare:
+
+```txt
+collecting e pending
+→ non scrivono timeline o history
+
+recording
+→ bootstrap SofaScore → Betfair una sola volta
+
+mismatch
+→ non persiste il tick causale
+→ ferma i tracker logici e preserva il gate terminale
+→ invalida la generation tracking
+→ termina il betfair_tracking attivo
+→ rende obsoleto l'eventuale sofa_tracking in flight
+→ lascia Chrome/CDP aperto
+
+nuovo Start
+→ crea un nuovo gate
+
+tick SofaScore
+→ costruisce localContext dopo la normalizzazione
+→ non inserisce localContext nel sample Source Identity
+
+bootstrap SofaScore
+→ conserva o calcola localContext prima della prima persistenza canonica
+
+fetch rejection
+→ aggiorna attempt ed errore tecnico
+→ polling attivo
+
+tre campioni tecnici consecutivi
+→ polling ancora attivo
+→ nessun falso finished
+
+campione tecnico
+→ zero gate
+→ zero persistenza
+→ baseline invariato
+
+campione valido dopo errore
+→ successful scrape più recente
+→ errore tecnico non più attivo
+→ gate e persistenza riprendono
+
+hasFinished esplicito
+→ successful scrape valorizzato
+→ polling fermato
+→ nessun gate e nessuna persistenza
+```
+
+## Documenti collegati
+
+* [Timeline e history](../storage/01-timelines-and-history.md)
+* [Lifecycle scraper Betfair](../betfair/01-scraper-lifecycle.md)
+* [Validità tecnica campioni Betfair](../betfair/02-technical-sample-validity.md)
+* [API Match](../../api/01-match.md)
+* [API Betfair](../../api/02-betfair.md)
+* [Confini del sistema](../../architecture/01-system-boundaries.md)
+* [Contesto locale e point-by-point](./02-local-context-and-point-by-point.md)

@@ -1,0 +1,611 @@
+# Polling e view model
+
+## Scopo
+
+Questo modulo descrive come il frontend legge timeline persistite, Evidence e dati Betfair, trasformandoli per la dashboard.
+
+Il polling dello stato live del Source Identity Gate è implementato e resta separato dal polling Evidence.
+
+Il frontend può consumare lo stato additivo `integrity` esposto dalle API read-only, ma non diventa owner di journal, recovery o persistenza canonica.
+
+```txt
+frontend/src/
+├── hooks/useMatchPolling.js
+├── hooks/useBetfairJson.js
+├── hooks/useMarketReactionEvidence.js
+├── hooks/useSourceIdentityGateStatus.js
+├── hooks/useDashboardViewModel.js
+├── hooks/useBetfairHealthAlerts.js
+├── hooks/usePreflightChecks.js
+├── types/dashboard.js
+└── utils/
+```
+
+Gli hook leggono API. Non avviano scraper, browser, tracking backend, recovery o repair di journal.
+
+Il frontend non legge file journal, non espone path locali, non ricostruisce history o timeline e non interpreta `commitId` come dato operativo.
+
+## Polling SofaScore
+
+Hook:
+
+```txt
+useMatchPolling(url, pollingInterval, explicitEventId)
+```
+
+In `App.jsx` viene usato con intervallo di `2500 ms`.
+
+Legge:
+
+```txt
+GET /api/match/:eventId/json
+```
+
+Flusso:
+
+```txt
+timeline SofaScore
+→ normalizeSofaTimelinePayload(...)
+→ snapshot + localContext + timeline + integrity
+→ dashboard view model
+```
+
+Il tick normalizzato inoltra:
+
+```txt
+snapshot
+localContext
+timeline
+integrity
+```
+
+`localContext` usa `null` quando il tick timeline non lo contiene.
+
+Il polling non ricalcola punti, percentuali, differenze o lato in vantaggio.
+
+L’assenza di dati resta esplicita: nessun fallback `50/50`, percentuale fittizia, trend, previsione o strategia derivata lato client.
+
+Durante una sessione live con `eventId` valido, il polling SofaScore distingue l’assenza iniziale della timeline dagli errori reali e dalla persistenza incompleta nota.
+
+```txt
+GET /api/match/:eventId/json = 404
++ nessuna integrity degradata
+→ serverStatus: waiting
+→ data: null
+→ error: null
+→ polling resta attivo
+→ nessun console.error applicativo
+
+GET /api/match/:eventId/json = 409
++ error: persistence_integrity
+→ serverStatus: persistence_integrity
+→ data: null
+→ error: null
+→ integrity preservata dal body HTTP
+→ polling resta attivo in stato degradato
+→ nessuna recovery client-side
+
+HTTP 400, HTTP 500 o errore rete
+→ serverStatus: error
+→ comportamento errore invariato
+```
+
+Il `404` viene interpretato soltanto come stato UI di attesa del polling Sofa quando non esiste una persistenza incompleta nota.
+
+Il `409 persistence_integrity` non è un errore generico di rete e non deve essere convertito in `waiting`.
+
+Il frontend non modifica timeline, history, journal o gate.
+
+Il hook:
+
+* usa `setTimeout`, non `setInterval`;
+* evita polling dopo `stopPolling()`;
+* espone `loadMatch()`, `resumePolling()` e stato tecnico;
+* preserva `integrity` quando viene ricevuta dal backend.
+
+Un normale rerender della dashboard non deve riavviare una sessione Sofa già attiva né azzerare ricorrentemente il payload già ricevuto.
+
+Il reset di `data`, `lastUpdate` e `serverStatus` appartiene soltanto a un nuovo caricamento di sessione o a un cambio `eventId`.
+
+Non ricostruisce dati sportivi e non modifica timeline.
+
+## Polling Betfair
+
+Hook:
+
+```txt
+useBetfairJson(url, sofaEventId, pollingInterval, options)
+```
+
+In `App.jsx` viene usato con intervallo di `5000 ms`.
+
+Legge prima:
+
+```txt
+GET /api/betfair/:eventId/latest
+```
+
+Se riceve `404` senza persistenza incompleta nota, prova il fallback:
+
+```txt
+GET /api/betfair/:eventId/json
+```
+
+Espone:
+
+```txt
+data
+health
+integrity
+moneyFlowHistory
+loading
+error
+lastUpdate
+isPolling
+startPolling
+stopPolling
+resumePolling
+```
+
+`lastUpdate` usa soltanto timestamp server.
+
+```txt
+/latest
+→ Date costruita solo da payload.latestTimestamp
+
+/json fallback
+→ Date costruita dall’ultimo timestamp reale della timeline
+→ fallback a payload.latest.timestamp quando disponibile
+
+timestamp assente o non valido
+→ lastUpdate: null
+
+mai
+→ ora locale della richiesta HTTP come fallback
+```
+
+Il fallback `/json` è diagnostico o di bootstrap. Non deve far apparire fresco un dato vecchio.
+
+La risposta `/latest` può contenere `moneyFlowHistory` al livello root del payload. `useBetfairJson(...)` lo espone separatamente e lo collega al dato latest quando disponibile.
+
+Il formato consumato dalla dashboard è:
+
+```js
+{
+  series: []
+}
+```
+
+La normalizzazione di un valore assente o non valido a `{ series: [] }` appartiene a `useDashboardViewModel(...)`. L’hook Betfair può invece mantenere `moneyFlowHistory` a `null` prima di ricevere un payload valido.
+
+### `409 persistence_integrity` Betfair
+
+Le API Betfair read-only possono rispondere con:
+
+```txt
+HTTP 409
+error: persistence_integrity
+integrity.status: partial_persistence | recovery_failed
+```
+
+In questo caso `useBetfairJson(...)` deve:
+
+```txt
+non trattare il body come latest valido
+non costruire lastUpdate dall’ora locale
+non inventare moneyFlowHistory
+non modificare health localmente
+preservare integrity
+mantenere polling attivo salvo stop esplicito
+```
+
+`integrity` resta separata da:
+
+```txt
+health
+freshness
+Graph health
+runtime scraper
+Money Flow
+ladder reliability
+```
+
+Un payload `health` eventualmente presente nella risposta resta informativo, ma non viene riclassificato dal frontend per effetto di `integrity`.
+
+Hook e view model non ricostruiscono mappe legacy basate sul nome del runner.
+
+Non deve:
+
+* classificare volume ambiguo come direzione certa;
+* inventare punti Money Flow;
+* trasformare dati stale in dati affidabili;
+* decidere strategie;
+* modificare timeline backend;
+* eseguire repair o recovery di journal.
+
+## Polling Evidence e Source Identity
+
+### Evidence e Market Reactions
+
+Hook:
+
+```txt
+useMarketReactionEvidence(eventId, pollingInterval)
+```
+
+Legge:
+
+```txt
+GET /api/evidence/:eventId/latest
+```
+
+Il hook serve Market Reactions e lo snapshot Evidence.
+
+Per il hook, ogni `404` Evidence è una condizione neutra: `evidence` resta `null`, `error` resta `null` e vengono esposte eventuali ragioni della risposta.
+
+L’endpoint Evidence non usa `409 persistence_integrity`; può includere `integrity` anche in un `404`.
+
+Regole per il hook:
+
+```txt
+404 Evidence
+→ evidence: null
+→ error: null
+→ integrity preservata se presente
+→ reasons preservate se presenti
+
+200 Evidence
+→ evidence valorizzata
+→ latest.dataQuality.persistenceComplete inoltrata
+→ sources.sofa / sources.betfair inoltrate
+→ integrity top-level inoltrata
+
+500 o errore rete
+→ errore tecnico invariato
+```
+
+Il hook non legge lo stato live del gate; il collegamento con collecting o pending è un contesto backend, non una condizione ricostruita dal frontend.
+
+Evidence non è l’autorità per il semaforo globale Source Identity.
+
+Quando `persistenceComplete:false`, il frontend deve trattare Market Reactions come degradate o non disponibili secondo il payload Evidence ricevuto, senza ricalcolare la causa.
+
+### Status live Source Identity
+
+Hook:
+
+```txt
+useSourceIdentityGateStatus(eventId, {
+  enabled,
+  pollingInterval
+})
+```
+
+Legge esclusivamente:
+
+```txt
+GET /api/match/:eventId/source-identity-status
+```
+
+Restituisce:
+
+```txt
+status
+loading
+error
+isPolling
+refresh
+```
+
+Regole:
+
+```txt
+setTimeout, non setInterval
+→ una sola fetch attiva per sessione
+→ AbortController su cambio eventId o unmount
+→ risposte tardive ignorate
+→ polling solo con eventId valido e enabled=true
+→ 404 = status null, non errore visibile
+→ errore rete o HTTP non previsto = errore sintetico
+→ nessun POST
+→ nessuna lettura Evidence
+→ nessuna ricostruzione Source Identity nel frontend
+```
+
+`useSourceIdentityGateUi.js` costruisce lo stato UI consumato da `App.jsx`:
+
+```txt
+sourceIdentityStatusForUi
+```
+
+Tutti i consumer Source Identity usano questo valore:
+
+```txt
+sidebar
+→ indicatore
+→ waiting screen
+→ apertura modale
+→ toast transition detection
+→ mismatch handling
+→ presentazione della waiting screen
+```
+
+Il valore deriva direttamente dal polling dello status gate.
+
+Il frontend non altera `phase`, `persistence` o `sourceIdentity.status`.
+
+`integrity` non modifica il Source Identity Gate live. Una persistenza incompleta non trasforma `pending` in `mismatch` e non conferma un’identità.
+
+## View model dashboard
+
+Hook:
+
+```txt
+useDashboardViewModel(...)
+```
+
+Funzioni:
+
+```txt
+backendData
++ stato polling SofaScore
++ ultimo update
++ server status
++ dati Betfair
++ integrity SofaScore
++ integrity Betfair
++ integrity Evidence
++ Money Flow history
+↓
+dashboardData
++ betfairHistory
++ persistence view state
+```
+
+Il mapping principale appartiene a:
+
+```txt
+frontend/src/types/dashboard.js
+```
+
+`mapBackendDataToDashboard(...)` inoltra `localContext` e i nomi giocatori ricevuti dallo snapshot.
+
+Non ricostruisce dati sportivi, Evidence, Source Identity, punti, percentuali, differenze o lato in vantaggio.
+
+La validazione e la formattazione del contesto punti appartengono a:
+
+```txt
+frontend/src/components/matchContextViewModel.js
+```
+
+Le utility pure di supporto includono:
+
+```txt
+dashboardStats.js
+dashboardMatchOverview.js
+dashboardConnections.js
+betfairMoneyFlow.js
+```
+
+### Persistence integrity nel view model
+
+Il view model può derivare uno stato UI sintetico dalla `integrity` già ricevuta dagli hook.
+
+Valori pubblici consumabili:
+
+```txt
+no_known_partial
+partial_persistence
+recovery_failed
+```
+
+Regole:
+
+```txt
+no_known_partial
+→ nessuna degradazione persistence visibile
+
+partial_persistence
+→ dati canonici incompleti noti
+→ UI degradata
+→ nessuna ricostruzione client-side
+
+recovery_failed
+→ recovery backend fallita o non risolta
+→ UI degradata
+→ nessuna ricostruzione client-side
+```
+
+Lo stato UI di persistence non deve contenere:
+
+```txt
+path locali
+payload journal
+target journal
+metadata filesystem
+stack trace
+dettagli writer interni
+```
+
+Il frontend può mostrare una condizione degradata, ma non deve trasformarla in:
+
+```txt
+Source Identity mismatch
+freshness stale
+Graph health degraded
+runtime scraper error
+Money Flow direction
+segnale operativo
+```
+
+### Money Flow nel view model
+
+```txt
+betfairMoneyFlowHistory
+→ verifica Array.isArray(history.series)
+→ betfairHistory = history oppure { series: [] }
+```
+
+Le card ricevono dati già pronti e non devono ricostruire fallback basati sul nome del runner.
+
+Quando la persistenza Betfair è incompleta, il view model non deve inventare una serie Money Flow alternativa.
+
+### Connessione Sofa
+
+`dashboardConnections.js` costruisce lo stato visuale Sofa:
+
+```txt
+connections.sofa = {
+  status: connected | waiting | disconnected,
+  ok,
+  lastUpdate
+}
+```
+
+Regole:
+
+```txt
+backendData presente
+→ connected
+→ ok true
+
+backendData assente
++ sofaServerStatus = waiting
+→ waiting
+→ ok false
+
+backendData assente
++ Source Identity phase collecting/pending
++ persistence buffering
+→ waiting
+→ ok false
+
+backendData assente
++ sofaServerStatus = persistence_integrity
+→ disconnected
+→ ok false
+→ persistence state separato disponibile
+
+altri casi
+→ disconnected
+→ ok false
+```
+
+`ok` resta compatibile con consumer legacy: vale `true` soltanto per `connected`.
+
+Le card non devono ricalcolare questi stati.
+
+## Preflight
+
+`usePreflightChecks(...)` esegue i controlli prima dell’avvio.
+
+Endpoint coinvolti:
+
+```txt
+GET  /api/test/health
+POST /api/test/cdp
+POST /api/test/sofa-url
+POST /api/test/betfair-url
+POST /api/test/graph-urls
+```
+
+Comportamento attuale: `App.jsx` passa `''` come `apiBase`. `usePreflightChecks(...)` costruisce quindi endpoint relativi `/api/...`, coerenti con gli altri client frontend e con il proxy Vite.
+
+Non introdurre un host assoluto in un solo percorso senza un refactor dedicato della configurazione API.
+
+Preflight non controlla journal, non esegue recovery e non dichiara completa la persistenza canonica.
+
+## Health Betfair
+
+`useBetfairHealthAlerts(...)` deriva:
+
+```txt
+betfairHealthTransition
+betfairAudioAlertEnabled
+showBetfairAlertToast
+dismissBetfairAlertToast
+```
+
+Il hook controlla l’avviso audio e il toast.
+
+Hook e componenti ricevono `health` già classificata dal backend.
+
+`integrity` non deve essere incorporata in `health`.
+
+Non devono:
+
+* ricalcolare lo status backend;
+* trasformare autonomamente un errore tecnico in un alert diverso;
+* trasformare un tick stale in un alert diverso;
+* trasformare una ladder stale in un alert diverso;
+* trasformare `partial_persistence` o `recovery_failed` in Graph health;
+* cambiare o riclassificare lo stato health deciso dal backend;
+* per il solo avviso audio, ignorare che l’implementazione attuale combina flag strutturati (`graphLoginRequired`, `graphLoginRequiredRecent`) con un controllo testuale su `message` e `reasons`.
+* cambiare il significato di `alert`;
+* attivare polling autonomo.
+
+## Test
+
+```bash
+npm run build
+
+node src/hooks/useMatchPolling.test.mjs
+node src/hooks/useBetfairJson.test.mjs
+node src/utils/sourceIdentityGatePresentation.test.mjs
+node src/utils/analysisSessionState.test.mjs
+node src/utils/liveSessionRequests.test.mjs
+node src/utils/sourceIdentityConfirmationState.test.mjs
+node src/utils/sourceIdentityControlMode.test.mjs
+node src/utils/dashboardConnections.test.mjs
+node src/utils/dashboardMatchOverview.test.mjs
+node src/utils/dashboardStats.test.mjs
+node src/utils/betfairMoneyFlow.test.mjs
+node src/types/dashboard.test.mjs
+node src/components/matchContextViewModel.test.mjs
+```
+
+Casi coperti:
+
+```txt
+useMatchPolling.test.mjs
+→ 404 = waiting
+→ 409 persistence_integrity = serverStatus persistence_integrity
+→ 409 persistence_integrity preserva integrity
+→ 500 = error
+→ 400 = error
+
+useBetfairJson.test.mjs
+→ latestTimestamp valido = data reale
+→ ultimo tick timeline = data reale fallback
+→ timestamp assente o invalido = null
+→ 409 persistence_integrity preserva integrity
+→ 409 persistence_integrity non usa ora locale come lastUpdate
+→ integrity separata da health
+
+dashboardConnections.test.mjs
+→ connected con backendData
+→ waiting con serverStatus waiting
+→ waiting con collecting/pending + buffering
+→ disconnected con serverStatus persistence_integrity e stato persistence separato
+→ disconnected negli altri casi
+```
+
+`npm run lint` non è eseguibile finché il repository non contiene una configurazione ESLint.
+
+La verifica live restante riguarda un pending realmente prodotto dal backend, non una trasformazione client-side dello status.
+
+## Documenti collegati
+
+* [Sessione e shell frontend](./01-session-shell.md)
+* [UI Betfair e Market Reactions](./03-betfair-and-market-reactions-ui.md)
+* [Source Identity](../evidence/02-source-identity.md)
+* [API Match](../../api/01-match.md)
+* [API Betfair](../../api/02-betfair.md)
+* [API Evidence](../../api/03-evidence.md)
+* [Match Evidence Snapshot](../evidence/01-match-evidence-snapshot.md)
+* [Qualità, flow e allineamento](../evidence/03-quality-flow-and-alignment.md)
+* [Market Reactions](../evidence/04-market-reactions.md)
+* [Commit journal e recovery](../storage/02-commit-journal-and-recovery.md)
+* [Verifica live Source Identity](../../../validations/source-identity-live-verification.md)
+* [Contesto punti UI](./04-match-context-ui.md)
+* [Validazione e rollback](../../operations/04-validation-and-rollback.md)
