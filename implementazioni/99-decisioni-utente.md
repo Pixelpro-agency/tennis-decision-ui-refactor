@@ -432,3 +432,84 @@ IMPL-018
 → definizione delle task esecutive prioritarie
 ```
 
+
+
+
+## DEC-023 — Frontend session-scoped e UI integrity del Punto 6
+
+**Stato:** approvata integralmente.
+
+1. implementare il lato frontend della session authority approvata in `IMPL-006` attraverso `IMPL-025`;
+2. dopo Start, `eventId` e `trackingSessionId` restituiti dal backend sono le uniche authority della sessione accettata;
+3. la shell può mostrare lo stato `starting`, ma nessun poller live parte prima dell’accettazione backend;
+4. Start fallito o ambiguo invalida il comando, cancella la sessione accettata, ferma le richieste transitorie e usa cleanup compensativo quando necessario;
+5. tutti i poller live adottano il runtime session-scoped di `IMPL-026` con request ID, abort, disposed guard e nessuna riprogrammazione dopo cleanup;
+6. Stop completo sospende SofaScore, Betfair, Evidence e Source Identity Gate, ferma gli alert live e conserva l’ultimo snapshot come `frozen`;
+7. Stop con cleanup parziale viene mostrato come parziale e non come completato;
+8. il polling Betfair parte soltanto quando la sessione accettata contiene una configurazione Betfair;
+9. il polling Evidence parte soltanto quando la vista Market Reactions viene realmente consumata e fa un refresh immediato all’ingresso;
+10. `IMPL-009` viene implementata con stato persistence locale per i consumer, indicatore globale nella sidebar e modale dettagliata bounded;
+11. durante una degradazione integrity l’ultimo dato può restare visibile, ma deve essere marcato `last_verified`, `frozen` o `degraded` e non apparire live corrente;
+12. TopBar, sidebar, card e badge derivano lo stato live dalla state machine e non dalla semplice presenza di dati;
+13. lo status Source Identity espone un context ID opaco e la modale pending è legata a `trackingSessionId + sourceIdentityContextId`;
+14. l’authority Source Identity legacy in Market Reactions viene rimossa dopo l’ultimo inventario dei consumer;
+15. `IMPL-027` diventa l’adapter presentazionale unico delle card Market Reactions e deve rispettare `available`, provisional, quality, reasons e assenza di causalità;
+16. ogni risultato Preflight è legato al fingerprint dell’input e viene invalidato quando l’input cambia;
+17. le viste Strategy `Lay the Winner`, `Banca Servizio` e `Superbreak` vengono rimosse senza investirvi correzioni, preservando Market Reactions;
+18. mojibake e piccole correzioni UI restano una task autonoma;
+19. il responsive completo resta una task separata dopo le correzioni di robustezza, secondo `DEC-017`.
+
+### Confini
+
+La decisione non introduce:
+
+- strategie;
+- segnali operativi;
+- recovery client-side;
+- scritture frontend nelle timeline;
+- riclassificazione autonoma della Betfair health;
+- ricostruzione della Source Identity;
+- calcolo Evidence nel browser;
+- redesign responsive dentro la task sessione;
+- correzione delle viste Strategy destinate alla rimozione.
+
+### Strutture approvate
+
+```txt
+IMPL-025
+→ Frontend live-session controller
+
+IMPL-026
+→ Polling runtime session-scoped
+
+IMPL-027
+→ Market Reactions frontend view model
+```
+
+### Strutture esistenti da completare
+
+```txt
+IMPL-006
+→ session authority end-to-end
+
+IMPL-009
+→ adapter persistence e UI locale/globale
+
+IMPL-023
+→ branch state Market Reactions consumato dalla UI
+```
+
+### Ordine approvato
+
+```txt
+IMPL-006
+→ IMPL-025
+→ IMPL-026
+→ IMPL-009
+→ IMPL-027
+→ TEST-044…058
+→ cleanup legacy
+→ correzioni minori
+→ responsive + TEST-059
+→ Punto 7
+```

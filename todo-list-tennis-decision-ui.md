@@ -365,27 +365,27 @@ checkpoint
 
 ## C11 — Frontend
 
-- [x] App composition — verificata
-- [x] Session state — current/confirmed verificati
-- [-] Preflight — contratto API già auditato; copy mojibake (`FRONTEND-004`)
-- [-] Start tracking — poller nascosti dopo failure (`FRONTEND-003`)
-- [x] Stop tracking — comportamento frontend verificato
-- [-] Bootstrap dashboard — vulnerabile a response tardiva Sofa (`FRONTEND-001`)
-- [-] Sofa polling — manca isolamento sessione (`FRONTEND-001`, `TEST-002`)
-- [-] Betfair polling — manca isolamento sessione e integrity viene scartata (`FRONTEND-001`, `FRONTEND-002`)
-- [-] Evidence polling — isolamento presente; espone solo sottoblocco e conserva metodi legacy (`FRONTEND-002`, `CLEANUP-001`)
-- [x] Source Identity UI — polling protetto e ownership coerente
-- [x] Betfair health — transizioni, toast e audio verificati
-- [-] View model — non riceve integrity dichiarata dai documenti (`DOC-018`, `FRONTEND-002`)
+- [x] App composition — ownership verificato; authority sessione frammentata (`IMPL-025`)
+- [-] Session state — current/confirmed presenti ma non equivalgono a sessione accettata (`FRONTEND-003`, `IMPL-025`)
+- [-] Preflight — risultati non input-bound e copy mojibake (`FRONTEND-011`, `FRONTEND-004`)
+- [-] Start tracking — anticipa sessione, non serializza comandi e non gestisce failure completa (`FRONTEND-003`, `FRONTEND-006`)
+- [-] Stop tracking — ferma solo Sofa e non espone cleanup parziale (`FRONTEND-007`, `RUNTIME-009`)
+- [-] Bootstrap dashboard — conserva view model precedente e resta vulnerabile a response tardive (`FRONTEND-001`, `FRONTEND-002`)
+- [-] Sofa polling — manca isolamento sessione e abort (`FRONTEND-001`, `FRONTEND-005`, `IMPL-026`)
+- [-] Betfair polling — manca isolamento, parte anche senza Betfair e scarta integrity (`FRONTEND-001`, `FRONTEND-002`, `IMPL-026`)
+- [-] Evidence polling — isolamento presente; da legare alla vista e ripulire authority legacy (`FRONTEND-007`, `CLEANUP-001`, `IMPL-026`)
+- [-] Source Identity UI — polling robusto; pending key non context-scoped (`FRONTEND-010`)
+- [x] Betfair health — transizioni, toast e audio verificati; enable/stop da collegare alla sessione
+- [-] View model — non riceve integrity e non azzera/etichetta dati stale (`FRONTEND-002`, `IMPL-009`)
 - [x] Money Flow — mapping `selectionId`, griglia e grafico neutro verificati
 - [x] Match Context — mapping e validazione verificati
-- [ ] Market Reactions
-- [x] Strategy UI — rimozione approvata (`CODE-001`, `DEC-008`)
-- [ ] Piccole correzioni e rimozioni UI residue — backlog futuro
-- [ ] Responsive completo di form, sidebar, dashboard, card e modali — backlog futuro
+- [-] Market Reactions — availability/schema UI non coerenti (`FRONTEND-009`, `IMPL-027`)
+- [x] Strategy UI — rimozione approvata senza correzione (`CODE-001`, `DEC-008`)
+- [ ] Piccole correzioni/mojibake — task separata (`FRONTEND-004`)
+- [ ] Responsive completo — task separata dopo robustezza (`FRONTEND-012`, `DEC-017`)
 - [ ] Build — non eseguita durante audit read-only
 - [-] Lint — script presente ma configurazione assente (`CODE-005`)
-- [-] Test — lifecycle hook non coperto e nessun runner canonico (`TEST-002`, `TEST-003`)
+- [-] Test — lifecycle hook non coperto e nessun runner canonico (`TEST-044…059`, `TEST-003`)
 
 ## C12 — Python e script
 
@@ -473,8 +473,8 @@ DA RIAPRIRE
 - [x] Punto 3 — Betfair lifecycle, Graph, diagnostica, concorrenza e cleanup — **COMPLETATO E APPROVATO**
 - [x] Punto 4 — Storage, journal e recovery — **COMPLETATO E APPROVATO**
 - [x] Punto 5 — Evidence e Market Reactions — **COMPLETATO E APPROVATO**
-- [ ] Punto 6 — Frontend — **PROSSIMO**
-- [ ] Punto 7 — Test e strutture mancanti — **DOPO IL PUNTO 6**
+- [x] Punto 6 — Frontend — **COMPLETATO E APPROVATO**
+- [ ] Punto 7 — Test e strutture mancanti — **PROSSIMO**
 
 # BLOCCO E — Rilievi registrati
 
@@ -507,6 +507,9 @@ DA RIAPRIRE
 - [x] `DOC-025` — Generation Python distinta dalla session authority — **CONFERMATO**
 - [x] `DOC-026` — Temporal provenance e policy di alignment non documentate — **CONFERMATO; CORREZIONE APPROVATA**
 - [x] `DOC-027` — Availability, activity/response e threshold non documentati — **CONFERMATO; CORREZIONE APPROVATA**
+- [x] `DOC-028` — Session shell contraddice la session authority approvata — **CONFERMATO; CORREZIONE APPROVATA**
+- [x] `DOC-029` — Polling/view model descritti come più completi del codice — **CONFERMATO; CORREZIONE APPROVATA**
+- [x] `DOC-030` — UI Betfair/Market Reactions descritta come integrity-aware senza wiring reale — **CONFERMATO; CORREZIONE APPROVATA**
 
 ## Workflow e regole
 
@@ -540,13 +543,18 @@ DA RIAPRIRE
 - [x] `DATA-001` — Volume runner sintetico `marketTotal/runnerCount` — **RIMOZIONE APPROVATA; PRIORITÀ CRITICA**
 - [ ] `DATA-002` — API/Graph senza acquisition timestamp e skew — **CONFERMATO; PRIORITÀ ALTA**
 - [ ] `CLEANUP-003` — Log e network dump senza retention distinta — **CONFERMATO; PRIORITÀ MEDIO-ALTA**
-- [ ] `FRONTEND-005` — Loop di polling orfani dopo cambio sessione — **CONFERMATO; PRIORITÀ CRITICA**
-- [ ] `FRONTEND-006` — Start concorrenti non serializzati — **CONFERMATO; PRIORITÀ ALTA**
-- [ ] `FRONTEND-007` — Stop Live lascia attivi Betfair/Evidence/Source Identity — **CONFERMATO; PRIORITÀ MEDIO-ALTA**
-- [ ] `FRONTEND-001` — Risposte Sofa/Betfair attraversano la sessione — **CONFERMATO E AMPLIATO; PRIORITÀ CRITICA**
-- [ ] `FRONTEND-002` — Integrity raccolta ma scartata prima della UI — **CONFERMATO**
-- [ ] `FRONTEND-003` — Start fallito lascia sessione e polling nascosti — **CONFERMATO; PRIORITÀ ALTA**
-- [ ] `FRONTEND-004` — Copy mojibake visibile — **CONFERMATO**
+- [ ] `FRONTEND-001` — Response Sofa/Betfair tardive o fuori ordine attraversano la sessione — **CONFERMATO E AMPLIATO; PRIORITÀ CRITICA**
+- [ ] `FRONTEND-002` — Integrity raccolta ma scartata prima della UI; snapshot precedente non etichettato — **CONFERMATO E AMPLIATO; PRIORITÀ CRITICA**
+- [ ] `FRONTEND-003` — Start fallito lascia sessione e polling nascosti — **CONFERMATO E AMPLIATO; PRIORITÀ CRITICA**
+- [ ] `FRONTEND-004` — Copy mojibake visibile — **CONFERMATO; TASK SEPARATA**
+- [ ] `FRONTEND-005` — Loop di polling orfani dopo cambio sessione/cleanup — **CONFERMATO E AMPLIATO; PRIORITÀ CRITICA**
+- [ ] `FRONTEND-006` — Start/Stop concorrenti non serializzati — **CONFERMATO E AMPLIATO; PRIORITÀ ALTA**
+- [ ] `FRONTEND-007` — Stop Live lascia attivi Betfair/Evidence/Source Identity/audio — **CONFERMATO E AMPLIATO; PRIORITÀ CRITICA**
+- [ ] `FRONTEND-008` — Indicatori live derivati dalla presenza del dato — **CONFERMATO; STATE MACHINE APPROVATA**
+- [ ] `FRONTEND-009` — Market Reactions UI promuove unavailable e usa schema errato — **CONFERMATO; IMPL-027 APPROVATA**
+- [ ] `FRONTEND-010` — Pending modal non legata a session/context identity — **CONFERMATO; CONTEXT ID OPACO APPROVATO**
+- [ ] `FRONTEND-011` — Preflight results non legati agli input verificati — **CONFERMATO; FINGERPRINT APPROVATO**
+- [ ] `FRONTEND-012` — Responsive strutturalmente assente — **LIMITE CONFERMATO; TASK SEPARATA DEC-017**
 - [ ] `SECURITY-001` — Payload network capture oltrepassa il boundary pubblico — **CONFERMATO E AMPLIATO; PRIORITÀ ALTA**
 - [ ] `SECURITY-002` — Cache URL-derived e priva di runtime/Graph identity — **CONFERMATO E AMPLIATO; PRIORITÀ ALTA**
 - [ ] `SECURITY-003` — Dettagli raw degli errori HTTP — **CONFERMATO**
@@ -630,6 +638,22 @@ DA RIAPRIRE
 - [ ] `TEST-041` — Cluster temporali non sovrapposti — **MANCANTE**
 - [ ] `TEST-042` — Semantica computed/available/observed — **MANCANTE**
 - [ ] `TEST-043` — Finestre open/closed e provisional/final — **MANCANTE**
+- [ ] `TEST-044` — Start A/B concorrenti e risposta tardiva — **MANCANTE**
+- [ ] `TEST-045` — Start fallito/ambiguo e cleanup compensativo — **MANCANTE**
+- [ ] `TEST-046` — Response Sofa/Betfair vecchie o fuori ordine — **MANCANTE**
+- [ ] `TEST-047` — Cleanup durante fetch senza timeout ricreato — **MANCANTE**
+- [ ] `TEST-048` — Stop completo: tutti i poller sospesi e snapshot frozen — **MANCANTE**
+- [ ] `TEST-049` — Stop parziale visibile in UI — **MANCANTE**
+- [ ] `TEST-050` — Persistence UI locale/globale e snapshot degraded — **MANCANTE**
+- [ ] `TEST-051` — EventId/trackingSessionId dalla risposta Start — **MANCANTE**
+- [ ] `TEST-052` — Nuovo Source Identity context con stessi nomi — **MANCANTE**
+- [ ] `TEST-053` — Preflight input-bound e response stale — **MANCANTE**
+- [ ] `TEST-054` — Market Reactions branch `available:false` — **MANCANTE**
+- [ ] `TEST-055` — Mapping schema Market Reactions reale — **MANCANTE**
+- [ ] `TEST-056` — Nessun falso stato live/connected/polling active — **MANCANTE**
+- [ ] `TEST-057` — Sessione Sofa-only senza polling Betfair — **MANCANTE**
+- [ ] `TEST-058` — StrictMode con una sola catena polling — **MANCANTE**
+- [ ] `TEST-059` — Smoke responsive desktop/tablet/mobile — **MANCANTE**
 
 ---
 
@@ -674,6 +698,9 @@ DA RIAPRIRE
 - [x] `IMPL-022` — Evidence temporal provenance and alignment policy — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
 - [x] `IMPL-023` — Market Reaction eligibility e branch state — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
 - [x] `IMPL-024` — Runner temporal identity e price comparability — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
+- [x] `IMPL-025` — Frontend live-session controller — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
+- [x] `IMPL-026` — Polling runtime session-scoped — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
+- [x] `IMPL-027` — Market Reactions frontend view model — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
 - [x] Inventario delle implementazioni emerse
 - [x] Classificazione necessaria/consigliata
 - [ ] Preparazione delle task separate
@@ -789,16 +816,14 @@ Per ogni rilievo approvato:
 ## Prossimo punto
 
 ```txt
-1. pubblicare il checkpoint cumulativo Punti 1–5
+1. pubblicare il checkpoint cumulativo Punti 1–6
 2. verificare il nuovo SHA remoto
-3. analizzare il Punto 6 — Frontend
-   → session lifecycle
-   → polling
-   → response tardive
-   → integrity UI
-   → cleanup legacy
-   → responsive e piccole correzioni separate
-4. analizzare il Punto 7 — Test e strutture mancanti
-5. soltanto dopo il Punto 7 raggruppare e ordinare le task esecutive
-6. nessuna modifica al codice durante l’audit dei Punti 6 e 7
+3. analizzare il Punto 7 — Test e strutture mancanti
+   → copertura reale
+   → fixture
+   → runner
+   → test map
+   → baseline e osservabilità
+4. soltanto dopo il Punto 7 raggruppare e ordinare le task esecutive
+5. nessuna modifica al codice durante il Punto 7
 ```
