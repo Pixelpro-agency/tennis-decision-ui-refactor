@@ -513,3 +513,96 @@ IMPL-006
 → responsive + TEST-059
 → Punto 7
 ```
+
+
+## DEC-024 — Sistema di validazione, fixture e baseline del Punto 7
+
+**Stato:** approvata integralmente.
+
+1. creare `IMPL-028` come prima struttura infrastrutturale del Punto 7;
+2. non riscrivere in massa i test esistenti prima di introdurre il runner;
+3. eseguire inizialmente ogni test legacy in un child process separato;
+4. usare un manifest esplicito come unica lista eseguibile dei controlli;
+5. mantenere Node `assert` o `node:test` per backend e utility nuove;
+6. mantenere Python `unittest` e standardizzare gradualmente i nomi dei file;
+7. introdurre Vitest, jsdom e React Testing Library per i lifecycle frontend;
+8. escludere test live, browser reale, login e tracking dal profilo predefinito;
+9. applicare timeout e serial group alle entry che condividono filesystem, porte o global state;
+10. obbligare ogni test che scrive a usare una sandbox temporanea e a non toccare le directory runtime reali;
+11. estendere `IMPL-003` come test map machine-checkable alimentata dal manifest;
+12. distinguere sempre `planned`, `implemented`, `executed`, `passed`, `failed`, `blocked` e `live_observed`;
+13. creare fixture condivise soltanto per contratti riusati e lasciare locali le factory piccole;
+14. integrare `IMPL-008`, `IMPL-012` e `IMPL-013` come profili separati, senza fonderli in un mega-harness;
+15. produrre attraverso `IMPL-031` un result artifact JSON bounded e redatto per ogni profilo;
+16. mantenere `fileModificati.md` e il report umano dell’esecutore come output obbligatori quando previsti dal workflow;
+17. non introdurre CI prima che il runner locale e il manifest siano deterministici;
+18. non rendere il full lint un gate prima di avere una configurazione eseguibile e una baseline pulita;
+19. estendere `IMPL-005` per verificare SHA, range ID e stato sintetico dei cinque registri.
+
+### Confini
+
+La decisione non introduce:
+
+- browser o login automatici nei test offline;
+- credenziali in CI;
+- tracking live nel profilo predefinito;
+- scritture nelle directory runtime reali;
+- una migrazione massiva immediata dei test;
+- una percentuale di coverage inventata;
+- un unico mega-runner che incorpora fixture, replay, persistence e benchmark;
+- sostituzione del report umano con un JSON;
+- PASS automatici per TEST-ID soltanto documentati;
+- full lint obbligatorio sul codice legacy non classificato.
+
+### Strutture approvate
+
+```txt
+IMPL-028
+→ manifest e runner canonico di validazione
+
+IMPL-029
+→ fixture catalog e sandbox condivisa
+
+IMPL-030
+→ frontend interaction test harness
+
+IMPL-031
+→ validation result ledger e artefatti JSON
+```
+
+### Strutture esistenti da estendere
+
+```txt
+IMPL-003
+→ test map machine-checkable
+
+IMPL-005
+→ coerenza completa dei registri
+
+IMPL-008
+→ profilo persistence/recovery
+
+IMPL-012
+→ fixture e replay versionati
+
+IMPL-013
+→ benchmark e baseline ripetibili
+```
+
+### Ordine approvato
+
+```txt
+IMPL-005
+→ IMPL-028
+→ IMPL-029
+→ IMPL-030
+→ IMPL-003
+→ IMPL-031
+→ IMPL-008
+→ IMPL-012
+→ IMPL-013
+→ TEST-060…075
+→ eventuale CI offline
+→ raggruppamento e priorità delle task Punti 1–7
+```
+

@@ -30,7 +30,7 @@ La Todo:
 Repository: Pixelpro-agency/tennis-decision-ui-refactor
 Branch: main
 SHA iniziale: ae9766dde97de08425d65cf62fe929aece3ba6a2
-SHA corrente verificato: 2959fba5bc3e0480cc3ea03f4469361cbb629ae6
+SHA corrente verificato: 275008a5cd6451f24c6895068639ee3055395986
 ```
 
 - [x] Accesso alla repository verificato
@@ -43,8 +43,8 @@ SHA corrente verificato: 2959fba5bc3e0480cc3ea03f4469361cbb629ae6
 - [x] Audit statico del codice per settori — suite non rieseguite
 - [x] Ricontrollo delle task completate — D1–D18 classificati
 - [x] Integrazione completa del metodo dell’altro progetto — incluso `CHAT_ESECUTORE`
-- [x] Valutazione delle implementazioni utili — IMPL-001…024 classificate
-- [ ] Definizione della prima task esecutiva — dopo completamento dei Punti 5–7
+- [x] Valutazione delle implementazioni utili — IMPL-001…031 classificate
+- [ ] Definizione della prima task esecutiva — dopo raggruppamento e priorità dei Punti 1–7
 
 ---
 
@@ -85,7 +85,7 @@ FUTURO
 > - [x] Ricontrollo task dichiarate completate — **D1–D18 COMPLETATI**
 > - [x] Integrazione workflow dell’altro progetto — **QUATTRO RUOLI DEFINITI**
 > - [x] Audit dei materiali locali `docs/` fuori dalla documentazione canonica — **9 FILE CLASSIFICATI**
-> - [x] Inventario implementazioni consigliate — **IMPL-001…024**
+> - [x] Inventario implementazioni consigliate — **IMPL-001…031**
 > - [ ] Selezione della prima task esecutiva
 > - [ ] Revisione delle modifiche
 > - [ ] Collaudo indipendente, quando necessario
@@ -97,7 +97,7 @@ FUTURO
 ## Checkpoint corrente
 
 ```txt
-SHA verificato: 2959fba5bc3e0480cc3ea03f4469361cbb629ae6
+SHA verificato: 275008a5cd6451f24c6895068639ee3055395986
 
 B1–B6
 → audit completato
@@ -118,8 +118,9 @@ planning e materiali di processo
 → classificati senza eliminazioni
 
 checkpoint
+→ Punti 1–7 completati e approvati
 → soli registri
-→ pronto per inserimento e push
+→ pronto per raggruppamento delle task esecutive
 ```
 
 ---
@@ -474,7 +475,7 @@ DA RIAPRIRE
 - [x] Punto 4 — Storage, journal e recovery — **COMPLETATO E APPROVATO**
 - [x] Punto 5 — Evidence e Market Reactions — **COMPLETATO E APPROVATO**
 - [x] Punto 6 — Frontend — **COMPLETATO E APPROVATO**
-- [ ] Punto 7 — Test e strutture mancanti — **PROSSIMO**
+- [x] Punto 7 — Test e strutture mancanti — **COMPLETATO E APPROVATO**
 
 # BLOCCO E — Rilievi registrati
 
@@ -510,12 +511,15 @@ DA RIAPRIRE
 - [x] `DOC-028` — Session shell contraddice la session authority approvata — **CONFERMATO; CORREZIONE APPROVATA**
 - [x] `DOC-029` — Polling/view model descritti come più completi del codice — **CONFERMATO; CORREZIONE APPROVATA**
 - [x] `DOC-030` — UI Betfair/Market Reactions descritta come integrity-aware senza wiring reale — **CONFERMATO; CORREZIONE APPROVATA**
+- [x] `DOC-031` — Runbook Validation monolitico e non verificabile automaticamente — **CONFERMATO; REFACTOR APPROVATO**
+- [x] `DOC-032` — Semantica di stato dei test non formalizzata — **CONFERMATO; CORREZIONE APPROVATA**
 
 ## Workflow e regole
 
 - [x] `WORKFLOW-001` — Context selection con troppe responsabilità — **CONFERMATO**
 - [x] `WORKFLOW-002` — Todo e registro analitico divergenti — **COMPLETATO NEL CHECKPOINT B6**
 - [x] `WORKFLOW-003` — Prefissi `SECURITY-`/`PYTHON-` non dichiarati — **COMPLETATO NEL CHECKPOINT B6**
+- [ ] `WORKFLOW-004` — SHA, range e stato sintetico dei registri possono divergere — **CONFERMATO; ESTENSIONE IMPL-005 APPROVATA**
 - [x] `RUNTIME-001` — Non riaprire runtime Task 2 senza discrepanza — **REGOLA APPROVATA**
 
 ## Bug e incoerenze di codice
@@ -524,7 +528,7 @@ DA RIAPRIRE
 - [ ] `CODE-002` — Validatore Betfair non condiviso tra Preflight/Start/Login — **CONFERMATO E AMPLIATO; VALIDATORE UNICO APPROVATO**
 - [x] `CODE-003` — Match `debug-last` sempre vuoto — **RIMOZIONE APPROVATA**
 - [x] `CODE-004` — Strategy usa `localhost:3001` hardcoded — **ASSORBITO DALLA RIMOZIONE CODE-001**
-- [ ] `CODE-005` — Script lint frontend non configurato — **CONFERMATO, PRIORITÀ BASSA**
+- [ ] `CODE-005` — Script lint frontend pubblicato ma non eseguibile — **CONFERMATO E AMPLIATO; CORREZIONE GRADUALE APPROVATA**
 - [ ] `RUNTIME-002` — Nuovo Start non invalida la sessione precedente — **CONFERMATO E AMPLIATO; PRIORITÀ CRITICA**
 - [x] `RUNTIME-003` — Avvii manuali aggirano il lock launcher e condividono `match_history` — **CONFERMATO**
 - [ ] `RUNTIME-004` — Riavvio dello stesso eventId contamina il gate nuovo — **CONFERMATO; PRIORITÀ CRITICA**
@@ -597,7 +601,7 @@ DA RIAPRIRE
 - [x] `CLEANUP-001` — Authority Source Identity legacy frontend — **RIMOZIONE APPROVATA; AUTHORITY GLOBALE UNICA**
 - [ ] `TEST-001` — Test dedicato tick Betfair `status-only` — **MANCANTE**
 - [ ] `TEST-002` — Test lifecycle cambio sessione/Start fallito — **MANCANTE**
-- [ ] `TEST-003` — Inventario o comando test canonico — **MANCANTE**
+- [ ] `TEST-003` — Inventario, manifest e comando test canonico — **CONFERMATO E AMPLIATO; IMPL-028 APPROVATA**
 - [x] `TEST-004` — Manca esclusione verificata tra due backend writer — **CONFERMATO**
 - [ ] `TEST-005` — Matrice sostituzione sessione backend — **MANCANTE**
 - [ ] `TEST-006` — Riuso Betfair session-safe — **MANCANTE**
@@ -654,6 +658,22 @@ DA RIAPRIRE
 - [ ] `TEST-057` — Sessione Sofa-only senza polling Betfair — **MANCANTE**
 - [ ] `TEST-058` — StrictMode con una sola catena polling — **MANCANTE**
 - [ ] `TEST-059` — Smoke responsive desktop/tablet/mobile — **MANCANTE**
+- [ ] `TEST-060` — Manifest enumera ogni comando una sola volta — **MANCANTE**
+- [ ] `TEST-061` — Path mancante nel manifest fallisce prima della suite — **MANCANTE**
+- [ ] `TEST-062` — Test legacy eseguiti in processi isolati — **MANCANTE**
+- [ ] `TEST-063` — Timeout termina il processo e produce failure bounded — **MANCANTE**
+- [ ] `TEST-064` — Moduli Python `*_test.py` inclusi esplicitamente — **MANCANTE**
+- [ ] `TEST-065` — Sandbox rimossa su successo e fallimento — **MANCANTE**
+- [ ] `TEST-066` — Nessun test accede alle directory runtime reali — **MANCANTE**
+- [ ] `TEST-067` — Fixture schema, provenance e redaction validate — **MANCANTE**
+- [ ] `TEST-068` — TEST-ID dei registri coerenti con il manifest — **MANCANTE**
+- [ ] `TEST-069` — Result JSON contiene SHA, profilo, conteggi e limiti — **MANCANTE**
+- [ ] `TEST-070` — Result JSON non contiene segreti, URL o path vietati — **MANCANTE**
+- [ ] `TEST-071` — Frontend harness monta hook in StrictMode con fake timer — **MANCANTE**
+- [ ] `TEST-072` — Route harness verifica HTTP reale su porta dinamica — **MANCANTE**
+- [ ] `TEST-073` — Profilo `fast` non avvia browser, rete esterna o tracking — **MANCANTE**
+- [ ] `TEST-074` — Benchmark registra mediana/p95 senza dati live — **MANCANTE**
+- [ ] `TEST-075` — Comando lint eseguibile oppure rimosso dalla superficie ufficiale — **MANCANTE**
 
 ---
 
@@ -701,6 +721,10 @@ DA RIAPRIRE
 - [x] `IMPL-025` — Frontend live-session controller — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
 - [x] `IMPL-026` — Polling runtime session-scoped — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
 - [x] `IMPL-027` — Market Reactions frontend view model — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
+- [x] `IMPL-028` — Manifest e runner canonico di validazione — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
+- [x] `IMPL-029` — Fixture catalog e sandbox condivisa — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
+- [x] `IMPL-030` — Frontend interaction test harness — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA PER IL PUNTO 6**
+- [x] `IMPL-031` — Validation result ledger e artefatti JSON — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
 - [x] Inventario delle implementazioni emerse
 - [x] Classificazione necessaria/consigliata
 - [ ] Preparazione delle task separate
@@ -794,6 +818,7 @@ Per ogni rilievo approvato:
 - [x] Implementazioni utili classificate
 - [x] Cleanup classificato
 - [x] Workflow consolidato
+- [x] Secondo audit del codice Punti 1–7 completato e approvato
 - [x] Todo coerente con registri al checkpoint D1–D18
 - [ ] Prima serie di task esecutive completata
 - [ ] Documentazione canonica aggiornata
@@ -816,14 +841,10 @@ Per ogni rilievo approvato:
 ## Prossimo punto
 
 ```txt
-1. pubblicare il checkpoint cumulativo Punti 1–6
+1. pubblicare il checkpoint cumulativo Punti 1–7
 2. verificare il nuovo SHA remoto
-3. analizzare il Punto 7 — Test e strutture mancanti
-   → copertura reale
-   → fixture
-   → runner
-   → test map
-   → baseline e osservabilità
-4. soltanto dopo il Punto 7 raggruppare e ordinare le task esecutive
-5. nessuna modifica al codice durante il Punto 7
+3. raggruppare i finding e le implementazioni per dipendenza
+4. definire priorità, confini e ordine delle task esecutive
+5. preparare il primo brief esecutivo completo
+6. nessuna implementazione automatica prima dell’approvazione del raggruppamento
 ```
