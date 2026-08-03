@@ -282,3 +282,71 @@ null/unavailable
 ```
 
 I valori reali di mercato, runner, Graph e quote restano invariati.
+
+## DEC-021 — Autorità storage e recovery verificata del Punto 4
+
+**Stato:** approvata integralmente.
+
+1. qualsiasi pending che coinvolge la shared history blocca nuovi commit SofaScore e Betfair dello stesso evento;
+2. la shared history viene preservata per ora; non viene trasformata immediatamente in read model derivato;
+3. ogni documento marcato complete viene verificato anche quando l’altro documento è ancora pending;
+4. documenti e journal introducono schema, revision, head commit, expected base revision e digest;
+5. un journal invalido non attribuibile produce modalità read-only `integrity_unknown` e blocca i writer;
+6. l’endpoint shared history espone integrity aggregata SofaScore, Betfair, journal globale e document read status;
+7. `latestSofaState` e `latestBetfairState` avanzano soltanto dopo commit riuscito e vengono ricostruiti al bootstrap;
+8. missing, invalid JSON, invalid schema, I/O failure e ambiguity diventano stati distinti;
+9. eventId canonico numerico e target confinement sono regole dello Storage;
+10. più file dello stesso evento producono `ambiguous_storage` e nessuna scelta automatica;
+11. nessun cambio immediato del formato full-document prima della baseline `IMPL-013`;
+12. i writer raw non journalizzati vengono rimossi o resi interni dopo l’inventario finale dei consumer;
+13. le conferme Source Identity restano in uno store separato e atomico, sotto la backend writer authority;
+14. la recovery registra i tentativi, applica escalation esplicita a `recovery_failed` e consente rearm manuale verificato.
+
+### Confini
+
+La decisione non autorizza ancora:
+
+- conversione automatica di tutti i file legacy;
+- eliminazione della shared history;
+- database embedded;
+- NDJSON o segmentazione;
+- fsync obbligatorio su ogni tick;
+- cancellazione automatica dei journal invalidi;
+- writer secondario read-only separato;
+- recovery avviata dopo il listen.
+
+### Autorità risultanti
+
+```txt
+IMPL-015
+→ backend writer authority per repository
+
+IMPL-006
+→ session authority della callback live
+
+IMPL-016
+→ Betfair runtime command authority
+
+IMPL-019
+→ event persistence authority
+
+IMPL-020
+→ identità e verifica dei documenti
+
+IMPL-021
+→ stato globale e policy recovery
+```
+
+### Ordine approvato
+
+```txt
+writer authority
+→ event persistence authority
+→ canonical document contract
+→ verified recovery
+→ recovery control plane
+→ UI persistence
+→ baseline storage
+→ eventuale evoluzione formato
+```
+

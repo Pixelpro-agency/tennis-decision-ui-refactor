@@ -471,7 +471,8 @@ DA RIAPRIRE
 - [x] Punto 1 — entry point, launcher, ownership e writer authority
 - [x] Punto 2 — tracking, Start/Stop, generazioni e callback tardive
 - [x] Punto 3 — Betfair lifecycle, Graph, diagnostica, concorrenza e cleanup — **COMPLETATO E APPROVATO**
-- [ ] Punto 4 — Storage, journal e recovery — **PROSSIMO**
+- [x] Punto 4 — Storage, journal e recovery — **COMPLETATO E APPROVATO**
+- [ ] Punto successivo — **DA DEFINIRE DOPO IL CHECKPOINT DEL PUNTO 4**
 
 # BLOCCO E — Rilievi registrati
 
@@ -548,6 +549,23 @@ DA RIAPRIRE
 - [ ] `PYTHON-001` — Task network capture non tracked/drained/cancelled — **CONFERMATO E AMPLIATO**
 - [ ] `CLEANUP-002` — Apply offline privo di maintenance authority e porte effettive — **CONFERMATO E AMPLIATO**
 
+
+## Storage, journal e recovery
+
+- [ ] `STORAGE-001` — Journal source-scoped su shared history event-scoped — **CONFERMATO; IMPL-019 APPROVATA; PRIORITÀ CRITICA**
+- [ ] `STORAGE-002` — Target marked complete non verificato nei record parziali — **CONFERMATO; CORREZIONE APPROVATA; PRIORITÀ CRITICA**
+- [ ] `STORAGE-003` — Target verification limitata a JSON.parse — **CONFERMATO; IMPL-020 APPROVATA; PRIORITÀ CRITICA**
+- [ ] `STORAGE-004` — Journal invalido non attribuibile nascosto dall’integrity — **CONFERMATO; READ-ONLY INTEGRITY_UNKNOWN APPROVATO**
+- [ ] `SECURITY-006` — EventId e target non confinati dallo Storage — **CONFERMATO; VALIDAZIONE E ROOT CONFINEMENT APPROVATI**
+- [ ] `STORAGE-005` — Shared history espone soltanto integrity SofaScore — **CONFERMATO; INTEGRITY AGGREGATA APPROVATA**
+- [ ] `STORAGE-006` — Stato cross-source pubblicato prima del commit — **CONFERMATO; COMMITTED-ONLY APPROVATO**
+- [ ] `STORAGE-007` — Missing, corruzione e I/O failure collassano in `null` — **CONFERMATO; READ CONTRACT STRUTTURATO APPROVATO**
+- [ ] `STORAGE-008` — Duplicati evento risolti con `sort()[0]` — **CONFERMATO; AMBIGUITY BLOCCANTE APPROVATA**
+- [ ] `STORAGE-009` — Nessuna policy persistita dei tentativi recovery — **CONFERMATO; IMPL-021 APPROVATA**
+- [ ] `STORAGE-010` — Amplificazione full-document per ogni tick — **LIMITE CONFERMATO; MISURARE CON IMPL-013**
+- [ ] `STORAGE-011` — Atomicità process-level non equivale a durabilità power-loss — **LIMITE CONFERMATO; DA MISURARE**
+- [ ] `STORAGE-012` — Writer raw non journalizzati ancora esportati — **SUPERFICIE CONFERMATA; INVENTARIO E CHIUSURA APPROVATI**
+
 ## Decisioni e verifiche residue
 
 - [ ] `SOFA-001` — Ultimo game PBP considerato aperto — **DA VERIFICARE LIVE**
@@ -571,6 +589,18 @@ DA RIAPRIRE
 - [ ] `TEST-016` — Nessun volume runner sintetico — **MANCANTE**
 - [ ] `TEST-017` — Acquisition timestamp e Graph skew — **MANCANTE**
 - [ ] `TEST-018` — Retention log/dump e maintenance authority — **MANCANTE**
+- [ ] `TEST-019` — Lost update cross-source shared history — **MANCANTE**
+- [ ] `TEST-020` — Pending cross-source sullo shared target — **MANCANTE**
+- [ ] `TEST-021` — Verifica target completed nei record parziali — **MANCANTE**
+- [ ] `TEST-022` — Target JSON valido ma identity/digest errati — **MANCANTE**
+- [ ] `TEST-023` — Journal invalido → read-only `integrity_unknown` — **MANCANTE**
+- [ ] `TEST-024` — Aggregate integrity shared history — **MANCANTE**
+- [ ] `TEST-025` — Stato cross-source soltanto committed — **MANCANTE**
+- [ ] `TEST-026` — Read status Storage distinti — **MANCANTE**
+- [ ] `TEST-027` — Duplicate event documents bloccanti — **MANCANTE**
+- [ ] `TEST-028` — EventId e target confinement — **MANCANTE**
+- [ ] `TEST-029` — Nessun consumer runtime dei writer raw — **MANCANTE**
+- [ ] `TEST-030` — Retry, escalation e rearm recovery — **MANCANTE**
 
 ---
 
@@ -609,6 +639,9 @@ DA RIAPRIRE
 - [x] `IMPL-016` — Betfair runtime command authority — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
 - [x] `IMPL-017` — Local control-plane boundary — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
 - [x] `IMPL-018` — Betfair acquisition envelope e provenance — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
+- [x] `IMPL-019` — Event persistence authority — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
+- [x] `IMPL-020` — Canonical document contract e verified recovery — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
+- [x] `IMPL-021` — Recovery control plane — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
 - [x] Inventario delle implementazioni emerse
 - [x] Classificazione necessaria/consigliata
 - [ ] Preparazione delle task separate
@@ -724,12 +757,10 @@ Per ogni rilievo approvato:
 ## Prossimo punto
 
 ```txt
-1. pubblicare il checkpoint cumulativo Punto 1 + Punto 2 + Punto 3
+1. pubblicare il checkpoint cumulativo Punto 1 + Punto 2 + Punto 3 + Punto 4
 2. verificare il nuovo SHA remoto
-3. procedere al Punto 4
-   → storage
-   → journal
-   → recovery
-   → integrità e fault paths
-4. nessuna task esecutiva prima della chiusura del secondo audit
+3. definire con l’utente il prossimo perimetro del secondo audit
+   oppure, se il secondo audit viene considerato sufficiente,
+   raggruppare le task prioritarie senza ancora eseguirle
+4. nessuna modifica al codice prima della decisione sul prossimo perimetro
 ```
