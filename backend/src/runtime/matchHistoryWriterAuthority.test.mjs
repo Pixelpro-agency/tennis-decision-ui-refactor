@@ -107,6 +107,16 @@ function unknown() {
     };
 }
 
+function createDeferred() {
+    let resolve;
+    let reject;
+    const promise = new Promise((resolvePromise, rejectPromise) => {
+        resolve = resolvePromise;
+        reject = rejectPromise;
+    });
+    return { promise, resolve, reject };
+}
+
 async function prepareAuthorityDir(fixture) {
     await fsp.mkdir(fixture.authorityDir, { recursive: true });
 }
@@ -760,6 +770,179 @@ await test('T22-native-current-process-probe-is-verifiable', async () => {
             result.state === 'unknown' || result.state === 'dead'
         );
     }
+});
+
+await test('T23-release-waits-for-in-flight-acquire-and-removes-record', async () => {
+    await withFixture('release-during-acquire', async fixture => {
+        const acquireEntered = createDeferred();
+        const allowAcquire = createDeferred();
+        let firstProbe = true;
+        const processProbe = async () => {
+            if (firstProbe) {
+                firstProbe = false;
+                acquireEntered.resolve();
+                await allowAcquire.promise;
+            }
+            return alive('fingerprint-123');
+        };
+        const authority = createMatchHistoryWriterAuthority(
+            authorityOptions(fixture, {
+                processId: 123,
+                processProbe,
+                backendInstanceId: uuid(123)
+            })
+        );
+
+        const acquirePromise = authority.acquire();
+        await acquireEntered.promise;
+        const releasePromise = authority.release();
+        allowAcquire.resolve();
+
+        const [acquireResult, releaseResult] = await Promise.all([
+            acquirePromise,
+            releasePromise
+        ]);
+        assert.equal(acquireResult.ok, true);
+        assert.equal(acquireResult.acquired, true);
+        assert.deepEqual(releaseResult, {
+            ok: true,
+            released: true,
+            state: 'released',
+            reason: null
+        });
+        assert.equal(
+            fs.existsSync(path.join(
+                fixture.authorityDir,
+                `${uuid(123)}.json`
+            )),
+            false
+        );
+    });
+});
+
+await test('T24-acquire-waits-for-in-flight-release-and-reacquires', async () => {
+    await withFixture('acquire-during-release', async fixture => {
+        const releaseEntered = createDeferred();
+        const allowRelease = createDeferred();
+        let blockNextProbe = false;
+        const processProbe = async () => {
+            if (blockNextProbe) {
+                blockNextProbe = false;
+                releaseEntered.resolve();
+                await allowRelease.promise;
+            }
+            return alive('fingerprint-124');
+        };
+        const authority = createMatchHistoryWriterAuthority(
+            authorityOptions(fixture, {
+                processId: 124,
+                processProbe,
+                backendInstanceId: uuid(124)
+            })
+        );
+
+        assert.equal((await authority.acquire()).state, 'acquired');
+        blockNextProbe = true;
+        const releasePromise = authority.release();
+        await releaseEntered.promise;
+        const acquirePromise = authority.acquire();
+        allowRelease.resolve();
+
+        const [releaseResult, acquireResult] = await Promise.all([
+            releasePromise,
+            acquirePromise
+        ]);
+        assert.equal(releaseResult.state, 'released');
+        assert.equal(acquireResult.ok, true);
+        assert.equal(acquireResult.acquired, true);
+        assert.equal(acquireResult.state, 'acquired');
+
+        const recordPath = path.join(
+            fixture.authorityDir,
+            `${uuid(124)}.json`
+        );
+        assert.equal(fs.existsSync(recordPath), true);
+        const record = JSON.parse(await fsp.readFile(recordPath, 'utf8'));
+        assert.equal(record.backendInstanceId, uuid(124));
+        assert.equal(record.pid, 124);
+    });
+});
+
+await test('T25-concurrent-duplicate-acquire-shares-one-operation', async () => {
+    await withFixture('duplicate-acquire', async fixture => {
+        const acquireEntered = createDeferred();
+        const allowAcquire = createDeferred();
+        let firstProbe = true;
+        const processProbe = async () => {
+            if (firstProbe) {
+                firstProbe = false;
+                acquireEntered.resolve();
+                await allowAcquire.promise;
+            }
+            return alive('fingerprint-125');
+        };
+        const authority = createMatchHistoryWriterAuthority(
+            authorityOptions(fixture, {
+                processId: 125,
+                processProbe,
+                backendInstanceId: uuid(125)
+            })
+        );
+
+        const first = authority.acquire();
+        await acquireEntered.promise;
+        const second = authority.acquire();
+        assert.strictEqual(first, second);
+        allowAcquire.resolve();
+
+        const result = await first;
+        assert.equal(result.ok, true);
+        assert.equal(result.acquired, true);
+        const ownerRecords = (await fsp.readdir(fixture.authorityDir))
+            .filter(name => name.endsWith('.json'));
+        assert.deepEqual(ownerRecords, [`${uuid(125)}.json`]);
+    });
+});
+
+await test('T26-concurrent-duplicate-release-shares-one-operation', async () => {
+    await withFixture('duplicate-release', async fixture => {
+        const releaseEntered = createDeferred();
+        const allowRelease = createDeferred();
+        let blockNextProbe = false;
+        const processProbe = async () => {
+            if (blockNextProbe) {
+                blockNextProbe = false;
+                releaseEntered.resolve();
+                await allowRelease.promise;
+            }
+            return alive('fingerprint-126');
+        };
+        const authority = createMatchHistoryWriterAuthority(
+            authorityOptions(fixture, {
+                processId: 126,
+                processProbe,
+                backendInstanceId: uuid(126)
+            })
+        );
+
+        assert.equal((await authority.acquire()).state, 'acquired');
+        blockNextProbe = true;
+        const first = authority.release();
+        await releaseEntered.promise;
+        const second = authority.release();
+        assert.strictEqual(first, second);
+        allowRelease.resolve();
+
+        const result = await first;
+        assert.equal(result.state, 'released');
+        assert.equal(
+            fs.existsSync(path.join(
+                fixture.authorityDir,
+                `${uuid(126)}.json`
+            )),
+            false
+        );
+    });
 });
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===\n`);

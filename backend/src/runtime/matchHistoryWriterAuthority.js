@@ -367,8 +367,31 @@ export function createMatchHistoryWriterAuthority(options = {}) {
         authorityDir,
         `${backendInstanceId}.json`
     );
-    let acquirePromise = null;
-    let releasePromise = null;
+    let lifecycleTail = Promise.resolve();
+    let pendingLifecycleOperation = null;
+
+    function enqueueLifecycleOperation(type, operation) {
+        if (pendingLifecycleOperation?.type === type) {
+            return pendingLifecycleOperation.promise;
+        }
+
+        const operationPromise = lifecycleTail.then(() => operation());
+        const queuedOperation = {
+            type,
+            promise: operationPromise
+        };
+        pendingLifecycleOperation = queuedOperation;
+        lifecycleTail = operationPromise.catch(() => undefined);
+
+        const clearIfCurrent = () => {
+            if (pendingLifecycleOperation === queuedOperation) {
+                pendingLifecycleOperation = null;
+            }
+        };
+        operationPromise.then(clearIfCurrent, clearIfCurrent);
+
+        return operationPromise;
+    }
 
     async function resolvePotentialCanonicalPath(targetPath) {
         const resolved = path.resolve(targetPath);
@@ -883,22 +906,10 @@ export function createMatchHistoryWriterAuthority(options = {}) {
     return Object.freeze({
         backendInstanceId,
         acquire() {
-            if (!acquirePromise) {
-                acquirePromise = acquireInternal()
-                    .finally(() => {
-                        acquirePromise = null;
-                    });
-            }
-            return acquirePromise;
+            return enqueueLifecycleOperation('acquire', acquireInternal);
         },
         release() {
-            if (!releasePromise) {
-                releasePromise = releaseInternal()
-                    .finally(() => {
-                        releasePromise = null;
-                    });
-            }
-            return releasePromise;
+            return enqueueLifecycleOperation('release', releaseInternal);
         }
     });
 }

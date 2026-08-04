@@ -124,5 +124,3 @@ owner tecnico corrente in .md
 → validazioni storiche separate
 → planning e brief non canonici archiviati
 ```
-
-Non creare nuovi documenti `.mdx` e non reintrodurre un secondo indice canonico.
