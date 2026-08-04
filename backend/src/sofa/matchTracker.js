@@ -19,7 +19,9 @@ import {
 } from './sourceIdentityGate.js';
 
 const trackedMatches = new Map();
+const activeTrackerOperations = new Set();
 let schedulerInterval = null;
+let terminalTrackerBarrier = false;
 
 const SOFA_INTERVAL_MS = 5000;
 const BETFAIR_INTERVAL_MS = 6000;
@@ -78,31 +80,103 @@ export function persistBootstrapTrackingSamples({
     };
 }
 
+function registerTrackerOperation(operation) {
+    const operationPromise = Promise.resolve(operation);
+    activeTrackerOperations.add(operationPromise);
+
+    void operationPromise
+        .then(
+            () => undefined,
+            () => undefined
+        )
+        .finally(() => {
+            activeTrackerOperations.delete(operationPromise);
+        });
+
+    return operationPromise;
+}
+
+function invokeTrackerUpdate(updateFn, eventId, info) {
+    try {
+        return registerTrackerOperation(updateFn(eventId, info));
+    } catch (error) {
+        return registerTrackerOperation(Promise.reject(error));
+    }
+}
+
+function startSofaUpdate(eventId, info) {
+    if (terminalTrackerBarrier) return null;
+
+    info.updatingSofa = true;
+    const operation = invokeTrackerUpdate(
+        info.updateSofaFn || updateSofa,
+        eventId,
+        info
+    );
+    void operation
+        .catch(err => runtimeLog.error(
+            'match_tracker',
+            'sofa_update_failed',
+            {
+                eventId,
+                source: 'sofa',
+                reason: runtimeErrorCode(err, 'update_failed')
+            }
+        ))
+        .finally(() => {
+            info.updatingSofa = false;
+            info.lastSofaUpdate = Date.now();
+        });
+    return operation;
+}
+
+function startBetfairUpdate(eventId, info) {
+    if (terminalTrackerBarrier) return null;
+
+    info.updatingBetfair = true;
+    const operation = invokeTrackerUpdate(
+        info.updateBetfairFn || updateBetfair,
+        eventId,
+        info
+    );
+    void operation
+        .catch(err => runtimeLog.error(
+            'match_tracker',
+            'betfair_update_failed',
+            {
+                eventId,
+                source: 'betfair',
+                reason: runtimeErrorCode(err, 'update_failed')
+            }
+        ))
+        .finally(() => {
+            info.updatingBetfair = false;
+            info.lastBetfairUpdate = Date.now();
+        });
+    return operation;
+}
+
 function startScheduler() {
-    if (schedulerInterval) return;
+    if (schedulerInterval || terminalTrackerBarrier) return;
 
     schedulerInterval = setInterval(() => {
+        if (terminalTrackerBarrier) return;
+
         for (const [eventId, info] of trackedMatches) {
+            if (terminalTrackerBarrier) break;
+
             const now = Date.now();
 
-            if (!info.updatingSofa && now - info.lastSofaUpdate >= SOFA_INTERVAL_MS) {
-                info.updatingSofa = true;
-                updateSofa(eventId, info)
-                    .catch(err => runtimeLog.error('match_tracker', 'sofa_update_failed', { eventId, source: 'sofa', reason: runtimeErrorCode(err, 'update_failed') }))
-                    .finally(() => {
-                        info.updatingSofa = false;
-                        info.lastSofaUpdate = Date.now();
-                    });
+            if (!info.updatingSofa &&
+                now - info.lastSofaUpdate >= SOFA_INTERVAL_MS) {
+                startSofaUpdate(eventId, info);
             }
 
-            if (info.betfairUrl && !info.betfairFinished && !info.updatingBetfair && now - info.lastBetfairUpdate >= BETFAIR_INTERVAL_MS) {
-                info.updatingBetfair = true;
-                updateBetfair(eventId, info)
-                    .catch(err => runtimeLog.error('match_tracker', 'betfair_update_failed', { eventId, source: 'betfair', reason: runtimeErrorCode(err, 'update_failed') }))
-                    .finally(() => {
-                        info.updatingBetfair = false;
-                        info.lastBetfairUpdate = Date.now();
-                    });
+            if (info.betfairUrl &&
+                !info.betfairFinished &&
+                !info.updatingBetfair &&
+                now - info.lastBetfairUpdate >= BETFAIR_INTERVAL_MS) {
+                startBetfairUpdate(eventId, info);
             }
         }
     }, 1000);
@@ -138,7 +212,17 @@ export function handleSourceIdentityMismatch(
     }
 }
 
-export function trackMatch(sofaUrl, betfairUrl = '', betfairGraphUrls = '', chromeProfilePath = '', betfairMode = 'persistent', cdpUrl = '') {
+export function trackMatch(
+    sofaUrl,
+    betfairUrl = '',
+    betfairGraphUrls = '',
+    chromeProfilePath = '',
+    betfairMode = 'persistent',
+    cdpUrl = '',
+    dependencies = {}
+) {
+    if (terminalTrackerBarrier) return null;
+
     const eventId = extractEventId(sofaUrl);
     if (!eventId) return null;
 
@@ -186,6 +270,8 @@ export function trackMatch(sofaUrl, betfairUrl = '', betfairGraphUrls = '', chro
         chromeProfilePath,
         betfairMode,
         cdpUrl,
+        updateSofaFn: dependencies.updateSofaFn || updateSofa,
+        updateBetfairFn: dependencies.updateBetfairFn || updateBetfair,
         lastSofaUpdate: 0,
         lastBetfairUpdate: 0,
         updatingSofa: false,
@@ -203,13 +289,7 @@ export function trackMatch(sofaUrl, betfairUrl = '', betfairGraphUrls = '', chro
     startScheduler();
 
     const info = trackedMatches.get(eventId);
-    info.updatingSofa = true;
-    updateSofa(eventId, info)
-        .catch(err => runtimeLog.error('match_tracker', 'sofa_update_failed', { eventId, source: 'sofa', reason: runtimeErrorCode(err, 'update_failed') }))
-        .finally(() => {
-            info.updatingSofa = false;
-            info.lastSofaUpdate = Date.now();
-        });
+    startSofaUpdate(eventId, info);
 
     return eventId;
 }
@@ -239,6 +319,25 @@ export function stopAllMatchTrackers(options = {}) {
         schedulerInterval = null;
     }
     clearAllSourceIdentityGates({ preserveEventId: preserveGateEventId });
+}
+
+async function drainActiveTrackerOperations() {
+    while (activeTrackerOperations.size > 0) {
+        const operations = Array.from(activeTrackerOperations);
+        await Promise.allSettled(operations);
+    }
+
+    return {
+        ok: true,
+        drained: true,
+        activeOperations: 0
+    };
+}
+
+export function stopAndDrainAllMatchTrackers() {
+    terminalTrackerBarrier = true;
+    stopAllMatchTrackers();
+    return drainActiveTrackerOperations();
 }
 
 export function getBetfairTrackingRuntime(eventId) {
