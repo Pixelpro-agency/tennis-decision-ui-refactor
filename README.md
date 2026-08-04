@@ -38,11 +38,11 @@ python avvio.py
 
 Il launcher coordina Chrome CDP, backend e frontend. Le porte preferite sono:
 
-| Servizio | Porta preferita |
-| --- | ---: |
-| Chrome CDP | `9222` |
-| Backend Express | `3001` |
-| Frontend Vite | `3000` |
+| Servizio        | Porta preferita |
+| --------------- | --------------: |
+| Chrome CDP      | `9222`          |
+| Backend Express | `3001`          |
+| Frontend Vite   | `3000`          |
 
 Le porte sono preferite, non riservate: il launcher può riusare servizi identificati o scegliere porte alternative senza terminare processi in base alla sola porta.
 
@@ -82,16 +82,16 @@ I profili `persistence`, `benchmark` e `live` sono riconosciuti ma non ancora es
 
 ## Struttura principale
 
-| Percorso | Responsabilità |
-| --- | --- |
-| `backend/` | API, tracking live, normalizzazione, persistenza, recovery ed Evidence |
-| `frontend/` | Dashboard React, polling e presentazione degli stati live |
-| `launcher/` | Coordinamento del runtime locale |
-| `scrapers/` | Implementazione Python per SofaScore e Betfair |
-| `scripts/` | Avvio, diagnostica, manutenzione e runner di validazione locale |
-| `docs/tennis-decision-ui/` | Documentazione tecnica canonica corrente |
-| `docs/validations/` | Validazioni e collaudi storici separati dagli owner tecnici |
-| `docs/archive/` | Registro sintetico delle fonti storiche consolidate e rimosse |
+| Percorso                   | Responsabilità                                                         |
+| -------------------------- | ---------------------------------------------------------------------- |
+| `backend/`                 | API, tracking live, normalizzazione, persistenza, recovery ed Evidence |
+| `frontend/`                | Dashboard React, polling e presentazione degli stati live              |
+| `launcher/`                | Coordinamento del runtime locale                                       |
+| `scrapers/`                | Implementazione Python per SofaScore e Betfair                         |
+| `scripts/`                 | Avvio, diagnostica, manutenzione e runner di validazione locale        |
+| `docs/tennis-decision-ui/` | Documentazione tecnica canonica corrente                               |
+| `docs/validations/`        | Validazioni e collaudi storici separati dagli owner tecnici            |
+| `docs/archive/`            | Registro sintetico delle fonti storiche consolidate e rimosse          |
 
 ## Dati locali e sensibili
 
