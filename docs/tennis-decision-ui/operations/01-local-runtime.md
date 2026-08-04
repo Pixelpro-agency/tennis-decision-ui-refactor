@@ -271,16 +271,16 @@ Il cleanup operativo di file legacy, dump o cache appartiene ai documenti di ret
 
 ## Diagnostica rapida
 
-| Sintomo                                      | Controllo                                                                                     |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| CDP non disponibile                          | Attendere Chrome dedicato oppure usare modalità Persistent.                                    |
-| Backend non disponibile                      | Verificare `/api/health` sull’URL effettivo scelto.                                           |
-| Frontend non disponibile                     | Verificare che le dipendenze frontend e la CLI Vite locale siano disponibili.                 |
-| Chiamate API dal browser falliscono          | Verificare `VITE_BACKEND_TARGET` e il proxy `/api`.                                           |
-| Browser non apre il frontend previsto        | Verificare l’URL frontend effettivo nel manifest runtime.                                     |
-| `persistence_integrity` da API read-only      | Non trattarlo come errore launcher; consultare storage, API ed Evidence.                      |
-| `persistenceComplete:false` in Evidence       | Non riavviare runtime automaticamente; verificare journal e recovery nei documenti owner.      |
-| Graph health o freshness Betfair degradati   | Non confonderli con `partial_persistence` o `recovery_failed`.                                |
+| Sintomo                                    | Controllo                                                                                 |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| CDP non disponibile                        | Attendere Chrome dedicato oppure usare modalità Persistent.                               |
+| Backend non disponibile                    | Verificare `/api/health` sull’URL effettivo scelto.                                       |
+| Frontend non disponibile                   | Verificare che le dipendenze frontend e la CLI Vite locale siano disponibili.             |
+| Chiamate API dal browser falliscono        | Verificare `VITE_BACKEND_TARGET` e il proxy `/api`.                                       |
+| Browser non apre il frontend previsto      | Verificare l’URL frontend effettivo nel manifest runtime.                                 |
+| `persistence_integrity` da API read-only   | Non trattarlo come errore launcher; consultare storage, API ed Evidence.                  |
+| `persistenceComplete:false` in Evidence    | Non riavviare runtime automaticamente; verificare journal e recovery nei documenti owner. |
+| Graph health o freshness Betfair degradati | Non confonderli con `partial_persistence` o `recovery_failed`.                            |
 
 ## Lock e manifest canonici
 

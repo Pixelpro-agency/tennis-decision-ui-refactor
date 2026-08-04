@@ -270,12 +270,12 @@ Il mismatch non usa il cleanup globale `scope=tracking`. Una callback della gene
 
 ## Stop
 
-| Funzione | Effetto |
-| --- | --- |
-| `untrackMatch(eventId)` | Rimuove un solo match e il relativo gate; è usata dal percorso `/untrack` |
-| `stopMatchTracker(eventId)` | Ferma un match quando presente; non è invocata dalla route HTTP globale |
-| `stopAllMatchTrackers()` | Svuota i match, ferma lo scheduler e rimuove i gate; non invalida da sola la generation |
-| `stopSchedulerIfEmpty()` | Ferma l'intervallo quando non restano match |
+| Funzione                    | Effetto                                                                                 |
+| --------------------------- | --------------------------------------------------------------------------------------- |
+| `untrackMatch(eventId)`     | Rimuove un solo match e il relativo gate; è usata dal percorso `/untrack`               |
+| `stopMatchTracker(eventId)` | Ferma un match quando presente; non è invocata dalla route HTTP globale                 |
+| `stopAllMatchTrackers()`    | Svuota i match, ferma lo scheduler e rimuove i gate; non invalida da sola la generation |
+| `stopSchedulerIfEmpty()`    | Ferma l'intervallo quando non restano match                                             |
 
 Percorso globale corrente:
 

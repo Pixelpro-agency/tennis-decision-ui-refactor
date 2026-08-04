@@ -63,16 +63,16 @@ externalEvidence
 noTradeReasons
 ```
 
-| Blocco                   | Responsabilità                                                                  |
-| ------------------------ | ------------------------------------------------------------------------------- |
-| `metadata`               | Event ID, giocatori e timestamp di aggiornamento                                |
-| `alignment`              | Relazione temporale fra feed                                                    |
-| `dataQuality`            | Freschezza, health tecnica, tradabilità e `persistenceComplete`                 |
-| `sofaEvidence`           | Score, servizio, pressure, marker e contesto campo                              |
-| `marketEvidence`         | Runner attribuiti, book, ladder, prezzo e money flow                            |
-| `marketReactionEvidence` | Osservazioni temporali senza causalità dichiarata                               |
-| `valueHypothesis`        | Placeholder disabilitato finché non esiste un modello calibrato                 |
-| `externalEvidence`       | Placeholder per fonti esterne future                                            |
+| Blocco                   | Responsabilità                                                                   |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| `metadata`               | Event ID, giocatori e timestamp di aggiornamento                                 |
+| `alignment`              | Relazione temporale fra feed                                                     |
+| `dataQuality`            | Freschezza, health tecnica, tradabilità e `persistenceComplete`                  |
+| `sofaEvidence`           | Score, servizio, pressure, marker e contesto campo                               |
+| `marketEvidence`         | Runner attribuiti, book, ladder, prezzo e money flow                             |
+| `marketReactionEvidence` | Osservazioni temporali senza causalità dichiarata                                |
+| `valueHypothesis`        | Placeholder disabilitato finché non esiste un modello calibrato                  |
+| `externalEvidence`       | Placeholder per fonti esterne future                                             |
 | `noTradeReasons`         | Blocchi espliciti da qualità dati, mercato, allineamento, identità o persistenza |
 
 `marketReactionEvidence.summary.causalityClaimed` resta sempre `false`.

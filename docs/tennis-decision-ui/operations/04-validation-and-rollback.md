@@ -12,16 +12,16 @@ Il manifest iniziale non equivale ancora a una mappa completa di ogni test prese
 
 Usare stati distinti:
 
-| Stato | Significato |
-| --- | --- |
-| `planned` | Controllo richiesto ma non ancora implementato |
-| `implemented` | Test o controllo presente nel repository |
-| `executed` | Comando eseguito sulla working tree corrente |
-| `passed` | Esecuzione conclusa con esito positivo |
-| `failed` | Esecuzione conclusa con errore |
-| `blocked` | Non eseguibile per dipendenza o ambiente mancante |
-| `live_observed` | Comportamento osservato manualmente in una sessione specifica |
-| `not_applicable` | Controllo non pertinente alla modifica |
+| Stato            | Significato                                                   |
+| ---------------- | ------------------------------------------------------------- |
+| `planned`        | Controllo richiesto ma non ancora implementato                |
+| `implemented`    | Test o controllo presente nel repository                      |
+| `executed`       | Comando eseguito sulla working tree corrente                  |
+| `passed`         | Esecuzione conclusa con esito positivo                        |
+| `failed`         | Esecuzione conclusa con errore                                |
+| `blocked`        | Non eseguibile per dipendenza o ambiente mancante             |
+| `live_observed`  | Comportamento osservato manualmente in una sessione specifica |
+| `not_applicable` | Controllo non pertinente alla modifica                        |
 
 Regole:
 
@@ -49,17 +49,17 @@ Non eseguire l'intero progetto per una modifica locale quando non esiste una rag
 
 ## Scelta dei controlli
 
-| Area modificata | Controllo minimo corrente |
-| --- | --- |
-| Modulo Node puro | `node --check <file>` quando applicabile e test `*.test.mjs` vicino |
-| Router Express | Test response/route e, per contratti critici, HTTP reale su porta dinamica |
-| Persistenza | Test writer, journal, recovery, processor della fonte e route read-only coinvolta |
-| Betfair | Test processor/lifecycle/health/read model e test Python del modulo modificato |
-| Frontend utility | Test Node puro della utility |
-| Frontend integrato | Test disponibili, `npm --prefix frontend run build` e controllo browser mirato |
-| Python | `py_compile` o `compileall`, import mirato e `unittest` esistente |
-| Launcher | `launcher.tests.test_launcher` e scenario operativo soltanto quando necessario |
-| Documentazione | Markdown, link relativi, percorsi reali, owner, stato corrente e assenza di segreti |
+| Area modificata    | Controllo minimo corrente                                                           |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| Modulo Node puro   | `node --check <file>` quando applicabile e test `*.test.mjs` vicino                 |
+| Router Express     | Test response/route e, per contratti critici, HTTP reale su porta dinamica          |
+| Persistenza        | Test writer, journal, recovery, processor della fonte e route read-only coinvolta   |
+| Betfair            | Test processor/lifecycle/health/read model e test Python del modulo modificato      |
+| Frontend utility   | Test Node puro della utility                                                        |
+| Frontend integrato | Test disponibili, `npm --prefix frontend run build` e controllo browser mirato      |
+| Python             | `py_compile` o `compileall`, import mirato e `unittest` esistente                   |
+| Launcher           | `launcher.tests.test_launcher` e scenario operativo soltanto quando necessario      |
+| Documentazione     | Markdown, link relativi, percorsi reali, owner, stato corrente e assenza di segreti |
 
 ## Runner canonico
 
@@ -88,16 +88,16 @@ node scripts/validation/run.mjs --list
 
 Profili correnti:
 
-| Profilo | Stato | Regola |
-| --- | --- | --- |
-| `fast` | implementato | nessun browser, credenziale, rete esterna o tracking |
-| `backend` | implementato | test backend offline registrati |
-| `frontend` | implementato | test Node registrati e build Vite |
-| `python` | implementato | compileall e unittest enumerati esplicitamente |
-| `full-offline` | implementato | tutte le entry offline abilitate, in serie |
-| `persistence` | pianificato | dipende da IMPL-008 |
-| `benchmark` | pianificato | dipende da IMPL-013 |
-| `live` | pianificato | mai implicito o incluso per default |
+| Profilo        | Stato        | Regola                                               |
+| -------------- | ------------ | ---------------------------------------------------- |
+| `fast`         | implementato | nessun browser, credenziale, rete esterna o tracking |
+| `backend`      | implementato | test backend offline registrati                      |
+| `frontend`     | implementato | test Node registrati e build Vite                    |
+| `python`       | implementato | compileall e unittest enumerati esplicitamente       |
+| `full-offline` | implementato | tutte le entry offline abilitate, in serie           |
+| `persistence`  | pianificato  | dipende da IMPL-008                                  |
+| `benchmark`    | pianificato  | dipende da IMPL-013                                  |
+| `live`         | pianificato  | mai implicito o incluso per default                  |
 
 Un profilo pianificato restituisce exit code `2`. Non viene contato come test saltato o passato.
 
@@ -114,11 +114,11 @@ preflight completo
 
 Codici di uscita:
 
-| Codice | Significato |
-| ---: | --- |
-| `0` | tutte le entry selezionate sono passate |
-| `1` | almeno una entry è fallita o è andata in timeout |
-| `2` | errore d'uso, manifest/path non valido o profilo non eseguibile |
+| Codice | Significato                                                     |
+| -----: | --------------------------------------------------------------- |
+| `0`    | tutte le entry selezionate sono passate                         |
+| `1`    | almeno una entry è fallita o è andata in timeout                |
+| `2`    | errore d'uso, manifest/path non valido o profilo non eseguibile |
 
 Un path mancante è un errore di configurazione rilevato prima di avviare la suite.
 

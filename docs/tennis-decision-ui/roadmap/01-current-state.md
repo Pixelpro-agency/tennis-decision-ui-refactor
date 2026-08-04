@@ -10,18 +10,18 @@ Non contiene la progettazione delle soluzioni future. Finding, priorità e imple
 
 ## Base implementata
 
-| Area | Stato corrente |
-| --- | --- |
-| Runtime locale | Launcher Python con lock operativo, riconoscimento dei servizi, porte preferite, ownership selettiva e shutdown dei processi owned |
-| Backend | Express con router Match, Betfair, Evidence, Strategy, Preflight e Runtime Health |
-| SofaScore | Acquisizione Python, normalizzazione Node, point-by-point supportato e `localContext` descrittivo |
-| Betfair | Modalità persistent/CDP, Graph URL, quote, ladder, health, lifecycle dei processi, Money Flow non direzionale e diagnostica redatta |
-| Tracking | Scheduler separato SofaScore/Betfair, Source Identity Gate, stop globale e cleanup dei ruoli tracking |
-| Persistenza | Timeline, history aggregata, atomic write per file, commit journal, recovery bootstrap e integrity read-only |
-| Evidence | Snapshot read-only, qualità, Source Identity effective, no-trade reasons e Market Reactions senza causalità dichiarata |
-| Frontend | Form, shell dashboard, polling dati, stato Source Identity, health Betfair, Money Flow, contesto punti e Market Reactions |
-| Sicurezza dati | `.env` locale, chiave Betfair fuori dal codice, redazione diagnostica e cache/dump esclusi dalle fonti canoniche |
-| Tooling e validazione | Checker documentali read-only e runner locale a manifest con profili offline, timeout, process isolation e artefatti JSON bounded |
+| Area                  | Stato corrente                                                                                                                      |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime locale        | Launcher Python con lock operativo, riconoscimento dei servizi, porte preferite, ownership selettiva e shutdown dei processi owned  |
+| Backend               | Express con router Match, Betfair, Evidence, Strategy, Preflight e Runtime Health                                                   |
+| SofaScore             | Acquisizione Python, normalizzazione Node, point-by-point supportato e `localContext` descrittivo                                   |
+| Betfair               | Modalità persistent/CDP, Graph URL, quote, ladder, health, lifecycle dei processi, Money Flow non direzionale e diagnostica redatta |
+| Tracking              | Scheduler separato SofaScore/Betfair, Source Identity Gate, stop globale e cleanup dei ruoli tracking                               |
+| Persistenza           | Timeline, history aggregata, atomic write per file, commit journal, recovery bootstrap e integrity read-only                        |
+| Evidence              | Snapshot read-only, qualità, Source Identity effective, no-trade reasons e Market Reactions senza causalità dichiarata              |
+| Frontend              | Form, shell dashboard, polling dati, stato Source Identity, health Betfair, Money Flow, contesto punti e Market Reactions           |
+| Sicurezza dati        | `.env` locale, chiave Betfair fuori dal codice, redazione diagnostica e cache/dump esclusi dalle fonti canoniche                    |
+| Tooling e validazione | Checker documentali read-only e runner locale a manifest con profili offline, timeout, process isolation e artefatti JSON bounded   |
 
 ## Comportamenti importanti già presenti
 

@@ -41,18 +41,18 @@ backend/src/sofa/
 └── matchHistory.js
 ```
 
-| Modulo | Responsabilità |
-| --- | --- |
-| `latestPayload.js` | Costruisce latest, health, metadata, Money Flow e `integrity` read-only |
-| `moneyFlowHistory.js` | Costruisce e valida il point `matchedVolume` non direzionale |
-| `moneyFlowHistorySeries.js` | Deriva serie per `selectionId` dagli ultimi tick validi |
-| `oddsResponse.js` | Valida query e delega il fetch Betfair esplicito |
-| `cdpStatus.js` | Verifica CDP soltanto quando `mode=cdp` |
-| `loginWindow.js` | Costruisce argomenti e runtime identity del login Python |
-| `loginWindowLifecycle.js` | Deduplica il login-only e coordina `spawnReady` e stato attivo |
-| `pythonProcessRegistry.js` | Possiede fisicamente il figlio `betfair_login` |
-| `runtimeLogger.js` | Logging strutturato, lettura bounded e redazione |
-| `matchHistory.js` | Espone letture canoniche Betfair e adapter `getBetfairPersistenceIntegrity` |
+| Modulo                      | Responsabilità                                                              |
+| --------------------------- | --------------------------------------------------------------------------- |
+| `latestPayload.js`          | Costruisce latest, health, metadata, Money Flow e `integrity` read-only     |
+| `moneyFlowHistory.js`       | Costruisce e valida il point `matchedVolume` non direzionale                |
+| `moneyFlowHistorySeries.js` | Deriva serie per `selectionId` dagli ultimi tick validi                     |
+| `oddsResponse.js`           | Valida query e delega il fetch Betfair esplicito                            |
+| `cdpStatus.js`              | Verifica CDP soltanto quando `mode=cdp`                                     |
+| `loginWindow.js`            | Costruisce argomenti e runtime identity del login Python                    |
+| `loginWindowLifecycle.js`   | Deduplica il login-only e coordina `spawnReady` e stato attivo              |
+| `pythonProcessRegistry.js`  | Possiede fisicamente il figlio `betfair_login`                              |
+| `runtimeLogger.js`          | Logging strutturato, lettura bounded e redazione                            |
+| `matchHistory.js`           | Espone letture canoniche Betfair e adapter `getBetfairPersistenceIntegrity` |
 
 ## Endpoint
 
@@ -647,17 +647,17 @@ cdpUrl
 
 `mode` usa `persistent` come default. `profileDir` viene normalizzata soltanto in modalità `persistent`; `cdpUrl` è richiesta e validata soltanto in modalità `cdp`.
 
-| Caso | HTTP | Body pubblico |
-| --- | ---: | --- |
-| Target vuoto | `200` | `{ ok: true, status: "no_target", opened: false, reused: false }` |
-| URL Betfair non valida | `400` | `{ ok: false, code: "betfair_url_invalid", error: "Invalid Betfair URL" }` |
-| CDP assente in `mode=cdp` | `400` | `{ ok: false, code: "cdp_url_required", error: "CDP URL required" }` |
-| CDP non valida | `400` | `{ ok: false, code: "cdp_url_invalid", error: "Invalid CDP URL" }` |
-| Scraper assente | `500` | `{ ok: false, code: "scraper_not_found", error: "Betfair scraper not available" }` |
-| Primo avvio compatibile | `200` | `{ ok: true, status: "started", opened: true, reused: false }` |
-| Login compatibile già attivo | `200` | `{ ok: true, status: "already_active", opened: true, reused: true }` |
-| Runtime incompatibile | `409` | `{ ok: false, code: "login_runtime_conflict", error: "An incompatible login session is already active." }` |
-| Spawn fallito | `500` | `{ ok: false, code: "login_spawn_failed", error: "Unable to open Betfair login window." }` |
+| Caso                         | HTTP  | Body pubblico                                                                                              |
+| ---------------------------- | ----: | ---------------------------------------------------------------------------------------------------------- |
+| Target vuoto                 | `200` | `{ ok: true, status: "no_target", opened: false, reused: false }`                                          |
+| URL Betfair non valida       | `400` | `{ ok: false, code: "betfair_url_invalid", error: "Invalid Betfair URL" }`                                 |
+| CDP assente in `mode=cdp`    | `400` | `{ ok: false, code: "cdp_url_required", error: "CDP URL required" }`                                       |
+| CDP non valida               | `400` | `{ ok: false, code: "cdp_url_invalid", error: "Invalid CDP URL" }`                                         |
+| Scraper assente              | `500` | `{ ok: false, code: "scraper_not_found", error: "Betfair scraper not available" }`                         |
+| Primo avvio compatibile      | `200` | `{ ok: true, status: "started", opened: true, reused: false }`                                             |
+| Login compatibile già attivo | `200` | `{ ok: true, status: "already_active", opened: true, reused: true }`                                       |
+| Runtime incompatibile        | `409` | `{ ok: false, code: "login_runtime_conflict", error: "An incompatible login session is already active." }` |
+| Spawn fallito                | `500` | `{ ok: false, code: "login_spawn_failed", error: "Unable to open Betfair login window." }`                 |
 
 `started` viene restituito soltanto dopo `spawnReady` e registrazione fisica del processo. `already_active` riusa lo stesso processo logico e non esegue un secondo spawn. `login_runtime_conflict` non esegue kill, restart o nuovo spawn.
 

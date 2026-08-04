@@ -40,11 +40,11 @@ backend/src/sofa/
 
 ## Endpoint
 
-| Metodo   | Endpoint                                         | Effetto                                                                                   |
-| -------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| Metodo   | Endpoint                                         | Effetto                                                                                    |
+| -------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------ |
 | `GET`    | `/api/evidence/:eventId/latest`                  | Costruisce lo snapshot Evidence dalle timeline persistite e aggiunge `integrity` read-only |
-| `POST`   | `/api/evidence/:eventId/source-identity/confirm` | Conferma una Source Identity tramite gate attivo o fallback persistito                    |
-| `DELETE` | `/api/evidence/:eventId/source-identity/confirm` | Revoca la conferma applicabile al contesto persistito                                     |
+| `POST`   | `/api/evidence/:eventId/source-identity/confirm` | Conferma una Source Identity tramite gate attivo o fallback persistito                     |
+| `DELETE` | `/api/evidence/:eventId/source-identity/confirm` | Revoca la conferma applicabile al contesto persistito                                      |
 
 ## Validazione `eventId`
 

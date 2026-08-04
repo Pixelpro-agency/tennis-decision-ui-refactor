@@ -108,7 +108,7 @@ recovery_failed
 
 Interpretazione diagnostica:
 
-| Stato                  | Significato operativo                                                        |
+| Stato                  | Significato operativo                                                         |
 | ---------------------- | ----------------------------------------------------------------------------- |
 | `no_known_partial`     | Nessuna persistenza incompleta nota per la source Betfair                     |
 | `partial_persistence`  | Esiste un commit incompleto noto su history, timeline o entrambi              |

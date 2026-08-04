@@ -66,11 +66,11 @@ fragment assente
 
 Esiti di validazione:
 
-| Condizione | HTTP | Body |
-| --- | ---: | --- |
-| Input assente o vuoto | `400` | `{ ok: false, code: "cdp_url_required", error: "CDP URL required" }` |
-| Input non valido | `400` | `{ ok: false, code: "cdp_url_invalid", error: "Invalid CDP URL" }` |
-| Input valido | `200` gestito | Verifica `<cdp-url>/json/version` |
+| Condizione            | HTTP          | Body                                                                 |
+| --------------------- | ------------: | -------------------------------------------------------------------- |
+| Input assente o vuoto | `400`         | `{ ok: false, code: "cdp_url_required", error: "CDP URL required" }` |
+| Input non valido      | `400`         | `{ ok: false, code: "cdp_url_invalid", error: "Invalid CDP URL" }`   |
+| Input valido          | `200` gestito | Verifica `<cdp-url>/json/version`                                    |
 
 Input vuoto o non valido non esegue alcun fetch.
 
@@ -88,13 +88,13 @@ Risposta riuscita:
 
 Gli errori raggiunti dopo la validazione restano risposte JSON con HTTP `200` e `ok: false`:
 
-| Condizione | Campi rilevanti |
-| --- | --- |
-| Risposta vuota | `webSocketDebuggerUrl: false`, `error: "Empty response from CDP"` |
-| JSON non valido | `webSocketDebuggerUrl: false`, `error: "Invalid JSON from CDP"` |
-| HTTP CDP non riuscito | `status`, `webSocketDebuggerUrl: false`, `error` statico |
-| Endpoint senza WebSocket | `browser`, `webSocketDebuggerUrl: false`, `error` statico |
-| Endpoint irraggiungibile | `webSocketDebuggerUrl: false`, `error: "CDP unreachable"` |
+| Condizione               | Campi rilevanti                                                   |
+| ------------------------ | ----------------------------------------------------------------- |
+| Risposta vuota           | `webSocketDebuggerUrl: false`, `error: "Empty response from CDP"` |
+| JSON non valido          | `webSocketDebuggerUrl: false`, `error: "Invalid JSON from CDP"`   |
+| HTTP CDP non riuscito    | `status`, `webSocketDebuggerUrl: false`, `error` statico          |
+| Endpoint senza WebSocket | `browser`, `webSocketDebuggerUrl: false`, `error` statico         |
+| Endpoint irraggiungibile | `webSocketDebuggerUrl: false`, `error: "CDP unreachable"`         |
 
 La route non apre Chrome, non avvia tracking e non modifica la sessione browser. `9222` è soltanto la porta preferita del launcher: non è un fallback della route.
 

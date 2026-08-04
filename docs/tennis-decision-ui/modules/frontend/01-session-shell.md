@@ -29,23 +29,23 @@ frontend/src/
 
 ## Ownership
 
-| Area                                  | Proprietario                                       |
-| ------------------------------------- | -------------------------------------------------- |
-| Mount React e stili globali           | `main.jsx`                                         |
-| Composizione sessione, shell e viste  | `App.jsx`                                          |
-| Stato input e stato confermato        | `useAnalysisSessionState.js`                       |
-| Avvio, stop e ritorno al form         | `useLiveTrackingActions.js`                        |
-| Bootstrap dashboard dopo Start        | `useDashboardBootstrapState.js`                    |
-| Apertura login Betfair                | `useBetfairLoginAction.js`                         |
-| Trasformazione pura stato sessione    | `utils/analysisSessionState.js`                    |
-| Payload login e tracking              | `utils/liveSessionRequests.js`                     |
-| Azioni HTTP esplicite                 | `services/liveSessionApi.js`                       |
-| Polling status gate live              | `useSourceIdentityGateStatus.js`                   |
-| Stato UI Source Identity globale      | `useSourceIdentityGateUi.js`                       |
-| Presentazione pura Source Identity    | `utils/sourceIdentityGatePresentation.js`          |
-| Form iniziale                         | `StartAnalysisPanel.jsx`                           |
-| Shell dashboard e TopBar              | `DashboardWorkspace.jsx`, `TopBar.jsx`             |
-| UI globale Source Identity            | indicatore, toast, waiting screen e modale pending |
+| Area                                 | Proprietario                                       |
+| ------------------------------------ | -------------------------------------------------- |
+| Mount React e stili globali          | `main.jsx`                                         |
+| Composizione sessione, shell e viste | `App.jsx`                                          |
+| Stato input e stato confermato       | `useAnalysisSessionState.js`                       |
+| Avvio, stop e ritorno al form        | `useLiveTrackingActions.js`                        |
+| Bootstrap dashboard dopo Start       | `useDashboardBootstrapState.js`                    |
+| Apertura login Betfair               | `useBetfairLoginAction.js`                         |
+| Trasformazione pura stato sessione   | `utils/analysisSessionState.js`                    |
+| Payload login e tracking             | `utils/liveSessionRequests.js`                     |
+| Azioni HTTP esplicite                | `services/liveSessionApi.js`                       |
+| Polling status gate live             | `useSourceIdentityGateStatus.js`                   |
+| Stato UI Source Identity globale     | `useSourceIdentityGateUi.js`                       |
+| Presentazione pura Source Identity   | `utils/sourceIdentityGatePresentation.js`          |
+| Form iniziale                        | `StartAnalysisPanel.jsx`                           |
+| Shell dashboard e TopBar             | `DashboardWorkspace.jsx`, `TopBar.jsx`             |
+| UI globale Source Identity           | indicatore, toast, waiting screen e modale pending |
 
 ## Stato sessione
 

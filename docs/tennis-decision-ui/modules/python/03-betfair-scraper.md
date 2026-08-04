@@ -38,7 +38,7 @@ scrapers/betfair/
 | `scrape.py`               | Orchestrazione browser, mercato, ladder e diagnostica                     |
 | `graph_url.py`            | Parser puro URL dirette e validazione mapping ladder                      |
 | `graph_url_test.py`       | Test unitari puri del parser e del mapping                                |
-| `cdp_url.py`              | Validazione e normalizzazione dell'endpoint CDP locale                 |
+| `cdp_url.py`              | Validazione e normalizzazione dell'endpoint CDP locale                    |
 | `browser_session.py`      | CDP esistente o profilo persistente                                       |
 | `market_api.py`           | Dati mercato read-only                                                    |
 | `ladder.py`               | Lettura ladder da Graph URL                                               |

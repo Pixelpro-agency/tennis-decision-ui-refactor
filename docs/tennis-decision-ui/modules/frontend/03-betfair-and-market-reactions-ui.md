@@ -30,13 +30,13 @@ frontend/src/components/
     └── BetfairHealthDebugPanel.jsx
 ```
 
-| Componente                    | Responsabilità                                                                                                                        |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Componente                    | Responsabilità                                                                                                                          |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `BetfairDepthCard.jsx`        | Contenitore, stato vuoto, health, persistence integrity, associazione runner tramite `selectionId`, griglia condivisa e scala condivisa |
-| `BetfairRunnerDepth.jsx`      | Ladder, Best Back, Best Lay, total matched e grafico neutro del runner                                                                |
-| `MoneyFlowChart.jsx`          | Una barra neutra per tick, hover locale con volume abbinato e assenza di barra per slot invalidi, anomali o degradati                 |
-| `BetfairHealthDebugPanel.jsx` | Pannello espandibile di diagnostica health                                                                                            |
-| `BetfairHealthToast.jsx`      | Toast per transizione health critica                                                                                                  |
+| `BetfairRunnerDepth.jsx`      | Ladder, Best Back, Best Lay, total matched e grafico neutro del runner                                                                  |
+| `MoneyFlowChart.jsx`          | Una barra neutra per tick, hover locale con volume abbinato e assenza di barra per slot invalidi, anomali o degradati                   |
+| `BetfairHealthDebugPanel.jsx` | Pannello espandibile di diagnostica health                                                                                              |
+| `BetfairHealthToast.jsx`      | Toast per transizione health critica                                                                                                    |
 
 ### Contratto history Money Flow
 
@@ -306,7 +306,7 @@ frontend/src/components/
 
 | Componente                            | Responsabilità                                                                                                                                                     |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `MarketReactionsPage.jsx`             | Pagina presentazionale dello snapshot Evidence e delle sue degradazioni read-only                                                                                   |
+| `MarketReactionsPage.jsx`             | Pagina presentazionale dello snapshot Evidence e delle sue degradazioni read-only                                                                                  |
 | `Sidebar.jsx`                         | Navigazione, indicatore Source Identity e health Betfair                                                                                                           |
 | `SourceIdentityGateIndicator.jsx`     | Semaforo Source Identity nella sidebar                                                                                                                             |
 | `SourceIdentityGateToast.jsx`         | Toast aligned o mismatch                                                                                                                                           |

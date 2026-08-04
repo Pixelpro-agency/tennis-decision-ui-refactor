@@ -72,13 +72,13 @@ Lo stato live autoritativo è:
 GET /api/match/:eventId/source-identity-status
 ```
 
-| Fase             | Cosa verificare                                                                                                                                                            |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `collecting`     | Dati ancora incompleti; nessuna persistenza                                                                                                                                |
-| `pending`        | Giocatori e runner presenti; conferma manuale ammessa                                                                                                                      |
-| `recording`      | Persistenza canonica attiva                                                                                                                                                |
+| Fase             | Cosa verificare                                                                                                                                                                                      |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `collecting`     | Dati ancora incompleti; nessuna persistenza                                                                                                                                                          |
+| `pending`        | Giocatori e runner presenti; conferma manuale ammessa                                                                                                                                                |
+| `recording`      | Persistenza canonica attiva                                                                                                                                                                          |
 | `mismatch`       | Tick causale bloccato; il callback ferma i tracker logici, preserva il gate mismatch, invalida la generation e termina il Betfair tracking attivo; un eventuale SofaScore in flight diventa obsoleto |
-| `not-applicable` | Sessione SofaScore senza Betfair                                                                                                                                           |
+| `not-applicable` | Sessione SofaScore senza Betfair                                                                                                                                                                     |
 
 La conferma manuale è ammessa solo in `pending`.
 

@@ -85,11 +85,11 @@ dataQuality.persistenceComplete === true
 
 `sourceIdentity` descrive qui l’identità effective dello snapshot, non lo stato live del Source Identity Gate. Il modulo non legge né ricostruisce il gate live.
 
-| Stato identity | Effetto |
-| --- | --- |
-| `aligned` | Osservazioni Market Reactions consentite solo se la persistenza è completa |
-| `pending` | Osservazioni cross-source sospese |
-| `mismatch` | Osservazioni cross-source sospese |
+| Stato identity | Effetto                                                                    |
+| -------------- | -------------------------------------------------------------------------- |
+| `aligned`      | Osservazioni Market Reactions consentite solo se la persistenza è completa |
+| `pending`      | Osservazioni cross-source sospese                                          |
+| `mismatch`     | Osservazioni cross-source sospese                                          |
 
 Quando l’identità effective non è `aligned`:
 
@@ -307,14 +307,14 @@ Quando la persistenza è incompleta, il ramo non deve calcolare finestre Betfair
 
 Le finestre disponibili riportano qualità `good`, `medium` o `poor`. `unknown` è riservato al summary di un ramo non disponibile, ad esempio quando manca un source event utilizzabile.
 
-| Condizione | Qualità o motivo |
-| --- | --- |
-| Baseline disponibile e prezzi runner confrontabili | `good` |
-| Tick presenti ma manca baseline o prezzo comparabile | `medium` |
-| Nessun tick successivo all’anchor | `poor` |
-| Source event assente, invalido o troppo vecchio | ramo non disponibile; summary `dataQuality: unknown` |
-| Source Identity effective non `aligned` | ramo cross-source sospeso |
-| `persistenceComplete:false` | ramo cross-source sospeso per persistenza incompleta |
+| Condizione                                           | Qualità o motivo                                     |
+| ---------------------------------------------------- | ---------------------------------------------------- |
+| Baseline disponibile e prezzi runner confrontabili   | `good`                                               |
+| Tick presenti ma manca baseline o prezzo comparabile | `medium`                                             |
+| Nessun tick successivo all’anchor                    | `poor`                                               |
+| Source event assente, invalido o troppo vecchio      | ramo non disponibile; summary `dataQuality: unknown` |
+| Source Identity effective non `aligned`              | ramo cross-source sospeso                            |
+| `persistenceComplete:false`                          | ramo cross-source sospeso per persistenza incompleta |
 
 Un marker assente o troppo vecchio non deve essere interpretato come “nessuna reazione di mercato”.
 
@@ -332,12 +332,12 @@ frontend/src/components/marketReactions/
 
 Ownership:
 
-| Livello | Responsabilità |
-| --- | --- |
-| `App.jsx` | Crea l’unica istanza del polling Evidence e gestisce Source Identity UI |
-| `useMarketReactionEvidence.js` | Carica snapshot, refresh, conferma e revoca |
-| `MarketReactionsPage.jsx` | Consumer presentazionale dei dati già caricati |
-| Card Market Reactions | Visualizzano finestre, qualità, reasons e limiti interpretativi |
+| Livello                        | Responsabilità                                                          |
+| ------------------------------ | ----------------------------------------------------------------------- |
+| `App.jsx`                      | Crea l’unica istanza del polling Evidence e gestisce Source Identity UI |
+| `useMarketReactionEvidence.js` | Carica snapshot, refresh, conferma e revoca                             |
+| `MarketReactionsPage.jsx`      | Consumer presentazionale dei dati già caricati                          |
+| Card Market Reactions          | Visualizzano finestre, qualità, reasons e limiti interpretativi         |
 
 `MarketReactionsPage.jsx` non deve:
 

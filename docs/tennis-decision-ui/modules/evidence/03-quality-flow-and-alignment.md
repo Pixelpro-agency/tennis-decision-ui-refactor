@@ -23,14 +23,14 @@ backend/src/sofa/temporalAlignmentEvidence.js
 
 Responsabilità principali:
 
-| Modulo                  | Responsabilità                                                                 |
-| ----------------------- | ------------------------------------------------------------------------------ |
-| `dataQuality.js`        | Freschezza, health tecnica, tradabilità e `persistenceComplete`                |
-| `alignment.js`          | Allineamento temporale fra marker SofaScore e dati mercato                     |
-| `noTradeReasons.js`     | Reason operative, inclusa la persistenza incompleta                            |
-| `marketFlowEvidence.js` | Money flow descrittivo e classificazione volumi                                |
-| `sofaEventMarkers.js`   | Marker descrittivi del contesto SofaScore                                      |
-| `temporalAlignmentEvidence.js` | Prossimità temporale senza causalità dichiarata                         |
+| Modulo                         | Responsabilità                                                  |
+| ------------------------------ | --------------------------------------------------------------- |
+| `dataQuality.js`               | Freschezza, health tecnica, tradabilità e `persistenceComplete` |
+| `alignment.js`                 | Allineamento temporale fra marker SofaScore e dati mercato      |
+| `noTradeReasons.js`            | Reason operative, inclusa la persistenza incompleta             |
+| `marketFlowEvidence.js`        | Money flow descrittivo e classificazione volumi                 |
+| `sofaEventMarkers.js`          | Marker descrittivi del contesto SofaScore                       |
+| `temporalAlignmentEvidence.js` | Prossimità temporale senza causalità dichiarata                 |
 
 ## Qualità e tradabilità
 

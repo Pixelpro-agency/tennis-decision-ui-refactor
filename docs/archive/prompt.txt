@@ -1,0 +1,195 @@
+Agisci come senior backend engineer. Devo sostituire i dati mock/statici della pagina React "LayTheWinner" con un backend reale che usa SOLO le API già presenti nel mio progetto.
+
+CONTESTO FRONTEND (IMPORTANTE)
+Ho un componente React LayTheWinner.jsx che oggi usa mockStrategyData e dopo 300ms setta lo state.
+Il componente destruttura così:
+const { header, strategy, footerHints, app } = data;
+e renderizza:
+- StrategyHeader (header + mode)
+- StrategyTabBar (app.tabs)
+- HeroCard(strategy.decision)
+- EntryRulesCard(strategy.entryRules)
+- SetupContextCard(strategy.setupContext)
+- SuccessProbabilityCard(strategy.successProbability)
+- StrategyChecklistCard(strategy.strategyChecklist)
+- ExitPlanCard(strategy.exitPlan)
+- Footer (footerHints.source, footerHints.update, footerHints.note)
+
+Quindi il backend DEVE restituire JSON con queste chiavi: { header, strategy, footerHints, app }.
+Non cambiare i nomi.
+
+OBIETTIVO
+Creare un endpoint backend (Express) che ritorna il payload per LayTheWinner:
+GET /api/strategy/lay-the-winner?url=<sofascoreMatchUrl>
+oppure POST /api/strategy/lay-the-winner { url }
+Scegli la forma più coerente con gli endpoint già esistenti nel progetto.
+
+VINCOLI IMPORTANTI
+1) NON inventare nuove API se non necessarie: prima cerca nel repo quali endpoint e funzioni esistono già.
+2) Collega i dati a SofaScore usando le funzioni già presenti (es. extractEventId, directFetch, fetch match, statistics, tennis-power-rankings).
+3) Trade On Tennis (quote live, market odds, edge) NON è disponibile: TUTTI i campi che dipendono da ToT devono risultare "grigi" nel frontend.
+4) TOT (fair price, success probability) NON è disponibile: campi TOT devono risultare grigi.
+5) Se un dato non è disponibile dalle API SofaScore che hai già, mettilo grigio (null + available:false).
+6) Il frontend deve poter decidere il grigio: quindi per i campi potenzialmente mancanti, aggiungi un wrapper "availability" oppure un campo boolean.
+   Esempio: successProbability: { pct: null, available: false, reason: "TOT_NOT_IMPLEMENTED" }
+   NON cambiare i campi minimi attesi dai componenti, aggiungi solo proprietà extra.
+
+FASE 1 — ISPEZIONE REPO (OBBLIGATORIA)
+Prima di scrivere codice, devi cercare nel progetto:
+- backend/server.js (o entry del server)
+- routes/matchRoutes.js, routes/liveRoutes.js
+- controllers/matchController.js, liveController.js
+- scraper.js (extractEventId, directFetch, fetch Sofa endpoints)
+Devi indicare:
+- quali endpoint già esistono e cosa ritornano
+- quali funzioni di fetch SofaScore già esistono (event/statistics/tennis-power-rankings)
+Se esiste già un endpoint tipo /api/match/analyze o /api/match/snapshot, riusalo e NON rifarlo.
+
+FASE 2 — DATI CHE DEVI OTTENERE (SOLO SE ESISTONO)
+Dal link sofascore:
+- players (home/away)
+- status LIVE e info set/game/point se presente
+- winner 1st set (derivabile dai set score)
+- break opportunities (se statistiche hanno BP created/converted)
+- momentum: se esiste tennis-power-rankings JSON, calcola value e percentuali; se manca, momentum "available:false"
+
+FASE 3 — COSTRUZIONE PAYLOAD (SHAPE IDENTICA AL FRONTEND)
+Devi restituire:
+
+{
+  "app": {
+    "tabs": [
+      {"id":"lay_the_winner","label":"Lay the Winner","speed":"SLOW","active":true},
+      {"id":"banca_servizio","label":"Banca Servizio","speed":"FAST","active":false},
+      {"id":"super_break","label":"Super Break","speed":"MID","active":false}
+    ]
+  },
+  "header": {
+    "competition": <se disponibile altrimenti "—">,
+    "status": <LIVE/..."—">,
+    "matchTitle": "<home> vs <away>",
+    "set": <numero set se disponibile, altrimenti null>,
+    "gameScore": <string es "4-3" se disponibile, altrimenti null>,
+    "serving": <nome giocatore se disponibile, altrimenti null>,
+    "connections": {
+      "sofa": {"label":"Sofa","status":"connected", "ok": true/false},
+      "modelTot": {"label":"Model/TOT", "ok": false}  // finché TOT non esiste
+    }
+  },
+  "strategy": {
+    "id": "lay_the_winner",
+    "name": "Lay the Winner",
+    "speed": "SLOW",
+
+    "decision": {
+      "signal": "MONITOR",             // finché ToT/TOT non ci sono: NON può essere ENTER basato su edge reale
+      "edgePct": null,                 // GRIGIO (ToT/TOT missing)
+      "action": "LAY",                 // logica strategia, OK anche senza quote
+      "marketRuleText": null,          // GRIGIO (ToT missing) oppure testo statico config se vuoi
+      "validForSec": null,             // se non gestisci timer server-side, null
+      "thresholds": {
+        "greenMinLayOdds": null,       // GRIGIO (ToT missing)
+        "yellowRangeLayOdds": {"min": null, "max": null},
+        "redMaxLayOdds": null
+      },
+      "borderlineNote": null,
+      "availability": {
+        "edge": {"available": false, "reason": "TRADE_ON_TENNIS_NOT_AVAILABLE"},
+        "market": {"available": false, "reason": "TRADE_ON_TENNIS_NOT_AVAILABLE"}
+      }
+    },
+
+    "entryRules": [
+      {
+        "level": "GREEN",
+        "label": "ENTER",
+        "rule": "ENTER if LAY odds ≥ —",
+        "edgeRule": "edge ≥ —",
+        "uiIcon": "check",
+        "available": false,
+        "reason": "TRADE_ON_TENNIS_NOT_AVAILABLE"
+      },
+      {
+        "level": "YELLOW",
+        "label": "BORDERLINE",
+        "rule": "BORDERLINE if —",
+        "edgeRule": "edge —",
+        "uiIcon": "warning",
+        "available": false,
+        "reason": "TRADE_ON_TENNIS_NOT_AVAILABLE"
+      },
+      {
+        "level": "RED",
+        "label": "SKIP",
+        "rule": "SKIP if —",
+        "edgeRule": "edge —",
+        "uiIcon": "x",
+        "available": false,
+        "reason": "TRADE_ON_TENNIS_NOT_AVAILABLE"
+      }
+    ],
+
+    "successProbability": {
+      "pct": null,
+      "label": "Success Probability",
+      "available": false,
+      "reason": "TOT_NOT_IMPLEMENTED"
+    },
+
+    "setupContext": [
+      {"label":"Winner 1st set", "value": <nome o "—">, "available": true/false},
+      {"label":"Favorite pre-match", "value":"—", "available": false, "reason":"NO_TOT_OR_RANKING_SOURCE"},
+      {"label":"Current story", "value": <se riesci a derivare con regole semplici altrimenti "—">, "available": true/false},
+      {"label":"Break opportunities (set 2)", "value": <se stats ok altrimenti "—">, "available": true/false}
+    ],
+
+    "strategyChecklist": [
+      {"label":"Winner 1st set identified", "ok": true/false},
+      {"label":"Favorite down a set (or 'recovery' profile)", "ok": false, "badge":"MISSING_DATA"},
+      {"label":"Set 2 in \"pressure window\" (series of 30/deuce)", "ok": false, "badge":"MISSING_DATA"},
+      {"label":"Momentum: <player> <pct>%", "ok": true/false, "badge": "WARNING" | null, "available": true/false}
+    ],
+
+    "exitPlan": {
+      "takeProfit": [
+        "TAKE PROFIT on BP / break by 1st set winner"
+      ],
+      "abort": [
+        "ABORT/STOP/EXIT if: edge < 0% or leader consolidates (Easy holds + momentum drops)"
+      ],
+      "available": true
+    }
+  },
+
+  "footerHints": {
+    "source": "SofaScore APIs",
+    "update": "Auto-updated via polling",
+    "note": "Trade On Tennis market odds not connected yet — values shown in grey"
+  }
+}
+
+FASE 4 — CSS/GRIGIO (FRONTEND COMPATIBILITY)
+Dato che il frontend deve mostrare in grigio i campi non disponibili:
+- quando un campo ha available=false oppure value=null, il frontend deve renderizzarlo con:
+  opacity: 0.45;
+  filter: grayscale(1);
+  cursor: not-allowed;
+  e testo “—”.
+Se vuoi, aggiungi una proprietà standard "available" dove serve, ma NON rompere i componenti esistenti.
+
+FASE 5 — IMPLEMENTAZIONE
+1) Crea il nuovo endpoint /api/strategy/lay-the-winner
+2) All’interno, RIUSA le funzioni di fetch SofaScore che hai già nel progetto (scraper.js e/o controller esistenti).
+3) Implementa una funzione buildLayTheWinnerViewModel(snapshot) che costruisce {header,strategy,footerHints,app}.
+4) Aggiungi error handling:
+   - url invalida => 400
+   - eventId non trovato => 404
+   - Sofa blocked => 503
+5) Non implementare ToT/TOT: tutto ciò rimane grigio.
+
+OUTPUT RICHIESTO
+- “Repo findings” (file trovati + funzioni usabili)
+- Nuovo endpoint (route + controller)
+- Funzione buildLayTheWinnerViewModel
+- Esempio response JSON
+- Nota: cosa è grigio e perché.

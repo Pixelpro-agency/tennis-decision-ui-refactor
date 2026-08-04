@@ -29,28 +29,28 @@ backend/src/sofa/
 └── matchHistory.js
 ```
 
-| Modulo                            | Responsabilità                                                                       |
-| --------------------------------- | ------------------------------------------------------------------------------------ |
-| `match.js`                        | Registra endpoint e adatta richieste e risposte Express                              |
-| `readResponses.js`                | Costruisce risposte per debug, history, timeline SofaScore e `integrity` read-only   |
-| `trackingResponses.js`            | Valida e costruisce risposte per track, untrack e stop                               |
-| `analysisResponse.js`             | Valida URL, esegue analisi SofaScore e mappa gli errori                              |
-| `sourceIdentityStatusResponse.js` | Costruisce il payload sicuro dello stato del gate                                    |
-| `matchHistory.js`                 | Espone letture canoniche SofaScore e adapter `getMatchPersistenceIntegrity`          |
+| Modulo                            | Responsabilità                                                                     |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| `match.js`                        | Registra endpoint e adatta richieste e risposte Express                            |
+| `readResponses.js`                | Costruisce risposte per debug, history, timeline SofaScore e `integrity` read-only |
+| `trackingResponses.js`            | Valida e costruisce risposte per track, untrack e stop                             |
+| `analysisResponse.js`             | Valida URL, esegue analisi SofaScore e mappa gli errori                            |
+| `sourceIdentityStatusResponse.js` | Costruisce il payload sicuro dello stato del gate                                  |
+| `matchHistory.js`                 | Espone letture canoniche SofaScore e adapter `getMatchPersistenceIntegrity`        |
 
 ## Endpoint
 
-| Metodo | Endpoint                                     | Effetto                                                            |
-| ------ | -------------------------------------------- | ------------------------------------------------------------------ |
-| `GET`  | `/api/match/debug-last`                      | Restituisce l’ultimo debug disponibile                             |
+| Metodo | Endpoint                                     | Effetto                                                             |
+| ------ | -------------------------------------------- | ------------------------------------------------------------------- |
+| `GET`  | `/api/match/debug-last`                      | Restituisce l’ultimo debug disponibile                              |
 | `GET`  | `/api/match/:eventId/history`                | Restituisce la history aggregata SofaScore con `integrity` additiva |
 | `GET`  | `/api/match/:eventId/json`                   | Restituisce la timeline SofaScore con `integrity` additiva          |
-| `GET`  | `/api/match/:eventId/source-identity-status` | Restituisce lo stato live del Source Identity Gate                 |
-| `POST` | `/api/match/track`                           | Avvia il tracking in background e crea una sessione gate           |
-| `POST` | `/api/match/untrack`                         | Ferma un match specifico e rimuove il relativo gate                |
-| `POST` | `/api/match/stop`                            | Ferma tutto il tracking live e rimuove i gate applicabili          |
-| `POST` | `/api/match/analyze`                         | Esegue un’analisi SofaScore singola                                |
-| `POST` | `/api/match/snapshot`                        | Redirect `307` verso `/api/match/analyze`                          |
+| `GET`  | `/api/match/:eventId/source-identity-status` | Restituisce lo stato live del Source Identity Gate                  |
+| `POST` | `/api/match/track`                           | Avvia il tracking in background e crea una sessione gate            |
+| `POST` | `/api/match/untrack`                         | Ferma un match specifico e rimuove il relativo gate                 |
+| `POST` | `/api/match/stop`                            | Ferma tutto il tracking live e rimuove i gate applicabili           |
+| `POST` | `/api/match/analyze`                         | Esegue un’analisi SofaScore singola                                 |
+| `POST` | `/api/match/snapshot`                        | Redirect `307` verso `/api/match/analyze`                           |
 
 ## Letture
 
@@ -256,10 +256,10 @@ blocked
 
 `persistence` dello status Source Identity Gate è diverso da `integrity` delle letture history/json.
 
-| Campo | Ambito | Significato |
-| ----- | ------ | ----------- |
-| `persistence` | Source Identity Gate live | Stato del gate durante tracking e bootstrap cross-source |
-| `integrity` | Letture history/json | Stato read-only della persistenza canonica nota tramite journal |
+| Campo         | Ambito                    | Significato                                                     |
+| ------------- | ------------------------- | --------------------------------------------------------------- |
+| `persistence` | Source Identity Gate live | Stato del gate durante tracking e bootstrap cross-source        |
+| `integrity`   | Letture history/json      | Stato read-only della persistenza canonica nota tramite journal |
 
 `stopped` è una fase di cleanup interna e non viene esposta. Dopo Stop manuale, Untrack o nuovo Start, il gate viene rimosso e l’endpoint restituisce normalmente `404`.
 
@@ -282,12 +282,12 @@ I valori Betfair possono essere vuoti quando il tracking usa soltanto SofaScore.
 
 In modalità `persistent`, `cdpUrl` non è richiesta. In modalità `cdp`, `cdpUrl` è obbligatoria e deve essere una URL HTTP locale con porta esplicita. Non esiste fallback.
 
-| Caso | HTTP | `code` | Effetto |
-| --- | ---: | --- | --- |
-| CDP assente o vuoto | `400` | `cdp_url_required` | Nessun tracker e nessun figlio Python avviato |
-| CDP non valida | `400` | `cdp_url_invalid` | Nessun tracker e nessun figlio Python avviato |
-| Runtime Betfair incompatibile già attivo | `409` | `scraper_runtime_conflict` | Nessun kill, restart o nuovo spawn |
-| Richiesta valida | `200` | — | `{ ok: true, eventId }` |
+| Caso                                     | HTTP  | `code`                     | Effetto                                       |
+| ---------------------------------------- | ----: | -------------------------- | --------------------------------------------- |
+| CDP assente o vuoto                      | `400` | `cdp_url_required`         | Nessun tracker e nessun figlio Python avviato |
+| CDP non valida                           | `400` | `cdp_url_invalid`          | Nessun tracker e nessun figlio Python avviato |
+| Runtime Betfair incompatibile già attivo | `409` | `scraper_runtime_conflict` | Nessun kill, restart o nuovo spawn            |
+| Richiesta valida                         | `200` | —                          | `{ ok: true, eventId }`                       |
 
 Body degli errori CDP:
 
