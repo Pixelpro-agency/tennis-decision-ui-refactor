@@ -14,7 +14,7 @@ La migrazione finale ha prodotto:
 - 28 owner residui convertiti strutturalmente in `.md`;
 - 8 owner già riscritti mantenuti nelle destinazioni Markdown approvate;
 - 2 collaudi storici mantenuti in `docs/validations/`;
-- 2 specifiche future mantenute come planning non canonico in `docs/archive/planning/`;
+- 2 specifiche future inizialmente spostate nel planning non canonico e successivamente consolidate nei registri;
 - metadata JavaScript `export const meta` rimossi dagli owner convertiti;
 - link relativi aggiornati verso le destinazioni finali;
 - workspace `docs/migration/` e report temporanei di consegna rimossi.
@@ -35,6 +35,31 @@ Eliminato dalla superficie documentale:
 - `docs/planning/docs.rar`, archivio binario opaco e duplicato;
 - `DELIVERY-MANIFEST.md` e `VALIDATION-REPORT.md`, report temporanei dei pacchetti;
 - cache Python generate localmente.
+
+## Follow-up di pulizia — 4 agosto 2026
+
+Dopo la verifica remota del commit documentale, le dieci fonti conservate
+inizialmente sotto `docs/archive/` sono state rilette e confrontate con owner,
+registri e validations.
+
+Il contenuto ancora utile è stato consolidato in `IMPL-010`, `IMPL-012`,
+`IMPL-018`, `IMPL-023`, nei documenti di workflow e nelle validations Source
+Identity. Le copie separate — inclusi quattro documenti legacy, due planning,
+un brief, un prompt e due ODT — sono state rimosse. `docs/archive/README.md`
+conserva la mappa fonte → destinazione.
+
+La pulizia non modifica codice applicativo e non presenta le idee future come
+funzionalità implementate.
+
+Controlli del follow-up sulla copia:
+
+```text
+Markdown residui:           56
+Link strict:                56 file, 365 link, 0 errori, 0 warning
+Registry consistency:       240 owner, 214 righe, 0 errori, 0 warning
+Python checker tests:       29 passati
+Validation runner tests:    19 passati
+```
 
 ## Controlli eseguiti sulla copia documentale
 

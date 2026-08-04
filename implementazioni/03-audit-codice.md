@@ -6317,7 +6317,7 @@ Le voci soltanto approvate o pianificate restano nei registri fino alla relativa
 ### WORKFLOW-005 — Migrazione documentale per batch
 
 **Classificazione:** `WORKFLOW APPROVATO`
-**Stato:** `BATCH 0 PREPARATO`
+**Stato storico del checkpoint:** `BATCH 0 PREPARATO`; `IMPL-032` è stata completata nel checkpoint documentale successivo.
 
 La migrazione non viene eseguita con una rinomina massiva.
 
@@ -6512,3 +6512,34 @@ Questa prova valida infrastruttura, selezione e artifact; non equivale all'esecu
 Il preflight reale sulla working tree Windows ha rilevato due `pathChecks` inesistenti per journal e recovery. Tutti i profili hanno restituito exit code `2` prima di avviare child process, confermando il comportamento fail-closed del runner.
 
 Le entry `backend-commit-journal` e `backend-recovery` sono state rimosse dal manifest. Non esiste evidenza di test sostitutivi con quei contratti nel percorso corrente; la copertura resta aperta e non viene conteggiata come PASS o skip. I conteggi corretti sono `backend 4` e `full-offline 17`.
+
+
+
+## 25. Chiusura archive e selezione della prossima task
+
+**Baseline remota:** `2697f66ea8e17a9e35481299cb47ec402558df55`
+
+Sono stati controllati tutti i 64 Markdown della superficie documentale
+pubblicata e, separatamente, i due ODT presenti in
+`docs/archive/planning/legacy/`.
+
+Esito:
+
+```txt
+owner canonici → mantenuti
+validations con evidenza → mantenute
+registri e audit di lavoro → mantenuti
+8 Markdown archive duplicati → consolidati e rimossi
+2 ODT → letti, requisiti unici consolidati e rimossi
+archive → solo registro fonte/destinazione
+```
+
+Sono state corrette anche due dichiarazioni obsolete: il runner canonico è ora
+disponibile e `IMPL-032` è completata. La pulizia non cambia codice runtime.
+
+### Prossima task urgente
+
+`IMPL-015` resta il primo intervento tecnico perché due backend avviati da
+percorsi differenti possono condividere `backend/match_history` senza una
+writer authority comune. La task blocca il secondo writer prima della recovery
+e fonda la sequenza approvata `IMPL-015 → IMPL-019 → IMPL-020 → IMPL-021`.

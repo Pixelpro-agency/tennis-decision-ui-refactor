@@ -129,7 +129,7 @@ Regole:
 - ogni tentativo parte dall'errore reale, formula una causa plausibile, applica la correzione minima e ripete il controllo pertinente;
 - dopo il terzo fallimento, fermarsi e riportare errore, file, comandi, exit code e limite.
 
-Il progetto non dispone ancora di un runner unico. Fino alla sua introduzione, i comandi sono scelti dal documento owner, dal test più vicino e dal runbook di validazione.
+Il runner canonico offline è `node scripts/validation/run.mjs <profilo>`. Per una modifica locale si esegue prima il test più vicino; `fast`, `backend`, `frontend`, `python` e `full-offline` sono i profili attualmente abilitati. Il manifest iniziale non sostituisce ancora la mappa completa `IMPL-003`, e un profilo pianificato non viene dichiarato PASS.
 
 ## Artefatto post-task
 

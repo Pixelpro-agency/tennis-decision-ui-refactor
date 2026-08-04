@@ -250,23 +250,25 @@ La futura riscrittura della documentazione deve quindi:
 
 Questa è una decisione di formato già approvata, ma la modalità tecnica di migrazione deve essere verificata sul repository prima della conversione di massa.
 
-### 7.5 Trattamento di `docs/planning`
+### 7.5 Trattamento delle fonti storiche
 
-La directory:
+`docs/archive/README.md` conserva soltanto una mappa di provenienza. Backlog,
+prompt e planning separati non restano nel repository dopo che i requisiti
+unici sono stati assorbiti nei registri o nelle validations.
+
+Regola:
 
 ```txt
-docs/archive/planning/
+fonte storica
+→ confronto con codice e registri
+→ assorbimento dei contenuti unici
+→ controllo link
+→ rimozione della copia
 ```
 
-contiene materiali relativi a implementazioni vecchie, future o pianificate.
-
-Non deve essere letta in blocco nella fase iniziale dell’audit, perché potrebbe:
-
-- aumentare inutilmente il contesto;
-- mescolare stato corrente, intenzioni passate e proposte future;
-- indurre a considerare implementato ciò che era soltanto pianificato;
-- riaprire task già concluse sulla base di specifiche superate;
-- condizionare il confronto iniziale fra codice attuale e documentazione canonica.
+Le fonti storiche non devono essere lette in blocco nella fase iniziale di una
+task, né considerate prova di comportamento corrente. Un report con evidenza
+irripetibile può restare in `docs/validations/`; un backlog duplicato no.
 
 Ordine approvato:
 

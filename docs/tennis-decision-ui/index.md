@@ -113,7 +113,7 @@ Una validazione storica dimostra ciò che è stato osservato nello specifico amb
 
 ## Materiale non canonico
 
-Le specifiche future di replay/backtesting e Market Reactions Journal non fanno parte della documentazione tecnica corrente. Sono conservate soltanto per tracciabilità in [docs/archive](../archive/README.md).
+Le specifiche future non fanno parte della documentazione tecnica corrente. I requisiti utili sono conservati nei registri; [docs/archive](../archive/README.md) mantiene soltanto la mappa delle fonti storiche consolidate.
 
 ## Regola documentale corrente
 

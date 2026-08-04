@@ -100,7 +100,7 @@ FUTURO
 ## Checkpoint corrente
 
 ```txt
-SHA verificato: 275008a5cd6451f24c6895068639ee3055395986
+Baseline remota del cleanup documentale: 2697f66ea8e17a9e35481299cb47ec402558df55
 
 B1–B6
 → audit completato
@@ -118,13 +118,13 @@ workflow
 → Desktop Collaudatore
 
 planning e materiali di processo
-→ classificati senza eliminazioni
+→ letti, consolidati e rimossi quando duplicati
 
 checkpoint
 → Punti 1–7 completati e approvati
 → controllo finale post-audit completato
-→ DEC-025 e IMPL-032 registrate
-→ migrazione documentale completata
+→ DEC-025, DEC-026 e IMPL-032 registrate
+→ migrazione e cleanup archive completati
 → 40 file .mdx rimossi dopo mapping, sostituzione e controllo strict
 ```
 
@@ -697,20 +697,18 @@ DA RIAPRIRE
 
 ---
 
-# BLOCCO F0 — Audit dei materiali locali `docs/`
+# BLOCCO F0 — Audit e cleanup dei materiali locali `docs/`
 
-- [x] Inventario reale ricevuto — 9 file
-- [x] Prompt navigazione/modularizzazione — sintetizzato e deprecabile
-- [x] `_work/01-documentation-impact-request.md` — deprecabile
-- [x] `_work/change-brief.md` — sintetizzato e deprecabile
-- [x] brief Source Identity legacy — da trasformare in validation
-- [x] `percorsi.txt` — da eliminare dopo migrazione `.md`
-- [x] backlog operativo — sintetizzato nelle IMPL
-- [x] pacchetto Task 6 — archivio storico
-- [x] report Task 6 — validation intermedia
-- [x] pacchetto Task 2 — archivio storico
-- [x] nessun file locale cancellato o pubblicato
-- [ ] cleanup fisico dei materiali locali — task separata dopo approvazione
+- [x] Inventario originale e fonti archive riletti integralmente
+- [x] Prompt navigazione/modularizzazione assorbito nelle linee guida e rimosso
+- [x] Template `_work` e `percorsi.txt` rimossi nella migrazione
+- [x] Brief Source Identity assorbito negli owner e nella validation live
+- [x] Backlog e pacchetti Task 2/6 assorbiti nei registri e rimossi
+- [x] Replay/backtesting consolidato in `IMPL-012` e `IMPL-010`
+- [x] Market Reactions Journal consolidato in `IMPL-023`
+- [x] Due ODT letti; requisiti unici consolidati in `IMPL-010/012/018/023`
+- [x] `docs/archive/README.md` ridotto a registro fonte → destinazione
+- [x] Cleanup fisico approvato da `DEC-026` e completato nel pacchetto
 
 # BLOCCO F — Implementazioni utili
 
@@ -745,7 +743,7 @@ DA RIAPRIRE
 - [x] `IMPL-029` — Fixture catalog e sandbox condivisa — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
 - [x] `IMPL-030` — Frontend interaction test harness — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA PER IL PUNTO 6**
 - [x] `IMPL-031` — Validation result ledger e artefatti JSON — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**
-- [x] `IMPL-032` — Manifest e pipeline di migrazione documentale per batch — **APPROVATA; BATCH 0 PREPARATO**
+- [x] `IMPL-032` — Manifest e pipeline di migrazione documentale per batch — **IMPLEMENTATA E COMPLETATA**
 - [x] Inventario delle implementazioni emerse
 - [x] Classificazione necessaria/consigliata
 - [ ] Preparazione delle task separate
@@ -862,9 +860,9 @@ Per ogni rilievo approvato:
 ## Prossimo punto
 
 ```txt
-1. commit e push del blocco documentazione + checker + runner
-2. verifica remota del commit pubblicato
-3. avvio IMPL-015 — writer authority
+IMPL-015 — writer authority esclusiva per match_history
+→ blocco del secondo backend prima della recovery
+→ release owner-only su failure e shutdown
 ```
 
-Prossimo passo: IMPL-015 dopo commit, push e verifica remota del checkpoint documentale e del runner validato.
+Prossimo passo: IMPL-015 — writer authority esclusiva per `match_history`.

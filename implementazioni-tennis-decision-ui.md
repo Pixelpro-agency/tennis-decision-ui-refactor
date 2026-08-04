@@ -131,7 +131,8 @@ Batch 0
 → sostituzioni e cancellazioni .mdx completate nel batch finale
 
 Batch 1 e 2
-→ fondazione, architettura, stato corrente, validations e archivio preparati
+→ fondazione, architettura, stato corrente e validations preparati
+→ fonti archive consolidate nei registri e copie ridondanti rimosse
 
 Controlli read-only
 → link checker ricorsivo implementato
@@ -145,4 +146,4 @@ Batch successivi
 → rimozione .mdx completata dopo verifica dei link e assenza di duplicati
 ```
 
-Prossimo passo: IMPL-015 dopo commit, push e verifica remota del checkpoint documentale.
+Prossimo passo: IMPL-015 — writer authority esclusiva per `match_history`.

@@ -206,16 +206,16 @@ Un report storico non viene usato come prova che lo stesso comportamento passa s
 
 ## Materiale deprecato e archivio
 
-Un file viene spostato in `docs/archive/` soltanto quando contiene informazioni utili non più canoniche.
+`docs/archive/` non è un deposito permanente. Una fonte storica separata viene mantenuta soltanto quando contiene evidenza o requisiti unici non ancora assorbiti.
 
-Un file può essere eliminato quando:
+Un file deve essere eliminato quando:
 
-- il contenuto unico è stato assorbito;
+- il contenuto unico è stato trasferito nel relativo owner, registro o validation;
 - nessun link o consumer lo usa;
-- la decisione di rimozione è registrata e reversibile;
+- la provenienza resta descritta nel registro dell'archivio;
 - il controllo finale è positivo.
 
-Non mantenere due owner concorrenti dello stesso contratto.
+Non mantenere due owner concorrenti, prompt esecutivi superati o copie integrali di backlog già consolidati.
 
 ## Segreti e dati locali
 

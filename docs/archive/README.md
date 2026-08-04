@@ -1,42 +1,35 @@
-# Archivio documentale
+# Registro delle fonti consolidate
 
-Questa cartella conserva materiale non canonico utile per tracciabilità storica.
+`docs/archive/` non contiene più backlog, prompt o specifiche concorrenti.
 
-I documenti archiviati:
+Le fonti storiche ricevute durante l'audit sono state lette, confrontate con il
+codice e con i registri, quindi rimosse quando il contenuto utile risultava già
+assorbito. Questo file conserva soltanto la mappa di provenienza.
 
-- non descrivono funzionalità disponibili;
-- non sono owner tecnici;
-- non compaiono nell'indice canonico attivo;
-- non devono essere usati come istruzioni esecutive senza una nuova decisione;
-- possono essere eliminati soltanto dopo avere verificato che i requisiti unici siano già conservati nei registri.
+| Fonte rimossa | Contenuto utile conservato in |
+| --- | --- |
+| Brief Source Identity frontend | `docs/tennis-decision-ui/modules/evidence/02-source-identity.md`, documenti frontend e `docs/validations/source-identity-live-verification.md` |
+| Prompt navigazione e modularizzazione | `docs/tennis-decision-ui/ai/01-context-selection.md`, `implementazioni/07-workflow-esecutivo.md`, `implementazioni/08-linee-guida-chat-e-ai.md`, `IMPL-003` |
+| Backlog operativo del 4 luglio 2026 | `implementazioni/03-audit-codice.md`, `implementazioni/04-task-completate.md`, `IMPL-010`, `IMPL-012…015` |
+| Pacchetto e report Task 6 | owner storage correnti, `implementazioni/04-task-completate.md` e finding già normalizzati nei registri |
+| Pacchetto launcher Task 2 | owner runtime correnti, task completate e scenari ancora aperti nella Todo |
+| Replay e backtesting | `IMPL-012` e prerequisiti strategici di `IMPL-010` |
+| Market Reactions Journal | estensione futura consolidata sotto `IMPL-023` |
+| `Idee Future.odt` | requisiti futuri consolidati sotto `IMPL-010`, `IMPL-012`, `IMPL-018` e `IMPL-023` |
+| `Idee Per Stream API Betfair.odt` | estensione Stream API consolidata sotto `IMPL-018` |
 
-## Planning archiviato
+## Regola corrente
 
-- [Replay e backtesting](./planning/replay-and-backtesting.md)
-- [Market Reactions Journal](./planning/market-reactions-journal.md)
+Una fonte storica separata viene mantenuta soltanto quando contiene evidenza o
+requisiti unici non ancora registrati. Dopo l'assorbimento:
 
-Entrambe le specifiche descrivono funzioni non implementate. Sono conservate per evitare perdita di requisiti durante la migrazione documentale.
+```txt
+contenuto unico nei registri o nelle validations
+→ link verificati
+→ fonte duplicata rimossa
+→ nessun secondo owner
+```
 
-## Fonte corrente delle decisioni future
-
-- [Implementazioni proposte](../../implementazioni/06-implementazioni-proposte.md)
-- [Decisioni dell'utente](../../implementazioni/99-decisioni-utente.md)
-- [Todo cumulativa](../../todo-list-tennis-decision-ui.md)
-
-## Materiale locale consolidato nella chiusura della migrazione
-
-Sono stati conservati come non canonici:
-
-- brief storico Source Identity in `briefs/`;
-- prompt di navigazione e modularizzazione in `prompts/`;
-- backlog, pacchetti esecutivi e idee future in `planning/legacy/`;
-- planning già separato di replay e Market Reactions in `planning/`.
-
-Non sono stati conservati:
-
-- `docs/_work/`, composto da template temporanei;
-- `docs/percorsi.txt`, sostituito dall'indice e dalla repository map canonici;
-- `docs/planning/docs.rar`, archivio binario opaco e duplicato contenente immagini, prompt, ODT e una specifica JSON;
-- manifest e report temporanei di consegna della migrazione.
-
-Il materiale in questa cartella non prova che una funzione sia implementata.
+I report di collaudo con evidenza ancora utile restano in `docs/validations/`.
+Le funzionalità future non sono implementate e non diventano canoniche per il
+solo fatto di essere citate nei registri.

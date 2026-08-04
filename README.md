@@ -91,7 +91,7 @@ I profili `persistence`, `benchmark` e `live` sono riconosciuti ma non ancora es
 | `scripts/` | Avvio, diagnostica, manutenzione e runner di validazione locale |
 | `docs/tennis-decision-ui/` | Documentazione tecnica canonica corrente |
 | `docs/validations/` | Validazioni e collaudi storici separati dagli owner tecnici |
-| `docs/archive/` | Materiale non canonico conservato per tracciabilità |
+| `docs/archive/` | Registro sintetico delle fonti storiche consolidate e rimosse |
 
 ## Dati locali e sensibili
 
@@ -111,6 +111,6 @@ L'indice canonico è:
 
 [Documentazione tecnica Tennis Decision UI](docs/tennis-decision-ui/index.md)
 
-La documentazione canonica usa Markdown ordinario `.md`. Collaudi storici e materiale non canonico restano separati rispettivamente in `docs/validations/` e `docs/archive/`.
+La documentazione canonica usa Markdown ordinario `.md`. I collaudi storici con evidenza utile restano in `docs/validations/`; `docs/archive/README.md` conserva soltanto la mappa delle fonti storiche già consolidate, senza backlog operativi duplicati.
 
 Per lo stato reale del progetto consultare [Stato corrente](docs/tennis-decision-ui/roadmap/01-current-state.md). Per task, decisioni e finding dell'audit usare i registri dedicati, non il README.

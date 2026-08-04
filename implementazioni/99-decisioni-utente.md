@@ -150,9 +150,9 @@ Usare:
 
 ## DEC-015 — Esclusioni planning
 
-**Stato:** approvata.
+**Stato:** applicata durante l'audit iniziale; superata da `DEC-026` per la pulizia finale.
 
-Non leggere né classificare:
+Durante l'audit iniziale non leggere né classificare:
 
 ```txt
 docs.rar
@@ -651,3 +651,50 @@ La decisione non autorizza:
 - rimozione di contenuti unici senza assorbimento o archivio;
 - modifica del codice applicativo nel Batch 0;
 - commit o push automatici.
+
+
+## DEC-026 — Consolidamento e rimozione delle fonti archive
+
+**Stato:** approvata integralmente.
+
+1. il repository non deve conservare prompt, backlog, pacchetti esecutivi o ODT
+   separati quando il contenuto utile è già nei documenti di lavoro;
+2. ogni fonte viene letta prima della rimozione e il contenuto unico viene
+   trasferito nell'owner, nel registro o nella validation pertinente;
+3. `docs/archive/README.md` conserva una descrizione breve della provenienza e
+   della destinazione, non copie complete;
+4. i report di collaudo con evidenza utile restano in `docs/validations/`;
+5. le idee future consolidate restano esplicitamente non implementate;
+6. i pacchetti ZIP, report di consegna e sorgenti temporanee scaricati sul PC
+   possono essere eliminati tramite una lista di nomi esatti, senza scansioni
+   distruttive o pattern generici;
+7. conclusa la pulizia documentale, il prossimo lavoro tecnico urgente è
+   `IMPL-015` — writer authority esclusiva per `match_history`.
+
+### Fonti rimosse
+
+```txt
+brief Source Identity
+prompt navigazione/modularizzazione
+backlog e pacchetti esecutivi storici
+report intermedio Task 6
+planning replay e Market Reactions Journal
+Idee Future.odt
+Idee Per Stream API Betfair.odt
+```
+
+### Destinazioni principali
+
+```txt
+IMPL-010 / IMPL-012
+→ replay, Strategy Lab, Value Hypothesis e analisi offline
+
+IMPL-018
+→ provenance e futura attribuzione Stream API
+
+IMPL-023
+→ eligibility e futuro journal derivato Market Reactions
+
+docs/validations/
+→ evidenze storiche ancora utili
+```

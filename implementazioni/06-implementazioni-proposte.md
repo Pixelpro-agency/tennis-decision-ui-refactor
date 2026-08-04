@@ -602,6 +602,41 @@ La stessa fixture deve poter confrontare due versioni e produrre una differenza 
 
 Una modalità shadow può calcolare una versione candidata senza mostrarla nella dashboard live e senza modificare la persistenza canonica.
 
+### Requisiti futuri consolidati dalle fonti rimosse
+
+Strategy Lab resta un'estensione offline di `IMPL-010` e dipende da
+`IMPL-012`. Input ammessi: timeline canoniche persistite, metadata e qualità,
+Source Identity storicamente applicabile, Evidence ricostruita e configurazione
+versionata. Sono vietati fetch live, browser, scraper, cache, dump, credenziali
+e informazione successiva al cursore.
+
+Output minimo futuro:
+
+```txt
+eventId
+algorithmVersion
+configuration
+inputRange
+processedTicks / skippedTicks
+dataQualitySummary
+sourceIdentitySummary
+evidenceSnapshots
+strategyResult
+reasons
+startedAt / completedAt
+```
+
+`valueHypothesis` ed `externalEvidence` restano disabilitati finché non esistono
+baseline riproducibile, modello o contratto sorgente versionato, validazione su
+dati separati, timestamp e policy stale. Fonte assente o invalida produce
+`null` e reason: nessun fallback inventato, nessuna fair odds certa e nessuna
+raccomandazione.
+
+Le viste future di attività runner recente/cumulativa, rotazione, price drift,
+compressione, marker Sofa v2, snapshot derivati e grafico campo/mercato restano
+descrittive. Devono usare dati confrontabili, conservare volume ambiguo,
+mostrare qualità/reason e mantenere `causalityClaimed:false`.
+
 ### IMPL-011 — Authority di manutenzione per cleanup offline
 
 **Stato:** `NECESSARIA`
@@ -704,6 +739,24 @@ Fonti vietate:
 `IMPL-012` è più ampio e copre il dominio temporale, Source Identity, Graph e Evidence.
 
 I due harness possono condividere utility pure, ma non devono diventare un unico mega-runner.
+
+### Output minimo consolidato
+
+```txt
+eventId
+algorithmVersion / configuration
+inputRange
+processedTicks / skippedTicks
+dataQualitySummary
+sourceIdentitySummary
+evidenceSnapshots
+reasons
+startedAt / completedAt
+```
+
+Una conferma Source Identity corrente non valida retroattivamente tick storici
+incompatibili. Il replay usa la policy applicabile a fingerprint, epoch e
+intervallo, non lo stato runtime presente.
 
 ### Criterio di prontezza
 
@@ -1140,6 +1193,35 @@ IMPL-013
 IMPL-014
 → nessuna ottimizzazione prima della baseline
 ```
+
+### Estensione futura — Stream API e attribuzione del volume
+
+Una futura integrazione Stream API deve conservare per runner e update almeno:
+
+```txt
+selectionId
+acquiredAt
+EX_TRADED per quota
+EX_ALL_OFFERS back/lay
+lastTradedPrice
+totalMatched / deltaTraded
+```
+
+L'aumento di `traded` prova volume abbinato; il solo movimento del prezzo senza
+incremento traded è liquidità/cancellazione e non pressione direzionale.
+L'attribuzione eventuale usa stati espliciti:
+
+```txt
+back_attributed | lay_attributed | ambiguous
+confidence: high | medium | low
+policyVersion
+reasons
+```
+
+Prezzo, consumo del book e imbalance possono contribuire soltanto come evidenze
+pesate. Nessun punteggio numerico è approvato finché non viene calibrato e
+versionato con fixture. Segnali misti o multi-quota restano `ambiguous`; non
+forzare il volume in Back/Lay.
 
 ### Test minimi
 
@@ -1933,6 +2015,32 @@ Restano obbligatori:
 causalityClaimed:false
 interpretation:temporal_proximity_only
 ```
+
+### Estensione futura — journal derivato Market Reactions
+
+Un journal storico, se approvato in una task futura, resta derivato e non
+sostituisce timeline o replay. Registra soltanto cambiamenti materiali:
+creazione, aggiornamento finestra, chiusura, risultato o indisponibilità
+Source Identity su una chiave già stabile.
+
+Identità minima:
+
+```txt
+eventId
+sourceType
+sourceTimestamp / sequence
+marketEpochSignature
+```
+
+Lifecycle ammesso:
+
+```txt
+created → in_progress → completed | insufficient_data | not_available
+```
+
+Polling invariati non creano record. La lettura storica è lazy/read-only, non
+avvia tracking o ricalcolo e non introduce un secondo polling. Persistono
+`interpretation:temporal_proximity_only` e `causalityClaimed:false`.
 
 ### Test minimi
 
@@ -3553,9 +3661,9 @@ IMPL-005 esteso
 **Stato:** `IMPLEMENTATA E COMPLETATA`
 **Priorità:** critica prima della riscrittura canonica
 
-### Problema
+### Problema originario
 
-La documentazione canonica usa `.mdx`, metadata JavaScript e link espliciti alle estensioni correnti.
+Prima della migrazione, la documentazione canonica usava `.mdx`, metadata JavaScript e link espliciti alle estensioni correnti.
 
 Una rinomina massiva rischierebbe di:
 
@@ -3789,8 +3897,8 @@ La normalizzazione modifica esclusivamente titoli di ownership e aggiornamenti d
 ### Passo successivo
 
 ```txt
-commit e push del blocco documentale e di validazione
-→ verifica remota
-→ IMPL-015 writer authority
-→ report machine-readable
+IMPL-015 writer authority
+→ IMPL-019 event persistence authority
+→ IMPL-020 canonical document contract
+→ IMPL-021 recovery control plane
 ```
