@@ -725,7 +725,7 @@ DA RIAPRIRE
 - [x] `IMPL-009` — Adapter persistence + stati locali + pannello sidebar — **NECESSARIA**
 - [~] `IMPL-010` — Toolkit autonomo studio strategie offline — **FUTURO**
 - [x] `IMPL-011` — Authority di manutenzione cleanup offline — **NECESSARIA**
-- [x] `IMPL-012` — Fixture versionate e replay offline — **NECESSARIA PRIMA DI BACKTESTING**
+- [x] `IMPL-012` — Fixture versionate e replay offline — **NECESSARIA PRIMA DI BACKTESTING; INCLUDE PIPELINE RAW LIVE → DATASET CROSS-SOURCE VERSIONATO → GRAFICO E DATASET BACKTESTING; RAW ELIMINABILI SOLO DOPO EXPORT VERIFICATO E POLICY RETENTION APPROVATA**
 - [x] `IMPL-013` — Baseline end-to-end e freshness — **NECESSARIA PRIMA DI OTTIMIZZARE**
 - [~] `IMPL-014` — Ottimizzazione Betfair misurata e reversibile — **FUTURA/CONDIZIONATA**
 - [x] `IMPL-015` — Writer authority esclusiva `match_history` — **CONFERMATA E APPROVATA; PRIORITÀ ALTA**

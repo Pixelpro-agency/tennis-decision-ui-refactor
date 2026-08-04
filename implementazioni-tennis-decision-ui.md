@@ -32,8 +32,6 @@ SHA checkpoint registri e avvio migrazione: eef267aab3c138395a5ca3d644a942190c53
 - [Ricontrollo task completate](./implementazioni/04-task-completate.md)
 - [Audit di docs/planning](./implementazioni/05-audit-docs-planning.md)
 - [Implementazioni proposte](./implementazioni/06-implementazioni-proposte.md)
-- [Workflow esecutivo](./implementazioni/07-workflow-esecutivo.md)
-- [Linee guida per chat e AI](./implementazioni/08-linee-guida-chat-e-ai.md)
 - [Decisioni dell’utente](./implementazioni/99-decisioni-utente.md)
 
 ## Regole di utilizzo

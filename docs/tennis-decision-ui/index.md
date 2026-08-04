@@ -31,6 +31,7 @@ Un documento non rende implementata una funzione che il codice non contiene.
 - [Confini del sistema](./architecture/01-system-boundaries.md)
 - [Ciclo di vita dei dati](./architecture/02-data-lifecycle.md)
 - [Selezione del contesto per AI](./ai/01-context-selection.md)
+- [Workflow esecutivo e criteri di chiusura](./ai/03-workflow-esecutivo.md)
 - [Convenzioni della documentazione](./ai/02-documentation-conventions.md)
 - [Stato corrente del progetto](./roadmap/01-current-state.md)
 

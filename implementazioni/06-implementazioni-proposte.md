@@ -768,6 +768,91 @@ intervallo, non lo stato runtime presente.
 
 ---
 
+### Estensione approvata — pipeline cross-source e dataset derivati
+
+La seconda fase del progetto utilizzerà le timeline canoniche prodotte durante il live per costruire una rappresentazione allineata di campo e mercato.
+
+La pipeline approvata è:
+
+```txt
+timeline SofaScore canonica
++
+timeline Betfair canonica
+→ allineamento cross-source deterministico
+→ dataset combinato versionato
+├─ grafico campo/mercato
+└─ dataset filtrato per replay e backtesting
+```
+
+Il grafico è un consumer del dataset combinato. Non è una fonte dati e non deve essere usato come autorità per produrre l’export destinato al backtesting.
+
+Il dataset cross-source deve conservare almeno:
+
+```txt
+datasetId
+schemaVersion
+eventId
+source timeline revision/digest
+source tick ID e sequence
+acquiredAt e recordedAt
+tracking session/epoch, quando disponibili
+Source Identity applicabile
+selectionId Betfair
+fieldStateId derivato
+alignmentPolicyVersion
+skew temporale
+alignment status
+data quality
+reason
+generatedAt
+```
+
+L’allineamento temporale deve essere causale:
+
+```txt
+tick Betfair
+→ ultimo stato SofaScore disponibile in precedenza
+→ nessuna informazione successiva al cursore
+```
+
+Stati minimi dell’allineamento:
+
+```txt
+exact
+bounded_previous
+stale
+unmatched
+```
+
+Il dataset filtrato per backtesting deve dichiarare:
+
+```txt
+datasetVersion
+featureSetVersion
+transformVersion
+filter configuration
+input range
+input digests
+processed / skipped / unmatched
+quality summary
+reasons
+```
+
+Le timeline live restano la fonte primaria. Il dataset combinato e quello di backtesting sono artefatti derivati e non modificano i documenti canonici di origine.
+
+La cancellazione dei file live non è autorizzata come comportamento ordinario. Una futura procedura di archiviazione o eliminazione potrà essere valutata soltanto dopo:
+
+```txt
+export deterministico completato
+→ digest e provenance registrati
+→ schema e trasformazione versionati
+→ dataset validato
+→ assenza di integrity pending o recovery failure
+→ policy di retention esplicitamente approvata
+```
+
+Nella prima fase operativa è preferibile conservare o comprimere le timeline originali, perché la loro eliminazione impedisce di derivare nuove feature o verificare trasformazioni precedenti.
+
 ### IMPL-013 — Baseline end-to-end di prestazioni, freshness e osservabilità
 
 **Classificazione:** `NECESSARIA PRIMA DI QUALUNQUE OTTIMIZZAZIONE BETFAIR`
@@ -1338,6 +1423,35 @@ createdAt
 updatedAt
 metadata
 ```
+
+### Identità dei tick e compatibilità con dataset derivati
+
+Il contratto canonico deve consentire a ogni tick di essere riferito senza dipendere dalla sua posizione corrente nell’array.
+
+Identità minima richiesta:
+
+```txt
+sourceTickId
+sourceSequence
+source
+eventId
+acquiredAt
+recordedAt
+trackingSessionId o null
+sourceEpoch o null
+```
+
+`sourceTickId` è immutabile nell’ambito di evento e source. `sourceSequence` ordina i tick della singola timeline e non viene riutilizzato.
+
+Il contratto deve preservare informazioni sufficienti a:
+
+* allineare SofaScore e Betfair senza fondere le timeline canoniche;
+* distinguere tempo di acquisizione e tempo di registrazione;
+* ricostruire un dataset cross-source con una policy versionata;
+* riferire i tick originali da grafici, replay e dataset di backtesting;
+* impedire l’uso di dati successivi al cursore storico.
+
+`fieldStateId` e le relazioni cross-source restano dati derivati. Non diventano una foreign key scritta automaticamente dentro entrambe le timeline live.
 
 ### Contratto journal
 
