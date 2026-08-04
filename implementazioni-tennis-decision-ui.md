@@ -66,11 +66,12 @@ decisioni di prodotto e cleanup
 workflow multi-esecutore
 → definito
 
-nove materiali locali fuori dalla documentazione canonica
-→ letti integralmente
-→ classificati
-→ contenuti utili assorbiti nei registri
-→ nessuna eliminazione eseguita
+dieci fonti storiche fuori dalla documentazione canonica
+→ lette integralmente
+→ classificate
+→ contenuti utili assorbiti nei registri e nelle validations
+→ copie duplicate rimosse
+→ `docs/archive/README.md` conserva il registro fonte → destinazione delle dieci fonti rimosse
 
 checkpoint corrente
 → Punti 1–7 registrati
@@ -82,6 +83,9 @@ checkpoint corrente
 → Batch finale: 40 `.mdx` rimossi, link strict verde e workspace eliminato
 → IMPL-001 e IMPL-005: utility read-only implementate e verificate
 → 29 owner duplicati normalizzati; registry checker verde
+→ migrazione finale pubblicata: `2697f66ea8e17a9e35481299cb47ec402558df55`
+→ cleanup archive pubblicato: `3de08ca09ac7cf3d64533b2e72b8f61d1d32f196`
+→ prossimo passo tecnico: `IMPL-015`
 ```
 
 Dopo la pubblicazione del checkpoint:
