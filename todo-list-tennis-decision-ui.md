@@ -85,14 +85,14 @@ FUTURO
 > - [x] Audit statico codice per settori — test non rieseguiti
 > - [x] Ricontrollo task dichiarate completate — **D1–D18 COMPLETATI**
 > - [x] Integrazione workflow dell’altro progetto — **QUATTRO RUOLI DEFINITI**
-> - [x] Audit dei materiali locali `docs/` fuori dalla documentazione canonica — **9 FILE CLASSIFICATI**
+> - [x] Audit delle fonti storiche fuori dalla documentazione canonica — **10 FONTI CLASSIFICATE, CONSOLIDATE E RIMOSSE**
 > - [x] Inventario implementazioni consigliate — **IMPL-001…032**
 > - [x] Selezione della prima fase operativa — **BATCH 0 DOCUMENTAZIONE**
-> - [ ] Applicazione e push del Batch 0
-> - [ ] Riscrittura Batch 1 strutturale
-> - [ ] Revisione delle modifiche
-> - [ ] Collaudo indipendente, quando necessario
-> - [ ] Commit e push eseguiti dall’utente
+> - [x] Applicazione e push del Batch 0 e dei batch documentali successivi
+> - [x] Riscrittura strutturale completata
+> - [x] Revisione delle modifiche completata
+> - [x] Collaudo documentale indipendente completato
+> - [x] Commit e push eseguiti dall’utente; SHA remoto verificato
 
 ---
 
@@ -100,7 +100,9 @@ FUTURO
 ## Checkpoint corrente
 
 ```txt
-Baseline remota del cleanup documentale: 2697f66ea8e17a9e35481299cb47ec402558df55
+Commit migrazione documentale finale: 2697f66ea8e17a9e35481299cb47ec402558df55
+Commit cleanup archive pubblicato: 3de08ca09ac7cf3d64533b2e72b8f61d1d32f196
+Verifica push cleanup: LOCAL = REMOTE
 
 B1–B6
 → audit completato
@@ -245,7 +247,7 @@ checkpoint
 - [x] Funzioni implementate non documentate/legacy — candidate registrate (`CLEANUP-001`)
 - [x] Funzioni future descritte come presenti — separate (`DOC-018`, `DOC-022`, `FRONTEND-002`)
 - [x] Cronologia da spostare — archivio raccomandato (`DOC-001`, `DOC-007`, `DOC-023`, `IMPL-004`)
-- [x] Materiale legacy — non canonico, rimozione differita
+- [x] Materiale legacy — contenuti unici consolidati e copie duplicate rimosse; `docs/archive/README.md` conserva la mappa fonte/destinazione
 - [x] Coerenza Todo ↔ registri — riallineata (`WORKFLOW-002`)
 - [x] Prefissi dei rilievi — aggiornati (`WORKFLOW-003`)
 

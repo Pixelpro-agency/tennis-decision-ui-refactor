@@ -78,7 +78,7 @@ Il confronto dimensionale dei 28 owner convertiti ha confermato che ciascun nuov
 
 L'archivio usato per costruire il pacchetto finale conteneva documentazione, registri e script, ma non l'intera copia di backend, frontend, launcher e scraper.
 
-Il profilo `full-offline` era già verde sulla working tree reale prima della chiusura documentale. Deve essere rieseguito dopo l'applicazione del pacchetto finale per confermare lo stesso risultato sul repository completo.
+Il profilo `full-offline` è stato rieseguito sulla working tree reale dopo la migrazione e dopo il cleanup dell'archivio. Entrambe le esecuzioni hanno restituito exit code `0`.
 
 ## Gate post-applicazione
 
@@ -88,10 +88,42 @@ python scripts/check_registry_consistency.py
 node scripts/validation/run.mjs full-offline
 ```
 
-Risultato richiesto:
+Risultato verificato sulla working tree reale:
 
 ```text
 STRICT_LINKS=0
 REGISTRY=0
 FULL_OFFLINE=0
 ```
+
+## Verifica della pubblicazione remota — 4 agosto 2026
+
+La migrazione documentale finale è stata pubblicata con:
+
+```text
+2697f66ea8e17a9e35481299cb47ec402558df55
+docs: finalize canonical documentation migration
+```
+
+Il cleanup delle fonti archive consolidate è stato pubblicato con:
+
+```text
+3de08ca09ac7cf3d64533b2e72b8f61d1d32f196
+docs: remove consolidated legacy archive
+```
+
+Verifica conclusiva del cleanup:
+
+```text
+LOCAL=3de08ca09ac7cf3d64533b2e72b8f61d1d32f196
+REMOTE=3de08ca09ac7cf3d64533b2e72b8f61d1d32f196
+PUSH_CLEANUP_VERIFICATO=1
+
+LINKS=0
+REGISTRY=0
+FULL_OFFLINE=0
+DIFF_CHECK=0
+```
+
+La fase documentale è chiusa. Il prossimo lavoro tecnico è `IMPL-015` —
+writer authority esclusiva per `match_history`.
