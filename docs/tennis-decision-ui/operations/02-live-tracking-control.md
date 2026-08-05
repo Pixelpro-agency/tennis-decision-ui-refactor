@@ -2,7 +2,7 @@
 
 ## Scopo
 
-Questo runbook descrive cosa verificare durante una sessione live e come fermarla senza perdere dati già persistiti.
+Questo runbook descrive cosa verificare durante una sessione live, come fermare il tracking mantenendo attivo il backend e come distinguere lo stop ordinario dallo shutdown completo del processo.
 
 Non descrive il funzionamento interno dello scheduler, del lifecycle scraper o della persistenza.
 
@@ -96,7 +96,7 @@ Per fermare il live usare il controllo Overview o:
 POST /api/match/stop
 ```
 
-Flusso backend:
+Flusso backend ordinario:
 
 ```txt
 stopAllMatchTrackers()
@@ -108,13 +108,31 @@ stopAllMatchTrackers()
 → attesa bounded
 → betfair_login preservato
 → backend, frontend e CDP preservati
+→ writer authority mantenuta
 ```
 
 La risposta include `pythonCleanup`; lo schema completo resta nell’owner [API Match](../api/01-match.md).
 
-Lo stop è globale e idempotente. L’eventuale `eventId` è informativo. Non cancella history, timeline, journal, conferme Source Identity, dashboard, URL o profilo browser.
+Lo stop è globale e idempotente. L’eventuale `eventId` è informativo. Non cancella history, timeline, journal, writer authority, conferme Source Identity, dashboard, URL o profilo browser.
+
+Dopo lo stop ordinario:
+
+```txt
+backend resta attivo
+→ writer authority resta posseduta dal backend
+→ terminal tracker barrier non viene attivata
+→ un nuovo Start successivo è consentito
+```
 
 Il controllo Overview ferma esplicitamente il polling SofaScore frontend. Gli hook Betfair, Evidence e Source Identity possono restare montati e leggere dati persistiti, ma non riavviano il tracking backend.
+
+Questa distinzione è obbligatoria:
+
+```txt
+Stop Live Tracking
+≠
+shutdown backend
+```
 
 ## Controllo tramite Runtime Health
 
@@ -132,16 +150,42 @@ stopping = 0
 
 ## Shutdown completo
 
+Lo shutdown completo avviene tramite `Ctrl+C` o un segnale del processo backend.
+
 ```txt
-Ctrl+C launcher
-→ shutdown backend
-→ terminate scope=all
-→ termina anche betfair_login
-→ chiude backend/frontend owned
-→ preserva CDP reused o external
+Ctrl+C / segnale backend
+→ server non accetta nuove richieste
+→ terminal tracker barrier attivata
+→ nessun nuovo tracker o update ammesso
+→ stop tracker e scheduler
+→ tracker drain delle operazioni SofaScore e Betfair già avviate
+→ cleanup scope=all dei processi Python
+→ listener chiuso
+→ release writer authority
+→ processo terminato
 ```
 
-Lo shutdown duplicato condivide una singola procedura. L’eventuale fallback agisce soltanto sui PID owned registrati.
+Il drain viene avviato prima del cleanup Python; il release avviene soltanto dopo drain positivo e chiusura del listener.
+
+Se il drain fallisce o non è verificabile:
+
+```txt
+tracker_drain_failed
+→ writer authority retained
+→ exit comunque
+```
+
+Il force timeout:
+
+```txt
+shutdown_force_timeout
+→ exit
+→ nessun release anticipato
+```
+
+Il record residuo può essere recuperato dal backend successivo soltanto dopo la verifica positiva che il vecchio owner sia morto.
+
+Lo shutdown duplicato condivide una singola procedura. Segnali ripetuti non duplicano tracker drain, cleanup Python, release o exit. L’eventuale fallback launcher agisce soltanto sui PID owned registrati.
 
 ## Verifica live 9B
 
@@ -161,12 +205,16 @@ sequenza login-only successiva
 
 Non è stata esercitata direttamente nella stessa sequenza la condizione `login già attivo → Stop → login ancora attivo`. La preservazione del ruolo `betfair_login` da `scope=tracking` resta verificata dal contratto e dai test automatici.
 
+IMPL-015 ha aggiunto test automatici per tracker drain, ordine shutdown, release fail-closed, segnali ripetuti e force timeout. Non è stato eseguito un collaudo manuale con due backend reali concorrenti.
+
 Non sono riportati event ID, giocatori o dati reali della sessione.
 
 ## Regole operative
 
 * Non usare `POST /api/match/stop` come smoke test.
+* Non usare Stop Live Tracking per tentare di rilasciare la writer authority.
 * Non chiudere Chrome dal Task Manager come procedura normale.
+* Non cancellare manualmente `.writer_authority/` per risolvere un avvio bloccato.
 * Non trattare l’ultimo tick Betfair come aggiornamento corrente dopo timeout o health stale.
 * Non dedurre Source Identity dagli URL inseriti.
 * Non modificare history o timeline per “sistemare” una sessione.
@@ -175,11 +223,11 @@ Non sono riportati event ID, giocatori o dati reali della sessione.
 
 ## Documenti collegati
 
-
 * [API Runtime Health](../api/06-runtime-health.md)
 * [Runtime locale](./01-local-runtime.md)
 * [Diagnostica Betfair](./03-betfair-diagnostics.md)
 * [API Match](../api/01-match.md)
 * [API Evidence](../api/03-evidence.md)
 * [Tracking live](../modules/sofa/01-live-tracking.md)
+* [Commit journal e recovery](../modules/storage/02-commit-journal-and-recovery.md)
 * [Verifica live Source Identity](../../validations/source-identity-live-verification.md)

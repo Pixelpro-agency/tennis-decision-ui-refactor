@@ -14,7 +14,7 @@ Il percorso distruttivo:
 
 non è ancora validato operativamente su cache reali.
 
-La prima validazione apply deve avvenire in una sessione offline dedicata, con lock assente e porte runtime libere.
+La prima validazione apply deve avvenire in una sessione offline dedicata, con launcher lock assente e porte runtime libere.
 
 La retention automatica periodica non è implementata:
 
@@ -25,29 +25,30 @@ nessun avvio automatico dal launcher
 nessun cleanup periodico
 ```
 
-La policy su commit journal, sidecar di recovery e `pending_commits` è documentata come vincolo di sicurezza: questi artefatti non sono cache runtime e non rientrano nella utility di retention.
+La policy su commit journal, sidecar di recovery, `.pending_commits/` e `.writer_authority/` è un vincolo di sicurezza: questi artefatti non sono cache runtime e non rientrano nella utility di retention.
 
 ## Scopo
 
 Questo documento classifica gli artefatti locali e definisce cosa conservare, cosa escludere dai backup e cosa potrà essere pulito solo con una procedura project-owned.
 
-La retention non è un meccanismo di recovery, non ripara commit incompleti e non deve cancellare sidecar journalizzati per forzare uno stato pulito.
+La retention non è un meccanismo di recovery, non ripara commit incompleti e non deve cancellare sidecar journalizzati o record authority per forzare uno stato pulito.
 
 ## Classificazione
 
-| Categoria             | Percorsi tipici                                | Policy                                                                                         |
-| --------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Dati canonici         | `backend/match_history/`                       | Non cancellare automaticamente                                                                 |
-| Journal di commit     | `backend/match_history/pending_commits/`       | Non cancellare con retention; gestito solo dal writer/recovery owner                           |
-| Conferme operatore    | `backend/source_identity_confirmations.json`   | Non cancellare automaticamente                                                                 |
-| Cache SofaScore       | `backend/scraper_cache/`                       | Rigenerabile; pulibile solo dalla utility allow-list in dry-run o apply offline confermato     |
-| Cache Betfair         | `backend/betfair_cache/`                       | Rigenerabile; redatta in lettura/scrittura; pulibile solo dalla utility allow-list             |
-| Dump diagnostici      | `backend/betfair_network_dump/`                | Consentiti solo in diagnostica esplicita; contenuti redatti; non inclusi nella utility cache   |
-| Log tecnici           | `backend/*_debug.log`, `backend/*_scraper.log` | Rotazione futura, non cancellare durante incidente aperto                                      |
-| Warning legacy        | stato `legacyWarning` del commit Betfair       | Osservabile; non invalida commit canonico riuscito e non autorizza cleanup manuale retroattivo |
-| Build e dipendenze    | `frontend/dist/`, `node_modules/`              | Rigenerabili, non includere nel backup                                                         |
-| Profilo browser       | profilo locale Chrome                          | Sensibile, non pulire automaticamente                                                          |
-| Credenziali           | cookie, token, `.env`, password                | Non salvare, non condividere, non includere nei backup                                         |
+| Categoria              | Percorsi tipici                                      | Policy                                                                                         |
+| ---------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Dati canonici          | `backend/match_history/`                             | Non cancellare automaticamente                                                                 |
+| Journal di commit      | `backend/match_history/.pending_commits/`            | Non cancellare con retention; gestito solo dal writer/recovery owner                           |
+| Writer authority       | `backend/match_history/.writer_authority/`           | Sidecar process-level; non cache; non cancellare o modificare manualmente                       |
+| Conferme operatore     | `backend/source_identity_confirmations.json`         | Non cancellare automaticamente                                                                 |
+| Cache SofaScore        | `backend/scraper_cache/`                             | Rigenerabile; pulibile solo dalla utility allow-list in dry-run o apply offline confermato     |
+| Cache Betfair          | `backend/betfair_cache/`                             | Rigenerabile; redatta in lettura/scrittura; pulibile solo dalla utility allow-list             |
+| Dump diagnostici       | `backend/betfair_network_dump/`                      | Consentiti solo in diagnostica esplicita; contenuti redatti; non inclusi nella utility cache   |
+| Log tecnici            | `backend/*_debug.log`, `backend/*_scraper.log`       | Rotazione futura, non cancellare durante incidente aperto                                      |
+| Warning legacy         | stato `legacyWarning` del commit Betfair             | Osservabile; non invalida commit canonico riuscito e non autorizza cleanup manuale retroattivo |
+| Build e dipendenze     | `frontend/dist/`, `node_modules/`                    | Rigenerabili, non includere nel backup                                                         |
+| Profilo browser        | profilo locale Chrome                                | Sensibile, non pulire automaticamente                                                          |
+| Credenziali            | cookie, token, `.env`, password                      | Non salvare, non condividere, non includere nei backup                                         |
 
 ## Modalità normale
 
@@ -57,12 +58,15 @@ In modalità normale il progetto deve conservare solo:
 timeline canoniche
 history aggregata
 commit journal necessari a recovery
+writer authority necessaria all'esclusione del backend writer
 conferme Source Identity
 configurazione necessaria
 log tecnici essenziali
 ```
 
-Un journal pending o una directory `pending_commits` presente sul disco non è una cache sporca: rappresenta uno stato di commit incompleto o recuperabile.
+Un journal pending o una directory `.pending_commits/` presente sul disco non è una cache sporca: rappresenta uno stato di commit incompleto o recuperabile.
+
+Un record sotto `.writer_authority/` non è una cache sporca: rappresenta l'owner della storage identity oppure un residuo che il contratto authority deve classificare come `active`, `unknown`, `reclaimed` o `already_owned`.
 
 Il live tracking normale non attiva network capture e non crea nuovi file in:
 
@@ -88,7 +92,7 @@ authorization header
 profili browser
 ```
 
-## Journal, recovery e cleanup legacy
+## Journal, writer authority, recovery e cleanup legacy
 
 Il commit journal è un sidecar tecnico del commit canonico.
 
@@ -99,6 +103,22 @@ commit canonico completo
 → rimozione journal completata
 → eventuale cleanup legacy consentito
 ```
+
+La writer authority è un sidecar tecnico distinto:
+
+```txt
+backend bootstrap
+→ acquire writer authority
+→ recovery e runtime
+→ shutdown con tracker drain
+→ release authority
+```
+
+Non è un dato canonico, non è un commit journal, non è una fonte di recovery business e non viene gestita dalla utility cache.
+
+Un record residuo viene recuperato soltanto dal contratto authority quando il processo owner è positivamente morto. Un owner vivo o un'identità non verificabile producono comportamento fail-closed.
+
+Non risolvere un avvio bloccato cancellando o modificando manualmente `.writer_authority/`.
 
 Il cleanup legacy Betfair può avvenire solo dopo commit canonico riuscito e rimozione journal completata.
 
@@ -111,13 +131,14 @@ La retention non deve mai eseguire:
 ```txt
 repair journal
 rimozione journal pending
+rimozione o modifica writer authority
 forzatura recovery_failed
 cleanup legacy Betfair pre-commit
 normalizzazione di history o timeline
 ricostruzione di Evidence
 ```
 
-Queste responsabilità appartengono al writer canonico e al percorso di recovery documentato.
+Queste responsabilità appartengono al writer canonico, alla recovery e al bootstrap/shutdown backend documentati.
 
 ## Modalità diagnostica
 
@@ -152,6 +173,10 @@ retention dump/log
 commit journal e recovery
 → non sono retention cache
 
+writer authority
+→ non è retention cache
+→ non viene eliminata per sbloccare manualmente il backend
+
 rotazione automatica periodica
 → non implementata
 ```
@@ -173,6 +198,8 @@ recovery_failed
 ```
 
 possono essere osservati dalla diagnostica e dalle API read-only, ma non autorizzano cancellazioni manuali di journal, history o timeline.
+
+Gli stati authority `active` e `unknown` non autorizzano cancellazioni manuali del record.
 
 ## Retention cache runtime offline
 
@@ -226,18 +253,19 @@ history
 Evidence
 Source Identity
 commit journal
-pending_commits
+.pending_commits
+.writer_authority
 recovery metadata
 legacyWarning
 dump diagnostici
 log runtime
 profili browser
-lock
+launcher lock
 manifest
 file temporanei
 ```
 
-I controlli di sicurezza bloccano l’apply in presenza di segnali di sessione attiva, inclusi lock launcher e porte backend/frontend occupate su loopback IPv4 o IPv6.
+I controlli di sicurezza bloccano l’apply in presenza di segnali di sessione attiva, inclusi launcher lock e porte backend/frontend occupate su loopback IPv4 o IPv6.
 
 Un errore di verifica deve restare fail-closed.
 
@@ -260,13 +288,15 @@ La policy riguarda esclusivamente la conservazione su disco delle cache rigenera
 La retention non deve:
 
 * cancellare history o timeline per liberare spazio;
-* cancellare commit journal o `pending_commits`;
+* cancellare commit journal o `.pending_commits/`;
+* cancellare, modificare o recuperare manualmente `.writer_authority/`;
 * cancellare conferme Source Identity;
 * cancellare Evidence utile a audit o replay;
 * cancellare il profilo Chrome;
 * chiudere Chrome CDP;
 * eseguire recovery o repair;
 * trasformare `partial_persistence` o `recovery_failed` in cleanup manuale;
+* trasformare `active` o `unknown` in rimozione manuale dell'authority;
 * cancellare log necessari a un incidente aperto;
 * includere credenziali nei dump;
 * usare dump come fonte primaria per algoritmi;
@@ -282,6 +312,7 @@ timeline
 Evidence
 Source Identity
 journal pending
+writer authority
 ```
 
 ## Backup
@@ -318,11 +349,13 @@ Se un backup viene usato per audit o ripresa di uno stato locale incompleto, dev
 ```txt
 history
 timeline
-pending_commits
+.pending_commits
 Evidence collegate
 ```
 
-Non copiare solo una parte di questi artefatti per poi usarla come base canonica.
+La writer authority è effimera e process-owned. Non deve essere copiata fra working copy per attribuire ownership a un processo diverso.
+
+Non copiare solo una parte degli artefatti canonici per poi usarla come base canonica.
 
 ## Pulizia controllata
 
@@ -342,11 +375,12 @@ Prima di qualunque apply futuro verificare:
 
 ```txt
 tracking fermo
-lock launcher assente
+launcher lock assente
 porte backend/frontend runtime libere
 percorso incluso nell’allow-list
 solo file .json regolari
 nessun journal pending coinvolto
+nessuna writer authority coinvolta
 nessun incidente diagnostico aperto sulle cache interessate
 ```
 
@@ -354,7 +388,8 @@ La utility non deve essere estesa a:
 
 ```txt
 backend/match_history
-backend/match_history/pending_commits
+backend/match_history/.pending_commits
+backend/match_history/.writer_authority
 backend/source_identity_confirmations.json
 backend/betfair_network_dump
 profili browser
@@ -377,10 +412,12 @@ nessuna rimozione reale
 Da verificare come vincolo esplicito di regressione:
 
 ```txt
-pending_commits escluso dalla utility
+.pending_commits esclusa dalla utility
 commit journal esclusi dalla utility
+.writer_authority esclusa dalla utility
 partial_persistence non risolto tramite cleanup
 recovery_failed non risolto tramite cleanup
+authority active/unknown non risolta tramite cleanup
 legacyWarning preservato come warning osservabile
 ```
 
@@ -389,7 +426,7 @@ Resta da validare:
 ```txt
 primo apply controllato
 → sessione offline dedicata
-→ lock assente
+→ launcher lock assente
 → porte runtime libere
 → cache reali
 → output JSON registrato
@@ -414,7 +451,8 @@ history
 Evidence
 conferme Source Identity
 commit journal
-pending_commits
+.pending_commits
+.writer_authority
 dump utili a un incidente aperto
 profili browser
 ```

@@ -83,7 +83,9 @@ checkpoint corrente
 → 29 owner duplicati normalizzati; registry checker verde
 → migrazione finale pubblicata: `2697f66ea8e17a9e35481299cb47ec402558df55`
 → cleanup archive pubblicato: `3de08ca09ac7cf3d64533b2e72b8f61d1d32f196`
-→ prossimo passo tecnico: `IMPL-015`
+→ IMPL-015 completata e pubblicata
+→ codice, test e documentazione riallineati
+→ prossimo passo tecnico da selezionare
 ```
 
 Dopo la pubblicazione del checkpoint:
@@ -113,6 +115,11 @@ checkpoint audit materiali locali
 → IMPL-028 implementata e validata sulla working tree reale
 → manifest corretto senza inventare test sostitutivi
 → profili fast/backend/frontend/python/full-offline verdi, incluso hotfix Windows per npm.cmd
+→ IMPL-015 Prompt 1 e Fix 1: `ac0361ef720831173619636b8ce0057348282fa4`
+→ IMPL-015 Prompt 2 e Fix 1: `f86ac267919ca13859c98db7015362f26176ba36`
+→ writer authority esclusiva implementata
+→ tracker drain implementato
+→ riallineamento documentale conclusivo
 → precisione
 → robustezza
 → utilità
@@ -148,4 +155,4 @@ Batch successivi
 → rimozione .mdx completata dopo verifica dei link e assenza di duplicati
 ```
 
-Prossimo passo: IMPL-015 — writer authority esclusiva per `match_history`.
+IMPL-015 è completata: codice, test e documentazione sono riallineati. La task tecnica successiva deve essere selezionata separatamente.

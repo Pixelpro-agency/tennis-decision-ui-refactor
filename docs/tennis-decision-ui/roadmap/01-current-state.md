@@ -6,22 +6,22 @@ Questo documento fotografa ciò che esiste oggi nel codice e distingue base impl
 
 Non contiene la progettazione delle soluzioni future. Finding, priorità e implementazioni approvate ma non ancora presenti restano nei registri cumulativi.
 
-**Baseline tecnica:** codice verificato sul commit `0dc87959a052a8b74d0591f89275a9886f49d386`. Il commit contiene soltanto documentazione aggiuntiva rispetto alla baseline tecnica dell'audit e non modifica il comportamento applicativo.
+**Baseline tecnica:** codice verificato sul commit `f86ac267919ca13859c98db7015362f26176ba36`.
 
 ## Base implementata
 
-| Area                  | Stato corrente                                                                                                                      |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Runtime locale        | Launcher Python con lock operativo, riconoscimento dei servizi, porte preferite, ownership selettiva e shutdown dei processi owned  |
-| Backend               | Express con router Match, Betfair, Evidence, Strategy, Preflight e Runtime Health                                                   |
-| SofaScore             | Acquisizione Python, normalizzazione Node, point-by-point supportato e `localContext` descrittivo                                   |
-| Betfair               | Modalità persistent/CDP, Graph URL, quote, ladder, health, lifecycle dei processi, Money Flow non direzionale e diagnostica redatta |
-| Tracking              | Scheduler separato SofaScore/Betfair, Source Identity Gate, stop globale e cleanup dei ruoli tracking                               |
-| Persistenza           | Timeline, history aggregata, atomic write per file, commit journal, recovery bootstrap e integrity read-only                        |
-| Evidence              | Snapshot read-only, qualità, Source Identity effective, no-trade reasons e Market Reactions senza causalità dichiarata              |
-| Frontend              | Form, shell dashboard, polling dati, stato Source Identity, health Betfair, Money Flow, contesto punti e Market Reactions           |
-| Sicurezza dati        | `.env` locale, chiave Betfair fuori dal codice, redazione diagnostica e cache/dump esclusi dalle fonti canoniche                    |
-| Tooling e validazione | Checker documentali read-only e runner locale a manifest con profili offline, timeout, process isolation e artefatti JSON bounded   |
+| Area                  | Stato corrente                                                                                                                                            |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime locale        | Launcher Python con lock operativo, riconoscimento dei servizi, porte preferite, ownership selettiva e shutdown dei processi owned                        |
+| Backend               | Express con router Match, Betfair, Evidence, Strategy, Preflight e Runtime Health; writer authority acquisita in `startServer()` prima della recovery     |
+| SofaScore             | Acquisizione Python, normalizzazione Node, point-by-point supportato e `localContext` descrittivo                                                         |
+| Betfair               | Modalità persistent/CDP, Graph URL, quote, ladder, health, lifecycle dei processi, Money Flow non direzionale e diagnostica redatta                       |
+| Tracking              | Scheduler separato SofaScore/Betfair, Source Identity Gate, stop globale, registro delle operazioni attive, terminal tracker barrier e tracker drain      |
+| Persistenza           | Timeline, history aggregata, atomic write per file, commit journal, writer authority esclusiva, recovery bootstrap e integrity read-only                  |
+| Evidence              | Snapshot read-only, qualità, Source Identity effective, no-trade reasons e Market Reactions senza causalità dichiarata                                    |
+| Frontend              | Form, shell dashboard, polling dati, stato Source Identity, health Betfair, Money Flow, contesto punti e Market Reactions                                 |
+| Sicurezza dati        | `.env` locale, chiave Betfair fuori dal codice, redazione diagnostica e cache/dump esclusi dalle fonti canoniche                                          |
+| Tooling e validazione | Checker documentali read-only e runner locale a manifest con profili offline, timeout, process isolation e artefatti JSON bounded                         |
 
 ## Comportamenti importanti già presenti
 
@@ -47,10 +47,26 @@ Non contiene la progettazione delle soluzioni future. Finding, priorità e imple
 
 - history e timeline restano documenti canonici distinti;
 - il journal rende osservabile un commit incompleto;
-- la recovery viene eseguita prima dell'apertura del listener;
+- `startServer()` crea e acquisisce la writer authority prima della recovery;
+- la recovery parte soltanto dopo l'acquisizione della writer authority e prima dell'apertura del listener;
+- un secondo backend sulla stessa storage identity viene bloccato prima di recovery e listener;
+- un owner positivamente morto può essere recuperato;
+- un owner vivo (`active`) o un'identità non verificabile (`unknown`) bloccano l'avvio in modalità fail-closed;
+- il listener viene considerato pronto soltanto dopo la readiness reale;
 - Match e Betfair possono restituire `409 persistence_integrity`;
 - Evidence può esporre `persistenceComplete:false`;
 - le route read-only non eseguono recovery.
+
+### Shutdown e tracker drain
+
+- le operazioni SofaScore e Betfair capaci di raggiungere la persistenza sono registrate process-local;
+- lo shutdown attiva una terminal tracker barrier che impedisce nuovi Start e nuovi update;
+- lo stop ordinario del tracking resta riutilizzabile e non rilascia l'authority;
+- gli update già avviati vengono drenati fino a registro vuoto;
+- il cleanup Python viene avviato prima di attendere il completamento del drain;
+- la writer authority viene rilasciata soltanto dopo drain positivo e listener chiuso;
+- drain fallito o force timeout conservano il record authority per il recupero stale/dead successivo;
+- segnali ripetuti condividono la stessa shutdown promise e non duplicano drain, release o exit.
 
 ### Evidence
 
@@ -63,12 +79,13 @@ Non contiene la progettazione delle soluzioni future. Finding, priorità e imple
 
 ### Autorità runtime e sessione
 
-- il backend non acquisisce ancora un lock esclusivo della persistenza prima di recovery e listener;
-- Start non restituisce un `trackingSessionId` end-to-end;
+- Start non restituisce ancora un `trackingSessionId` end-to-end;
 - tracker, gate e conferme sono correlati principalmente tramite `eventId`;
 - callback e risposte tardive non hanno una generation guard uniforme;
 - lo Stop può avere cleanup parziale senza una semantica top-level completa;
 - il lifecycle Betfair è deduplicato per mercato e runtime identity, non per sessione logica globale.
+
+La writer authority di IMPL-015 protegge la storage identity a livello di processo backend. Non costituisce la session authority end-to-end prevista da IMPL-006.
 
 ### Confine locale
 
@@ -108,6 +125,24 @@ Non contiene la progettazione delle soluzioni future. Finding, priorità e imple
 - manca ancora il ledger storico completo e una coverage affidabile;
 - la presenza di un file test non equivale a esecuzione o PASS sul commit corrente.
 
+Per IMPL-015 sono stati eseguiti e superati i test automatici pubblicati:
+
+```txt
+writer authority
+→ 26 passati
+→ 0 falliti
+
+matchTracker
+→ 10 passati
+→ 0 falliti
+
+server
+→ 30 passati
+→ 0 falliti
+```
+
+Questi test includono l'esclusione deterministica di un secondo bootstrap sulla stessa storage identity prima di recovery e listener. Non è stato eseguito un collaudo manuale con due backend reali concorrenti; il test con due authority e filesystem temporaneo non viene presentato come prova live.
+
 ## Componenti deprecati ma ancora presenti
 
 - API e UI Strategy;
@@ -141,7 +176,7 @@ Non sono implementati:
 - Stream API Betfair;
 - retention automatica periodica;
 - CI deterministica;
-- profili persistence, benchmark e live del runner;
+- profili persistence, benchmark e live del runner.
 
 Le specifiche storiche di replay e Journal sono conservate sotto `docs/archive/planning/` esclusivamente per tracciabilità e non sono owner attivi.
 

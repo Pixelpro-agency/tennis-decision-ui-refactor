@@ -2,9 +2,9 @@
 
 ## Scopo
 
-Il tracker coordina scheduler, update SofaScore e Betfair e il Source Identity Gate live.
+Il tracker coordina scheduler, update SofaScore e Betfair, Source Identity Gate live e drain terminale delle operazioni asincrone durante lo shutdown backend.
 
-Il tracker non implementa browser, persistenza file o route HTTP, ma decide se i callback di persistenza possono essere invocati.
+Il tracker non implementa browser, persistenza file o route HTTP, ma decide se i callback di persistenza possono essere invocati e mantiene il registro process-local delle operazioni capaci di raggiungere la persistenza.
 
 ```txt
 backend/src/sofa/matchTracker.js
@@ -69,6 +69,44 @@ getBetfairTrackingRuntime(eventId)
 
 La funzione restituisce una copia sicura dei soli quattro campi runtime. Non espone il match tracker completo, dati raw, cookie, token o dettagli del browser.
 
+## Registro delle operazioni attive
+
+Il tracker mantiene il registro process-local:
+
+```txt
+activeTrackerOperations
+```
+
+Il registro comprende almeno:
+
+```txt
+update SofaScore iniziale avviato da trackMatch()
+update SofaScore avviato dallo scheduler
+update Betfair avviato dallo scheduler
+```
+
+Ogni operazione viene registrata come Promise reale prima che possa completarsi. La Promise viene rimossa dal registro sia su fulfillment sia su rejection.
+
+Il registro:
+
+- non conserva risultati o payload;
+- non conserva errori raw;
+- non modifica il risultato delle funzioni update;
+- gestisce le rejection senza produrre `unhandledRejection`;
+- resta indipendente da `trackedMatches` e dallo scheduler.
+
+Di conseguenza:
+
+```txt
+trackedMatches svuotata
+oppure scheduler cancellato
+oppure gate rimosso
+≠
+operazione già avviata completata
+```
+
+La rimozione dalla mappa non autorizza il release della writer authority.
+
 ## Avvio tracking
 
 Funzione pubblica:
@@ -80,18 +118,29 @@ trackMatch(
   betfairGraphUrls,
   chromeProfilePath,
   betfairMode,
-  cdpUrl
+  cdpUrl,
+  dependencies = {}
 )
 ```
 
 Il tracker:
 
-1. ricava l'event ID dall'URL SofaScore;
-2. elimina eventuali match diversi già tracciati;
-3. salva il contesto del match;
-4. pulisce la cache Betfair se sono presenti Graph URL;
-5. avvia lo scheduler;
-6. coordina gli update periodici.
+1. verifica che la terminal tracker barrier non sia attiva;
+2. ricava l'event ID dall'URL SofaScore;
+3. elimina eventuali match diversi già tracciati;
+4. salva il contesto del match;
+5. pulisce la cache Betfair se sono presenti Graph URL;
+6. avvia lo scheduler;
+7. coordina e registra gli update periodici.
+
+Il parametro opzionale `dependencies` consente test deterministici tramite:
+
+```txt
+updateSofaFn
+updateBetfairFn
+```
+
+Senza dipendenze iniettate, il comportamento runtime usa i normali `updateSofa` e `updateBetfair`.
 
 Il tracking può funzionare con solo SofaScore.
 
@@ -125,6 +174,8 @@ processo fisicamente terminato
 ```
 
 Retry e nuovo spawn rispettano la barriera di completion fisica precedente.
+
+Questa generation protegge il lifecycle dei figli Python. Non equivale alla terminal tracker barrier di shutdown e non sostituisce una tracking session authority end-to-end.
 
 ## Source Identity Gate
 
@@ -266,15 +317,15 @@ tick causale non persistito
 → gate mismatch leggibile dallo status endpoint
 ```
 
-Il mismatch non usa il cleanup globale `scope=tracking`. Una callback della generation invalidata non può produrre effetti per la sessione successiva. Timeline, history e conferme già esistenti non vengono cancellate.
+Il mismatch usa lo stop ordinario del tracker, non la terminal tracker barrier di processo. Una callback della generation invalidata non può produrre effetti per la sessione successiva. Timeline, history e conferme già esistenti non vengono cancellate.
 
-## Stop
+## Stop ordinario
 
 | Funzione                    | Effetto                                                                                 |
 | --------------------------- | --------------------------------------------------------------------------------------- |
 | `untrackMatch(eventId)`     | Rimuove un solo match e il relativo gate; è usata dal percorso `/untrack`               |
 | `stopMatchTracker(eventId)` | Ferma un match quando presente; non è invocata dalla route HTTP globale                 |
-| `stopAllMatchTrackers()`    | Svuota i match, ferma lo scheduler e rimuove i gate; non invalida da sola la generation |
+| `stopAllMatchTrackers()`    | Svuota i match, ferma lo scheduler e rimuove i gate; non attiva la barriera terminale   |
 | `stopSchedulerIfEmpty()`    | Ferma l'intervallo quando non restano match                                             |
 
 Percorso globale corrente:
@@ -290,7 +341,65 @@ POST /api/match/stop
 
 `stopAllMatchTrackers()` è idempotente. Dopo lo stop, un nuovo `trackMatch(...)` può riavviare lo scheduler e usa la generation aggiornata dal registry.
 
+Lo stop ordinario:
+
+```txt
+non attiva terminalTrackerBarrier
+→ non esegue il tracker drain di shutdown
+→ non rilascia la writer authority
+→ mantiene il backend attivo
+→ consente un nuovo Start successivo
+```
+
 La route non chiude backend, frontend o Chrome/CDP e non cancella timeline, history o journal.
+
+## Terminal tracker barrier e drain
+
+Lo shutdown backend usa:
+
+```txt
+stopAndDrainAllMatchTrackers()
+```
+
+La funzione:
+
+1. imposta sincronicamente `terminalTrackerBarrier = true`;
+2. blocca nuovi `trackMatch(...)`;
+3. impedisce allo scheduler di avviare nuovi update;
+4. svuota `trackedMatches`;
+5. ferma lo scheduler;
+6. cancella i gate come lo stop globale ordinario;
+7. attende con `Promise.allSettled(...)` le operazioni registrate;
+8. ripete la verifica finché `activeTrackerOperations` è realmente vuoto.
+
+Risultato positivo:
+
+```js
+{
+  ok: true,
+  drained: true,
+  activeOperations: 0
+}
+```
+
+Una singola update che si conclude con rejection non rende fallito il drain: la rejection resta gestita dal normale handler dell'operazione.
+
+Dopo l'attivazione della barriera:
+
+```txt
+trackMatch(...)
+→ null
+→ nessun gate
+→ nessuna entry trackedMatches
+→ nessuno scheduler
+→ nessuna update
+```
+
+La barriera non viene riaperta. Dopo l'inizio dello shutdown il processo è destinato a terminare.
+
+Il server avvia il drain prima del cleanup Python, così la barriera è già attiva. Il cleanup Python può terminare scraper che stanno bloccando una catena Betfair; il server attende poi il completamento delle Promise Node e la chiusura del listener prima di rilasciare la writer authority.
+
+Se il drain fallisce o non è verificabile, il server non rilascia l'authority e termina in modalità fail-closed.
 
 ## Normalizzazione JSON-safe SofaScore
 
@@ -327,9 +436,12 @@ Il tracker non deve:
 * costruire componenti frontend;
 * costruire Evidence o calcolare internamente Source Identity; il tracker coordina soltanto il gate live;
 * modificare Source Identity, deduplicazione, timeline, history o browser lifecycle per calcolare runtime health;
-* trattare un errore tecnico come mercato concluso.
+* trattare un errore tecnico come mercato concluso;
+* acquisire o rilasciare direttamente la writer authority.
 
 Il frontend può fare polling delle timeline, ma non deve avviare acquisizione tramite polling read-only.
+
+La terminal tracker barrier protegge il rilascio della persistence writer authority durante lo shutdown. Non costituisce una tracking session authority end-to-end e non chiude IMPL-006.
 
 ## Verifica
 
@@ -355,7 +467,29 @@ node sofa/localContext.test.mjs
 node sofa/matchHistory/sofaUpdates.test.mjs
 ```
 
-Verificare:
+I test IMPL-015 pubblicati includono:
+
+```txt
+stop ordinario consente un nuovo Start
+→ PASS
+
+drain attende un update SofaScore iniziale in corso
+→ PASS
+
+rejection update non blocca il drain e non produce unhandled rejection
+→ PASS
+
+terminal tracker barrier blocca nuovi Start
+→ PASS
+```
+
+Esito del runner mirato:
+
+```txt
+matchTracker: 10 passati, 0 falliti
+```
+
+Verificare inoltre:
 
 ```txt
 collecting e pending
@@ -372,8 +506,12 @@ mismatch
 → rende obsoleto l'eventuale sofa_tracking in flight
 → lascia Chrome/CDP aperto
 
-nuovo Start
+nuovo Start dopo stop ordinario
 → crea un nuovo gate
+
+nuovo Start dopo terminal tracker barrier
+→ restituisce null
+→ non avvia update
 
 tick SofaScore
 → costruisce localContext dopo la normalizzazione
@@ -409,6 +547,7 @@ hasFinished esplicito
 ## Documenti collegati
 
 * [Timeline e history](../storage/01-timelines-and-history.md)
+* [Commit journal e recovery](../storage/02-commit-journal-and-recovery.md)
 * [Lifecycle scraper Betfair](../betfair/01-scraper-lifecycle.md)
 * [Validità tecnica campioni Betfair](../betfair/02-technical-sample-validity.md)
 * [API Match](../../api/01-match.md)

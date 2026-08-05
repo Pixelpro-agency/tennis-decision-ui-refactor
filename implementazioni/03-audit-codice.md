@@ -118,7 +118,7 @@ I concetti strategici restano registrati in `IMPL-010` come strumenti autonomi o
 
 ### CODE-002 — Il preflight Betfair accetta host e protocolli non sufficientemente vincolati
 
-**Stato:** `CONFERMATO E AMPLIATO`
+**Stato:** `CONFERMATO`
 
 **Priorità:** alta
 
@@ -387,8 +387,8 @@ Nessuna feature frontend deve dipendere direttamente dalla porta preferita del b
 
 ## RUNTIME-002 — Nuovo Start non invalida callback della sessione precedente
 
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
+**Stato:** `CONFERMATO` tramite analisi statica
+**Priorità:** alta
 **Area:** tracking, generation, gate e persistenza
 
 ### Sequenza
@@ -513,7 +513,7 @@ Il test canonico ispezionato copre regressioni ordinarie, duplicati, cleanup leg
 
 ---
 
-## Decisione iniziale collegata a EVIDENCE-001 — `selectionId` obbligatorio solo nel confronto runner Field → Market
+## EVIDENCE-001 — `selectionId` obbligatorio solo nel confronto runner Field → Market
 
 **Stato:** `APPROVATO`
 **Priorità:** media
@@ -616,8 +616,8 @@ B4 — Frontend e Python
 
 ## FRONTEND-001 — Risposte tardive SofaScore e Betfair attraversano il cambio sessione
 
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
+**Stato:** `CONFERMATO` tramite analisi statica
+**Priorità:** alta
 **Area:** polling frontend e bootstrap dashboard
 
 ### Comportamento
@@ -692,8 +692,8 @@ Nessuna richiesta appartenente a un vecchio `eventId` può modificare lo stato d
 
 ## FRONTEND-002 — Persistence integrity raccolta dagli hook ma scartata prima della UI
 
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
+**Stato:** `CONFERMATO`
+**Priorità:** alta
 **Area:** App, view model, Betfair UI ed Evidence UI
 
 ### SofaScore
@@ -746,8 +746,8 @@ Una pipeline esplicita e testata deve portare integrity dagli hook ai consumer s
 
 ## FRONTEND-003 — Start fallito lascia una sessione confermata e polling nascosti
 
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
+**Stato:** `CONFERMATO` tramite analisi statica
+**Priorità:** medio-alta
 **Area:** sessione e azioni Start
 
 ### Sequenza
@@ -923,7 +923,7 @@ fetch result contiene dump_dir locale
 
 ## SECURITY-002 — Cache filename Betfair derivato dalla URL completa
 
-**Stato:** `CONFERMATO E AMPLIATO`
+**Stato:** `CONFERMATO` tramite analisi statica
 **Priorità:** alta
 **Area:** cache Python
 
@@ -999,8 +999,8 @@ log interno
 
 ## PYTHON-001 — Task della network capture non tracciate né attese
 
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** alta
+**Stato:** `CONFERMATO` tramite analisi statica
+**Priorità:** media
 **Area:** network capture Betfair
 
 `install_network_capture(...)` crea task con:
@@ -1125,8 +1125,8 @@ B5 — Operations e roadmap
 
 ## CLEANUP-002 — Offline check limitato a lock e porte preferite
 
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** alta
+**Stato:** `CONFERMATO` tramite analisi statica
+**Priorità:** media
 **Area:** retention cache runtime
 
 `check_apply_session_safety(...)` blocca l’apply quando esiste il lock launcher, quando è occupata la porta 3000 o 3001, oppure quando un controllo fallisce.
@@ -1206,8 +1206,8 @@ B6 — Controlli trasversali
 
 ## CODE-005 — Script `lint` frontend esposto ma privo di configurazione utilizzabile
 
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** media
+**Stato:** `CONFERMATO`
+**Priorità:** bassa
 **Area:** tooling frontend
 
 `frontend/package.json` espone:
@@ -1244,7 +1244,7 @@ B. rimuovere script e dipendenze ESLint inutilizzate
 
 ---
 
-## Nota iniziale collegata a TEST-003 — Nessun inventario o comando test canonico
+## TEST-003 — Nessun inventario o comando test canonico
 
 **Stato:** `CONFERMATO`
 **Priorità:** media-alta
@@ -1443,7 +1443,7 @@ Non è stata trovata una ragione per riaprire il lifecycle del launcher.
 
 ### RUNTIME-003 — Gli avvii manuali aggirano l’autorità del launcher
 
-**Stato:** `CONFERMATO`
+**Stato:** `COMPLETATO SU f86ac26`
 **Priorità:** alta
 **Area:** backend bootstrap e persistenza canonica
 
@@ -1456,9 +1456,9 @@ npm run dev
 scripts/start-backend-dev.ps1
 ```
 
-entrano in `startServer()` senza acquisire il lock launcher e senza acquisire una writer authority specifica.
+prima di IMPL-015 entravano in `startServer()` senza acquisire il lock launcher e senza acquisire una writer authority specifica.
 
-Due backend possono quindi vivere su porte differenti e condividere:
+Il rischio storico era che due backend potessero vivere su porte differenti e condividere:
 
 ```txt
 backend/match_history
@@ -1476,7 +1476,7 @@ Il problema non è il contenuto parziale del singolo file: le scritture atomiche
 
 ### DOC-024 — Ownership del processo e autorità sulla persistenza sono concetti distinti
 
-**Stato:** `CONFERMATO`
+**Stato:** `COMPLETATO DAL RIALLINEAMENTO DOCUMENTALE IMPL-015`
 
 La documentazione runtime descrive correttamente:
 
@@ -1485,14 +1485,14 @@ launcher
 → ownership dei processi avviati
 ```
 
-ma non formalizza:
+ma prima del riallineamento IMPL-015 non formalizzava:
 
 ```txt
 backend writer authority
 → diritto esclusivo di recovery e scrittura canonica
 ```
 
-La futura riscrittura deve esplicitare che:
+Il riallineamento IMPL-015 esplicita ora che:
 
 ```txt
 process ownership
@@ -1500,9 +1500,9 @@ process ownership
 persistence authority
 ```
 
-### TEST-004 — Manca il test di esclusione tra due backend writer
+### TEST-004 — Esclusione tra due backend writer
 
-**Stato:** `CONFERMATO`
+**Stato:** `IMPLEMENTATO E PASSATO`
 
 Scenario minimo:
 
@@ -1523,7 +1523,7 @@ backend C
 → può acquisire authority e avviarsi
 ```
 
-Devono essere coperti anche:
+I test implementati coprono anche:
 
 - lock stale positivamente verificato;
 - lock non verificabile fail-closed;
@@ -1531,38 +1531,83 @@ Devono essere coperti anche:
 - failure durante recovery;
 - shutdown e rilascio idempotente.
 
-### Decisione approvata
+### Decisione implementata
 
 ```txt
-un solo backend writer per repository
-→ writer lock esclusivo backend-owned
-→ acquisito prima di recovery e listen
+un solo backend writer per repository/storage identity
+→ writer authority esclusiva backend-owned
+→ acquisita prima di recovery e listener readiness
 → secondo backend bloccato
 → launcher lock mantenuto separato
 ```
 
-Non introdurre:
+Non sono stati introdotti:
 
 - multi-writer;
 - backend secondario read-only;
 - lock basato soltanto sulla porta;
-- riuso automatico del lock launcher come writer authority.
+- kill del writer esistente;
+- riuso del launcher lock come writer authority.
 
-### Ordine tecnico della futura task
+### Esito implementazione IMPL-015
 
 ```txt
-create backend identity
-→ acquire writer authority
-→ recovery
-→ listen
-→ runtime attivo
-→ shutdown
-→ stop tracker/processi Python
-→ close server
-→ release writer authority
+Prompt 1
+→ modulo matchHistoryWriterAuthority
+→ repository identity e storage identity
+→ classificazione owner active / dead / unknown
+→ acquire e release serializzati
+
+Prompt 2
+→ authority creata in startServer()
+→ acquire prima della recovery
+→ listener readiness reale
+→ release nei failure path del bootstrap
+→ integrazione nello shutdown
+
+Fix 1
+→ registro process-local delle operazioni tracker
+→ terminal tracker barrier
+→ tracker drain prima del release
+→ authority retained su drain failure
+→ force timeout senza release anticipato
 ```
 
-Un fallimento prima di `listen` deve rilasciare soltanto l’autorità posseduta dalla stessa identità.
+File implementati e verificati:
+
+```txt
+backend/src/runtime/matchHistoryWriterAuthority.js
+backend/src/runtime/matchHistoryWriterAuthority.test.mjs
+backend/src/server.js
+backend/src/server.test.mjs
+backend/src/sofa/matchTracker.js
+backend/src/sofa/matchTracker.test.mjs
+```
+
+Commit:
+
+```txt
+ac0361ef720831173619636b8ce0057348282fa4
+f86ac267919ca13859c98db7015362f26176ba36
+```
+
+Test automatici:
+
+```txt
+writer authority: 26 passati
+matchTracker: 10 passati
+server: 30 passati
+falliti: 0
+```
+
+Limite verificato:
+
+```txt
+collaudo manuale con due backend reali concorrenti
+→ non eseguito
+```
+
+RUNTIME-002 e gli altri finding della session authority restano invariati.
 
 ---
 
@@ -1594,7 +1639,7 @@ Il registry Python protegge correttamente il lifecycle fisico dei figli:
 
 Queste protezioni non equivalgono a un’autorità completa della sessione applicativa.
 
-### Ampliamento collegato a RUNTIME-002 — Il nuovo Start non invalida la sessione precedente
+### RUNTIME-002 — Il nuovo Start non invalida la sessione precedente
 
 **Stato:** `CONFERMATO E AMPLIATO`
 **Priorità:** critica
@@ -1736,7 +1781,7 @@ trackingSessionId obbligatoria nella conferma
 → 409 stale_session
 ```
 
-### Estensione intermedia collegata a FRONTEND-001 — Risposte SofaScore e Betfair attraversano il cambio sessione
+### FRONTEND-001 — Risposte SofaScore e Betfair attraversano il cambio sessione
 
 **Stato:** `CONFERMATO E AMPLIATO`
 **Priorità:** critica
@@ -1753,7 +1798,7 @@ Una risposta vecchia può modificare dati, health, Money Flow, integrity, timest
 
 `useSourceIdentityGateStatus` e `useMarketReactionEvidence` costituiscono il modello locale corretto da uniformare.
 
-### Estensione intermedia collegata a FRONTEND-003 — Start fallito lascia una sessione nascosta
+### FRONTEND-003 — Start fallito lascia una sessione nascosta
 
 **Stato:** `CONFERMATO`
 **Priorità:** alta
@@ -1768,7 +1813,7 @@ In caso di failure non:
 - invalida il comando Start;
 - esegue cleanup compensativo quando necessario.
 
-### Nota iniziale collegata a FRONTEND-005 — I vecchi loop di polling possono ricrearsi dopo il cleanup
+### FRONTEND-005 — I vecchi loop di polling possono ricrearsi dopo il cleanup
 
 **Stato:** `CONFERMATO`
 **Priorità:** critica
@@ -1784,7 +1829,7 @@ Il cleanup cancella il timeout noto, ma una fetch già in attesa può programmar
 
 Il ref `shouldPoll` è condiviso: un nuovo Start può riportarlo a `true` e riattivare anche il vecchio loop.
 
-### Nota iniziale collegata a FRONTEND-006 — Start concorrenti non sono serializzati
+### FRONTEND-006 — Start concorrenti non sono serializzati
 
 **Stato:** `CONFERMATO`
 **Priorità:** alta
@@ -1798,7 +1843,7 @@ Mancano:
 - deduplicazione;
 - invalidazione esplicita del comando precedente.
 
-### Nota iniziale collegata a FRONTEND-007 — Stop Live Tracking lascia attivi altri poller
+### FRONTEND-007 — Stop Live Tracking lascia attivi altri poller
 
 **Stato:** `CONFERMATO`
 **Priorità:** medio-alta
@@ -1838,7 +1883,7 @@ command/request identity
 
 ### Gap test
 
-#### Requisiti aggiuntivi collegati a TEST-002 — Lifecycle frontend
+#### TEST-002 — Lifecycle frontend
 
 **Stato:** `MANCANTE`
 
@@ -2170,7 +2215,7 @@ route mutanti solo POST JSON
 
 La struttura è registrata come `IMPL-017`.
 
-### Ampliamento collegato a CODE-002 — Validazione Betfair non condivisa
+### CODE-002 — Validazione Betfair non condivisa
 
 **Stato:** `CONFERMATO E AMPLIATO`
 **Priorità:** alta
@@ -2331,7 +2376,7 @@ Freshness e validazione temporale devono derivare dall’acquisizione, non solta
 
 Money Flow deve essere soppresso/degradato quando lo skew Graph supera una soglia documentata.
 
-### Ampliamento collegato a PYTHON-001 — Network capture asincrona non controllata
+### PYTHON-001 — Network capture asincrona non controllata
 
 **Stato:** `CONFERMATO E AMPLIATO`
 **Priorità:** alta
@@ -2382,7 +2427,7 @@ error code pubblico stabile
 log interno redatto separato
 ```
 
-### Ampliamento collegato a SECURITY-002 — Cache con filename e identità inadeguati
+### SECURITY-002 — Cache con filename e identità inadeguati
 
 **Stato:** `CONFERMATO E AMPLIATO`
 **Priorità:** alta
@@ -2434,7 +2479,7 @@ Decisione approvata:
 - rendere l’eccezione configurabile e collaudabile;
 - non indebolire silenziosamente TLS o sandbox.
 
-### Ampliamento collegato a CLEANUP-002 — Authority offline incompleta
+### CLEANUP-002 — Authority offline incompleta
 
 **Stato:** `CONFERMATO E AMPLIATO`
 **Priorità:** alta
@@ -2490,7 +2535,7 @@ I dump non devono essere trattati come cache normali, ma non possono crescere se
 
 ### Strutture approvate
 
-#### Riferimento audit a IMPL-016 — Betfair runtime command authority
+#### IMPL-016 — Betfair runtime command authority
 
 Coordina:
 
@@ -2504,7 +2549,7 @@ Coordina:
 - handoff login → tracking;
 - un solo comando Betfair mutante globale.
 
-#### Riferimento audit a IMPL-017 — Local control-plane boundary
+#### IMPL-017 — Local control-plane boundary
 
 Impone:
 
@@ -2514,7 +2559,7 @@ Impone:
 - nessuna mutazione GET;
 - validazione dei comandi locali.
 
-#### Riferimento audit a IMPL-018 — Betfair acquisition envelope e provenance
+#### IMPL-018 — Betfair acquisition envelope e provenance
 
 Introduce almeno:
 
@@ -3286,7 +3331,7 @@ Non viene introdotto un secondo journal per questo archivio.
 
 ### Implementazioni risultanti
 
-#### Riferimento audit a IMPL-019 — Event persistence authority
+#### IMPL-019 — Event persistence authority
 
 ```txt
 shared history event-scoped
@@ -3296,7 +3341,7 @@ shared history event-scoped
 → pending cross-source bloccante
 ```
 
-#### Riferimento audit a IMPL-020 — Canonical document contract e verified recovery
+#### IMPL-020 — Canonical document contract e verified recovery
 
 ```txt
 schema + identity + revision + digest
@@ -3307,7 +3352,7 @@ schema + identity + revision + digest
 → migrazione legacy non distruttiva
 ```
 
-#### Riferimento audit a IMPL-021 — Recovery control plane
+#### IMPL-021 — Recovery control plane
 
 ```txt
 summary bootstrap reale
@@ -3425,367 +3470,72 @@ IMPL-015 — backend writer authority
 
 ## 20. Secondo audit del codice — Punto 5: Evidence e Market Reactions
 
-**Baseline:** `2959fba5bc3e0480cc3ea03f4469361cbb629ae6`
+**Baseline storica del checkpoint:** `2959fba5bc3e0480cc3ea03f4469361cbb629ae6`  
 **Stato:** `COMPLETATO E APPROVATO`
 
-### Perimetro letto
+### Perimetro e invarianti preservate
 
-Sono stati verificati:
+Sono stati verificati i builder Evidence, i moduli di Source Identity, Significant Flow, Market → Field, Field → Market, alignment temporale, qualità Betfair e i relativi test.
 
-```txt
-backend/src/routes/evidence.js
-backend/src/sofa/matchEvidence.js
-backend/src/sofa/matchEvidence/latestMatchEvidence.js
-backend/src/sofa/matchEvidence/evidenceBuilder.js
-backend/src/sofa/matchEvidence/alignment.js
-backend/src/sofa/matchEvidence/alignmentExtension.js
-backend/src/sofa/matchEvidence/time.js
-backend/src/sofa/matchEvidence/dataQuality.js
-backend/src/sofa/matchEvidence/noTradeReasons.js
-backend/src/sofa/matchEvidence/marketEvidence.js
-backend/src/sofa/matchEvidence/runnerEvidence.js
-backend/src/sofa/matchEvidence/sofaEvidence.js
-backend/src/sofa/matchEvidence/sourceIdentity.js
-backend/src/sofa/matchEvidence/sourceIdentity/marketEpoch.js
-backend/src/sofa/matchEvidence/sourceIdentity/builder.js
-backend/src/sofa/matchEvidence/sourceIdentityConfirmation.js
-backend/src/sofa/marketFlowEvidence.js
-backend/src/sofa/marketFlowEvidence/runnerFlow.js
-backend/src/sofa/marketFlowEvidence/runnerFlow/primitives.js
-backend/src/sofa/marketFlowEvidence/alignment.js
-backend/src/sofa/marketFlowEvidence/utilities.js
-backend/src/sofa/marketReactionEvidence.js
-backend/src/sofa/significantMarketFlowEvidence.js
-backend/src/sofa/significantMarketFlow/config.js
-backend/src/sofa/significantMarketFlow/candidates.js
-backend/src/sofa/significantMarketFlow/runnerFlow.js
-backend/src/sofa/significantMarketFlow/singleTick.js
-backend/src/sofa/significantMarketFlow/clusters.js
-backend/src/sofa/marketLedObservationEvidence.js
-backend/src/sofa/marketLedObservationEvidence/windowCollection.js
-backend/src/sofa/marketLedObservationEvidence/observationWindow.js
-backend/src/sofa/fieldLedReactionEvidence.js
-backend/src/sofa/temporalAlignmentEvidence.js
-backend/src/sofa/temporalAlignment/sofaMarker.js
-backend/src/sofa/temporalAlignment/betfairMove.js
-backend/src/sofa/temporalAlignment/betfairMove/candidateSelection.js
-backend/src/sofa/temporalAlignment/betfairMove/primitives.js
-backend/src/sofa/temporalAlignment/reactionWindows.js
-backend/src/sofa/betfairHealth.js
-backend/src/sofa/betfairHealth/tickQuality.js
-backend/src/sofa/betfair/processor.js
-backend/src/sofa/betfair/processor/persistenceDecision.js
-backend/src/sofa/betfair/processor/canonicalTimeline.js
-backend/src/sofa/betfair/timeline.js
-
-docs/tennis-decision-ui/modules/evidence/01-match-evidence-snapshot.mdx
-docs/tennis-decision-ui/modules/evidence/02-source-identity.mdx
-docs/tennis-decision-ui/modules/evidence/03-quality-flow-and-alignment.mdx
-docs/tennis-decision-ui/modules/evidence/04-market-reactions.mdx
-
-test Evidence, alignment, data quality e Market Reactions collegati
-```
-
-L’analisi è statica. Le suite presenti sono state lette ma non rieseguite.
-
-### Classificazione usata
-
-Per il Punto 5 ogni rilievo è stato distinto come:
+Restano invarianti:
 
 ```txt
-bug confermato
-limite noto
-miglioria utile
-documentazione mancante
-struttura completamente assente
-nessuna azione necessaria
-decisione dell’utente richiesta
-```
+Evidence
+→ read-only su timeline persistite
 
-Le decisioni richieste sono state approvate integralmente dall’utente.
-
-### Parti confermate come solide
-
-#### Evidence resta read-only
-
-Il Match Evidence Snapshot viene costruito da timeline già persistite e può leggere:
-
-```txt
-Source Identity effective
-persistence integrity
-active Betfair market epoch
-```
-
-Non deve:
-
-- avviare scraper;
-- fare fetch live;
-- aprire browser;
-- eseguire recovery;
-- scrivere journal;
-- aggiungere tick;
-- modificare history o timeline;
-- cambiare il gate live.
-
-Questo confine è coerente nel codice letto e va preservato.
-
-#### Gating cross-source conservativo
-
-L’uso attribuito dei dati Betfair è consentito soltanto quando:
-
-```txt
-Source Identity effective = aligned
+Source Identity effective aligned
 +
 persistence integrity utilizzabile
+→ condizione necessaria per attribuire dati cross-source
+
+causalityClaimed
+→ sempre false
+
+interpretation
+→ temporal_proximity_only
 ```
 
-Con `pending`, `mismatch`, `partial_persistence` o `recovery_failed`:
+### EVIDENCE-001 — Identità runner temporale
 
-- i runner Betfair non vengono attribuiti;
-- il lookback attribuito viene escluso;
-- Market Reactions viene sospeso;
-- le reason restano distinte;
-- Source Identity non viene riscritta come errore storage.
+**Stato:** `APPROVATO; IMPLEMENTAZIONE MANCANTE AL CHECKPOINT`
 
-Quando verrà implementato `integrity_unknown` del Punto 4, anche questo stato dovrà rendere `persistenceComplete:false`.
-
-#### Active market epoch
-
-L’epoch Betfair attivo è la porzione finale contigua con la stessa firma di mercato.
-
-La firma preferisce:
+La decisione `DEC-010` impone `selectionId` come identità dei confronti temporali Betfair. Il nome resta una label, non un fallback identificativo.
 
 ```txt
-marketId + selectionIds distinti
+selectionId assente
+→ runner_identity_unavailable
+→ nessun confronto prezzo/volume per nome
 ```
 
-con fallback controllato su:
+### EVIDENCE-002 — Tick degradati e status-only
 
-```txt
-marketKey + runner normalizzati
-```
-
-Gli epoch storici non partecipano alle osservazioni del contesto corrente.
-
-#### Conferma manuale contestuale
-
-La conferma Source Identity è legata a:
-
-```txt
-eventId
-marketId
-epochSignature
-due selectionId distinti
-due giocatori SofaScore
-due runner Betfair
-mapping uno-a-uno selezionato
-```
-
-Un cambio di contesto rende non applicabile la conferma precedente.
-
-#### Assenza esplicita di causalità
-
-I moduli principali mantengono:
-
-```txt
-causalityClaimed: false
-interpretation: temporal_proximity_only
-```
-
-anche quando rilevano prezzo, volume, marker o ordine temporale.
-
-Questa invariante non deve essere rimossa né indebolita.
-
-#### Immutabilità degli input
-
-I builder principali lavorano su copie o viste derivate e i test esistenti verificano che timeline, tick e configurazioni non vengano mutati.
-
-### EVIDENCE-001 — `selectionId` obbligatorio ancora non applicato
-
-**Classificazione:** `BUG CONFERMATO RISPETTO A DECISIONE APPROVATA`
-**Stato:** `APPROVATO; IMPLEMENTAZIONE MANCANTE`
-**Priorità:** alta
-**Area:** Field → Market e confronti runner temporali
-
-`DEC-010` stabilisce già:
-
-```txt
-selectionId mancante
-→ nessun fallback sul nome
-→ runner non confrontabile
-→ ramo degradato con reason
-```
-
-Nel ramo Field → Market il codice usa ancora il nome quando il runner baseline non possiede `selectionId`.
-
-Il fallback non blocca Start, tracking, Source Identity o dashboard, ma può confrontare come stesso runner due entità identificate soltanto da una label testuale.
-
-#### Decisione approvata nel Punto 5
-
-La regola viene estesa a ogni confronto temporale dello stesso runner Betfair:
-
-```txt
-baseline runner ↔ latest runner
-→ selectionId obbligatorio
-```
-
-Il nome resta consentito per:
-
-- visualizzazione;
-- reason diagnostiche;
-- matching Source Identity nel proprio dominio;
-
-ma non come identità temporale del runner Exchange.
-
-Se manca l’ID:
-
-```txt
-comparisonStatus: runner_identity_unavailable
-runnerPriceChanges: unavailable
-reason: runner_selection_id_unavailable
-```
-
-Il resto dello snapshot resta disponibile secondo la propria qualità.
-
-### EVIDENCE-002 — Tick degradati o `status-only` usati come nuovi eventi
-
-**Classificazione:** `BUG CONFERMATO`
 **Stato:** `CORREZIONE APPROVATA`
-**Priorità:** critica
-**Area:** Significant Flow, Market Reactions e tick Graph login
 
-Il builder sospende Market Reactions per:
+I tick `statusOnlyGraphLogin` restano nella timeline per health e diagnostica, ma non possono:
 
-```txt
-Source Identity non aligned
-persistence incomplete
-```
+- creare un nuovo Significant Flow;
+- diventare un nuovo source market event;
+- aggiornare baseline algoritmiche;
+- creare una nuova Market Reaction.
 
-ma non applica un filtro equivalente per:
+### EVIDENCE-003 — Attività matched distinta da risposta
 
-- Betfair stale;
-- Graph health non `ok`;
-- ladder non affidabile;
-- flow non affidabile;
-- book degradato;
-- acquisition skew eccessivo;
-- tick `statusOnlyGraphLogin`.
-
-Il tick `status-only` conserva intenzionalmente market e runner dell’ultimo snapshot canonico per mostrare health e diagnostica dopo un problema Graph login.
-
-Questa conservazione è corretta per la timeline, ma il nuovo tick possiede un nuovo timestamp e può ripresentare:
-
-```txt
-runner
-prezzi
-moneyFlow
-matched data precedenti
-```
-
-come se fossero una nuova attività Exchange.
-
-#### Scenario
-
-```txt
-tick reale con flow significativo
-→ Graph login richiesto
-→ tick status-only copia il precedente
-→ nuovo timestamp
-→ detector Significant Flow rilegge lo stesso flow
-→ nuovo sourceMarketEvent possibile
-```
-
-#### Decisione approvata
-
-I tick `status-only` restano nella timeline per health, ma:
-
-```txt
-status-only
-→ non genera Significant Flow
-→ non diventa sourceMarketEvent
-→ non aggiorna baseline algoritmica
-→ non crea Market Reaction nuova
-```
-
-Market Reactions deve usare una eligibility tecnica esplicita e non soltanto Source Identity/persistence.
-
-### EVIDENCE-003 — Attività matched generica classificata come risposta del mercato
-
-**Classificazione:** `BUG SEMANTICO CONFERMATO`
 **Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
-**Area:** Field → Market
-
-Il ramo usa oggi:
-
-```txt
-priceChangeObserved
-oppure
-market totalMatched aumentato
-→ marketResponseObserved:true
-```
-
-Un aumento di `market.totalMatched` dimostra soltanto che sono avvenuti scambi nel mercato. Non dimostra:
-
-- movimento del runner collegato;
-- variazione significativa;
-- attività sul runner identificato;
-- risposta al marker;
-- direzione;
-- causalità.
-
-#### Decisione approvata
 
 Separare:
 
 ```txt
 marketActivityObserved
-→ attività matched generale successiva all’anchor
-
 runnerPriceChangeObserved
-→ prezzo comparabile dello stesso selectionId cambiato
-
 runnerVolumeChangeObserved
-→ volume reale dello stesso selectionId aumentato
-
 qualifiedMarketObservation
-→ osservazione che supera identity, temporal e quality gate
 ```
 
-La label pubblica non deve chiamare “risposta del mercato” la sola attività matched generica.
+L’aumento del solo `market.totalMatched` non viene chiamato risposta del mercato.
 
-`marketResponseObserved` può essere rimosso oppure mantenuto soltanto come alias compatibile, documentato come non causale e non qualificato finché non soddisfa i nuovi gate.
+### EVIDENCE-004 — Marker presente distinto da transizione
 
-### EVIDENCE-004 — Presenza di un marker confusa con comparsa successiva
-
-**Classificazione:** `BUG CONFERMATO`
 **Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
-**Area:** Market → Field
-
-Il ramo considera osservato un field event quando, in una finestra successiva al flow:
-
-```txt
-esiste un marker rilevante
-oppure
-lo score differisce dalla baseline
-```
-
-Non verifica sempre che il marker sia comparso dopo il source market event.
-
-#### Scenario
-
-```txt
-DEUCE già attivo prima del flow
-→ tick successivo ancora DEUCE
-→ nessuna transizione
-→ marker trovato nella finestra
-→ fieldEventObservedAfterFlow:true
-```
-
-La presenza successiva non è equivalente a una nuova comparsa.
-
-#### Decisione approvata
 
 Separare:
 
@@ -3795,60 +3545,13 @@ markerTransitionObservedAfterSource
 scoreTransitionObservedAfterSource
 ```
 
-Un nuovo field event richiede:
+La persistenza dello stesso marker non costituisce un nuovo evento.
 
-```txt
-stateFirstSeenAt > sourceMarketEvent.timestamp
-oppure
-baseline state != primo stato post-source
-```
+### EVIDENCE-005 — Provenance e alignment temporale
 
-La persistenza dello stesso marker resta un dato di contesto, non un nuovo evento.
+**Stato:** `IMPL-022 APPROVATA`
 
-### EVIDENCE-005 — Alignment e freshness non misurano il vero rapporto temporale
-
-**Classificazione:** `BUG CONFERMATO + LIMITE NOTO`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
-**Area:** alignment, timestamp e acquisition provenance
-
-`buildAlignment()` calcola:
-
-```txt
-sofaAgeSec
-betfairAgeSec
-maxTickGapSec = max(sofaAgeSec, betfairAgeSec)
-```
-
-Il campo `maxTickGapSec` non misura la distanza fra le fonti.
-
-Il vero source skew è:
-
-```txt
-abs(sofaTimestamp - betfairTimestamp)
-```
-
-Inoltre una sola fonte recente può oggi produrre `alignmentQuality:medium`, anche se non esiste un confronto cross-source.
-
-#### Timestamp futuri
-
-L’età viene clampata a zero:
-
-```txt
-Math.max(0, now - timestamp)
-```
-
-Un timestamp futuro può apparire come dato perfettamente fresco invece di produrre clock skew.
-
-#### Timestamp di registrazione
-
-Il tick Betfair canonico usa il momento di costruzione Node come timestamp principale. Non dimostra il momento effettivo in cui Market API e Graph sono stati acquisiti.
-
-Questo limite si collega a `IMPL-018` del Punto 3.
-
-#### Decisione approvata
-
-Distinguere almeno:
+Distinguere:
 
 ```txt
 acquiredAt
@@ -3862,55 +3565,11 @@ baselineGapSec
 firstPostSourceGapSec
 ```
 
-Rinominare o rimuovere l’attuale `maxTickGapSec`; se mantenuto per compatibilità deve diventare chiaramente `maxSourceAgeSec`.
+Un timestamp futuro degrada la qualità; non viene trattato come freshness zero.
 
-Qualità cross-source:
+### EVIDENCE-006 — Source del prezzo e baseline bounded
 
-```txt
-good
-→ entrambe le fonti presenti
-→ acquisition timestamp validi
-→ freshness valida
-→ source skew entro soglia
-
-medium
-→ entrambe presenti ma skew/freshness degradati
-
-poor
-→ fonte assente, timestamp invalido/futuro o skew eccessivo
-```
-
-### EVIDENCE-006 — Confronti prezzo con source diverse e baseline non bounded
-
-**Classificazione:** `BUG DI QUALITÀ CONFERMATO`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
-**Area:** price comparison e anchor temporale
-
-Il prezzo comparabile può provenire da:
-
-```txt
-last traded price
-mid book
-best back
-best lay
-```
-
-Nel ramo Field → Market viene mantenuto soltanto il numero, non la sorgente.
-
-Scenario:
-
-```txt
-baseline LTP 1.80
-latest senza LTP, mid book 1.86
-→ delta +0.06
-```
-
-Il risultato mescola un movimento possibile con un cambio della fonte del prezzo.
-
-Inoltre la baseline è l’ultimo tick `<= anchor`, senza un limite esplicito sulla sua distanza dall’anchor.
-
-#### Decisione approvata
+**Stato:** `IMPL-024 APPROVATA`
 
 Ogni confronto espone:
 
@@ -3926,47 +3585,11 @@ comparisonStatus
 reasons
 ```
 
-Policy:
+### EVIDENCE-007 — Coverage runner
 
-```txt
-stessa source
-→ confronto normale
-
-source differente ma ammessa
-→ degraded con reason
-
-source non confrontabile
-→ price change unavailable
-
-baseline oltre soglia
-→ comparison unavailable/degraded
-```
-
-### EVIDENCE-007 — Qualità globale positiva con copertura parziale dei runner
-
-**Classificazione:** `BUG CONFERMATO`
 **Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
-**Area:** data quality e mercato tennis a due runner
 
-La qualità globale usa oggi condizioni del tipo:
-
-```txt
-almeno un runner con ladder affidabile
-→ ladderReliable:true
-
-almeno un runner con flow affidabile
-→ moneyFlowReliable:true
-
-almeno un runner con book two-sided
-→ marketTradable:true
-```
-
-In un mercato tennis a due runner, un solo runner completo può quindi rendere positivo un boolean globale mentre l’altro è assente o degradato.
-
-#### Decisione approvata
-
-Esporre copertura:
+La qualità globale espone la copertura dei due runner:
 
 ```txt
 expectedRunnerCount
@@ -3974,95 +3597,18 @@ identifiedRunnerCount
 tradableRunnerCount
 reliableLadderRunnerCount
 reliableFlowRunnerCount
-
-bookCoverage: complete | partial | none
-ladderCoverage: complete | partial | none
-flowCoverage: complete | partial | none
+bookCoverage
+ladderCoverage
+flowCoverage
 ```
 
-Per osservazioni che richiedono entrambi i runner:
+### EVIDENCE-008 — Significant Flow e cluster
 
-```txt
-complete
-→ utilizzabile
-
-partial
-→ degradata
-
-none
-→ unavailable
-```
-
-I boolean legacy possono essere mantenuti temporaneamente come derivati, senza nascondere la copertura.
-
-### EVIDENCE-008 — Baseline Significant Flow e cluster non sufficientemente definiti
-
-**Classificazione:** `LIMITE NOTO + MIGLIORIA UTILE`
 **Stato:** `POLICY APPROVATA`
-**Priorità:** medio-alta
-**Area:** Significant Flow
 
-#### Lookback effettivo incoerente
+La baseline relativa runner-specific usa lo stesso `selectionId`. I cluster richiedono gap temporale massimo, provenance dei tick, esclusione degli status-only e nessun doppio conteggio.
 
-Il detector dichiara:
-
-```txt
-lookbackTicks: 40
-```
-
-ma il loader Evidence passa al massimo gli ultimi 21 tick dell’epoch attivo.
-
-La configurazione esposta non corrisponde quindi sempre all’input realmente disponibile.
-
-#### Baseline relativa mescolata fra runner
-
-La mediana relativa viene calcolata su candidati precedenti di entrambi i runner, senza distinguere `selectionId`.
-
-Un flow del runner A può quindi essere confrontato con una baseline composta anche dal runner B.
-
-#### Cluster basati sui tick, non sul tempo
-
-I cluster usano tick consecutivi e `maxClusterTicks`, ma non impongono un `maxClusterGapSec`.
-
-Due tick consecutivi nel file ma lontani nel tempo possono essere uniti.
-
-Finestre scorrevoli possono inoltre riutilizzare gli stessi tick in cluster sovrapposti.
-
-#### Soglie non calibrate
-
-Le soglie correnti:
-
-```txt
-600 / 1200 / 2500 / 5000
-3x / 6x / 10x
-```
-
-sono euristiche hardcoded. Le label `notable`, `strong`, `very_strong`, `extreme` non derivano ancora da una calibrazione storica documentata.
-
-#### Decisione approvata
-
-Separare:
-
-```txt
-runnerRelativeMultiplier
-→ baseline dello stesso selectionId
-
-marketRelativeMultiplier
-→ baseline aggregata del mercato
-```
-
-I cluster richiedono:
-
-```txt
-selectionId obbligatorio
-maxClusterGapSec
-no status-only
-no tick degradati
-no sovrapposizione o doppio conteggio degli stessi tick
-provenance dei tick inclusi
-```
-
-Le soglie restano per ora:
+Le soglie correnti restano:
 
 ```txt
 heuristic
@@ -4072,31 +3618,9 @@ not calibrated
 not a signal
 ```
 
-La calibrazione appartiene al Punto 7 e a `IMPL-012/013`.
+### EVIDENCE-009 — Semantica degli stati
 
-### EVIDENCE-009 — `available`, stato finestra e risultato osservato sono ambigui
-
-**Classificazione:** `LIMITE SEMANTICO + DOCUMENTAZIONE MANCANTE`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** media
-**Area:** parent Market Reactions e branch state
-
-Significant Market Flow può restituire `available:true` quando i tick sono stati processati anche se:
-
-- nessun flow significativo è stato trovato;
-- non esiste source event;
-- Market → Field non è disponibile;
-- Field → Market non è disponibile.
-
-Il parent è `available:true` quando almeno un child dichiara availability, ma i child usano il campo con significati diversi.
-
-Anche le finestre non hanno uno stato uniforme:
-
-- Field → Market espone `windowClosed`;
-- Market → Field non espone lo stesso contratto;
-- una finestra da 240 secondi può essere mostrata dopo pochi secondi senza una label uniforme di provisionalità.
-
-#### Decisione approvata
+**Stato:** `IMPL-023 APPROVATA`
 
 Separare:
 
@@ -4108,767 +3632,124 @@ observationAvailable
 observationDetected
 provisional
 stale
-windowState: open | closed | insufficient_data | stale_source
+windowState
 ```
 
-Il top-level `available` deve avere un solo significato stabile, preferibilmente:
+### DOC-026 e DOC-027
 
-```txt
-almeno un ramo possiede un’osservazione presentabile
-```
-
-Il summary deve distinguere:
-
-```txt
-provisional
-final_for_window
-```
-
-### Riferimento audit a DOC-017 — Flusso di composizione Market Reactions
-
-**Classificazione:** `DOCUMENTAZIONE MANCANTE GIÀ REGISTRATA`
-**Stato:** `CONFERMATO; NON DUPLICARE`
-
-La documentazione afferma che Market Reactions consuma uno snapshot Evidence già costruito.
-
-Il flusso reale è:
-
-```txt
-Evidence builder
-→ seleziona tick scoped
-→ chiama Market Reactions
-→ inserisce il risultato nello snapshot finale
-```
-
-Il rilievo resta `DOC-017`; non viene creato un nuovo ID duplicato.
-
-### DOC-026 — Temporal provenance e policy di alignment non documentate
-
-**Classificazione:** `DOCUMENTAZIONE MANCANTE`
 **Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
 
-Il documento owner deve distinguere:
-
-```txt
-acquiredAt
-recordedAt
-freshness
-source skew
-pipeline delay
-future clock skew
-baseline gap
-first post-source gap
-observation window
-window open/closed
-```
-
-Deve inoltre spiegare:
-
-- quale timestamp governa la freshness;
-- quale timestamp governa l’anchor;
-- le soglie 10/30/60/120/180/240;
-- il comportamento con una fonte assente;
-- la differenza fra età del dato e gap fra le fonti.
-
-### DOC-027 — Availability, activity, response e threshold non documentati
-
-**Classificazione:** `DOCUMENTAZIONE MANCANTE`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** media-alta
-
-Definire esplicitamente:
-
-```txt
-detector eseguito
-input disponibile
-source event disponibile
-attività osservata
-variazione runner osservata
-osservazione qualificata
-finestra provvisoria
-finestra conclusa
-```
-
-Le soglie Significant Flow devono essere dichiarate:
-
-```txt
-provvisorie
-euristiche
-versionate
-non calibrate
-non operative
-```
+La documentazione owner deve spiegare provenance, alignment, finestre, availability, attività, osservazione qualificata e natura provvisoria delle soglie.
 
 ### Strutture risultanti
 
-#### Riferimento audit a IMPL-022 — Evidence temporal provenance and alignment policy
-
-Struttura owner di:
-
-- acquisition e recorded timestamp;
-- source skew;
-- pipeline delay;
-- future skew;
-- baseline e first-post gap;
-- stato finestre;
-- soglie temporali versionate.
-
-#### Riferimento audit a IMPL-023 — Market Reaction eligibility e branch state
-
-Struttura owner di:
-
-- eligibility tecnica dei tick;
-- esclusione `status-only` dagli eventi algoritmici;
-- stati uniformi dei rami;
-- distinzione activity/observation/response;
-- marker transition;
-- coverage;
-- Significant Flow e cluster policy.
-
-#### Riferimento audit a IMPL-024 — Runner temporal identity e price comparability
-
-Struttura owner di:
-
-- `selectionId` obbligatorio;
-- assenza di fallback nome;
-- source del prezzo;
-- comparabilità;
-- baseline gap;
-- reason e stato del confronto.
-
-Le specifiche complete sono registrate in `06-implementazioni-proposte.md`.
-
-### Test mancanti
-
-#### TEST-031 — `status-only` non crea Market Reaction
-
 ```txt
-tick reale con flow
-→ status-only Graph login
-→ health preservata
-→ nessun nuovo Significant Flow/sourceMarketEvent
-```
-
-#### TEST-032 — Eligibility tecnica Market Reactions
-
-```txt
-Graph degradato / ladder non affidabile / tick stale / acquisition skew
-→ timeline preservata
-→ ramo degraded/unavailable
-```
-
-#### TEST-033 — `selectionId` obbligatorio
-
-```txt
-runner senza selectionId
-→ nessun fallback nome
-→ reason esplicita
-→ resto snapshot invariato
-```
-
-#### TEST-034 — Attività matched distinta da response
-
-```txt
-solo market totalMatched aumenta
-→ marketActivityObserved:true
-→ runnerPriceChangeObserved:false
-→ qualifiedMarketObservation:false
-```
-
-#### TEST-035 — Marker presente distinto da marker nuovo
-
-```txt
-stesso marker prima e dopo source flow
-→ markerPresentAfterSource:true
-→ markerTransitionObservedAfterSource:false
-```
-
-#### TEST-036 — Source prezzo non comparabile
-
-```txt
-LTP → mid o back → lay
-→ confronto degraded/unavailable
-→ source esposte
-```
-
-#### TEST-037 — Baseline troppo lontana
-
-```txt
-baseline gap oltre soglia
-→ gap esposto
-→ qualità degradata
-→ nessun confronto affidabile
-```
-
-#### TEST-038 — Coverage parziale runner
-
-```txt
-un runner completo, uno degradato
-→ coverage partial
-→ nessun complete globale falso
-```
-
-#### TEST-039 — Timestamp, acquisition e clock skew
-
-```txt
-timestamp futuro
-recordedAt diverso da acquiredAt
-source skew elevato
-→ freshness/alignment degradati correttamente
-```
-
-#### TEST-040 — Baseline Significant Flow per `selectionId`
-
-```txt
-runner A
-→ non usa flow runner B nella baseline runner-specific
-```
-
-#### TEST-041 — Cluster temporali non sovrapposti
-
-```txt
-tick consecutivi ma distanti
-→ non uniti
-
-tick già assegnato
-→ non doppio conteggio in cluster sovrapposti
-```
-
-#### TEST-042 — Availability semantica
-
-```txt
-detector computed
-+ nessuna osservazione
-→ computed:true
-→ observationAvailable:false
-→ top-level coerente
-```
-
-#### TEST-043 — Finestre open/closed
-
-```txt
-finestra non conclusa
-→ provisional/open
-
-finestra conclusa
-→ final_for_window/closed
-```
-
-### Decisioni approvate
-
-1. i tick `status-only` restano nella timeline per health ma non generano nuovi Significant Flow o source event;
-2. Market Reactions usa una eligibility tecnica esplicita;
-3. applicare `DEC-010` senza fallback nome nel ramo Field → Market;
-4. estendere `selectionId` obbligatorio a tutti i confronti temporali dello stesso runner Betfair;
-5. separare attività matched generale, variazione runner e osservazione qualificata;
-6. un marker già presente prima del flow non è un nuovo evento successivo;
-7. separare età delle fonti e source skew reale;
-8. timestamp futuri producono degradazione clock-skew e non freshness zero;
-9. conservare e confrontare la sorgente del prezzo;
-10. introdurre un limite massimo baseline→anchor;
-11. la qualità globale espone copertura esplicita dei due runner;
-12. baseline Significant Flow per `selectionId`, con baseline mercato separata;
-13. cluster con gap temporale massimo, provenance e nessun doppio conteggio;
-14. soglie correnti provvisorie, versionate e non calibrate fino al Punto 7;
-15. separare `computed`, `available`, `observed`, `provisional` e `stale`;
-16. mantenere invariati `causalityClaimed:false` e `temporal_proximity_only`.
-
-### Ordine tecnico risultante
-
-```txt
-IMPL-018
-→ acquisition envelope Betfair
-
 IMPL-022
-→ temporal provenance e alignment policy
-
-IMPL-024
-→ runner identity e price comparability
+→ Evidence temporal provenance and alignment policy
 
 IMPL-023
-→ eligibility e branch state Market Reactions
+→ Market Reaction eligibility e branch state
 
-TEST-031…043
-→ fixture/replay IMPL-012
-→ baseline e calibrazione IMPL-013
-→ Punto 6 Frontend
-→ Punto 7 test e strutture mancanti
+IMPL-024
+→ Runner temporal identity e price comparability
 ```
 
+### Test registrati
 
+```txt
+TEST-031 → status-only non crea Market Reaction
+TEST-032 → eligibility tecnica
+TEST-033 → selectionId obbligatorio
+TEST-034 → attività matched distinta da observation
+TEST-035 → marker presente distinto da transition
+TEST-036 → price source non comparabile
+TEST-037 → baseline troppo lontana
+TEST-038 → coverage runner parziale
+TEST-039 → acquisition e clock skew
+TEST-040 → baseline flow per selectionId
+TEST-041 → cluster temporali non sovrapposti
+TEST-042 → availability semantica
+TEST-043 → finestre open/closed
+```
 
 ---
 
 ## 21. Secondo audit del codice — Punto 6: Frontend
 
-**Baseline:** `9205b5a789a40203c48ba19f8e3397fd0cec9707`
+**Baseline storica del checkpoint:** `9205b5a789a40203c48ba19f8e3397fd0cec9707`  
 **Stato:** `COMPLETATO E APPROVATO`
 
-### Perimetro letto
+### Parti solide
 
-Sono stati verificati:
+- un solo poller Evidence globale;
+- Source Identity live distinta da Evidence;
+- health Betfair backend-owned;
+- Money Flow associato tramite `selectionId`;
+- gli hook Gate ed Evidence possiedono già request identity e abort.
 
-```txt
-frontend/src/App.jsx
-frontend/src/main.jsx
-frontend/src/index.css
+### FRONTEND-001 — Risposte tardive o fuori ordine
 
-frontend/src/hooks/useAnalysisSessionState.js
-frontend/src/hooks/useLiveTrackingActions.js
-frontend/src/hooks/useDashboardBootstrapState.js
-frontend/src/hooks/useDashboardViewModel.js
-frontend/src/hooks/useMatchPolling.js
-frontend/src/hooks/useBetfairJson.js
-frontend/src/hooks/useMarketReactionEvidence.js
-frontend/src/hooks/useSourceIdentityGateStatus.js
-frontend/src/hooks/useSourceIdentityGateUi.js
-frontend/src/hooks/usePreflightChecks.js
-frontend/src/hooks/useBetfairHealthAlerts.js
-frontend/src/hooks/useBetfairLoginAction.js
+**Stato:** `CONFERMATO; PRIORITÀ CRITICA`
 
-frontend/src/services/liveSessionApi.js
-frontend/src/utils/analysisSessionState.js
-frontend/src/utils/liveSessionRequests.js
-frontend/src/utils/preflight.js
-frontend/src/utils/dashboardConnections.js
-frontend/src/utils/sourceIdentityGatePresentation.js
-frontend/src/types/dashboard.js
+SofaScore e Betfair devono usare `trackingSessionId`, request ID, `AbortController`, single-active-request e guard prima di ogni `setState`.
 
-frontend/src/components/StartAnalysisPanel.jsx
-frontend/src/components/DashboardWorkspace.jsx
-frontend/src/components/Sidebar.jsx
-frontend/src/components/TopBar.jsx
-frontend/src/components/OverviewDashboard.jsx
-frontend/src/components/BetfairDepthCard.jsx
-frontend/src/components/MarketReactionsPage.jsx
-frontend/src/components/SourceIdentityGateIndicator.jsx
-frontend/src/components/SourceIdentityGateToast.jsx
-frontend/src/components/TotManualInputPlaceholder.jsx
-frontend/src/components/LayTheWinner.jsx
-frontend/src/components/BancaServizio.jsx
-frontend/src/components/Superbreak.jsx
-frontend/src/components/marketReactions/FieldLedReactionCard.jsx
-frontend/src/components/marketReactions/MarketLedObservationCard.jsx
-frontend/src/components/marketReactions/SourceIdentityConfirmationModal.jsx
-frontend/src/components/marketReactions/SourceIdentityControls.jsx
+### FRONTEND-002 — Integrity scartata prima della UI
 
-frontend/src/hooks/useMatchPolling.test.mjs
-frontend/src/hooks/useBetfairJson.test.mjs
-frontend/src/utils/dashboardConnections.test.mjs
-frontend/package.json
+**Stato:** `CONFERMATO; IMPL-009 NECESSARIA`
 
-backend/src/routes/match.js
-backend/src/routes/match/trackingResponses.js
-backend/src/routes/match/sourceIdentityStatusResponse.js
-backend/src/sofa/extractEventId.js
-backend/src/sofa/betfairHealth/statusClassification.js
-
-docs/tennis-decision-ui/modules/frontend/01-session-shell.mdx
-docs/tennis-decision-ui/modules/frontend/02-live-polling-and-view-model.mdx
-docs/tennis-decision-ui/modules/frontend/03-betfair-and-market-reactions-ui.mdx
-```
-
-L’analisi è statica. Build, test e collaudi responsive non sono stati eseguiti.
-
-### Classificazione usata
-
-Per ogni rilievo sono stati distinti:
+L’integrity SofaScore, Betfair ed Evidence deve raggiungere:
 
 ```txt
-bug confermato
-limite noto
-miglioria utile
-documentazione mancante
-struttura completamente assente
-nessuna azione necessaria
-decisione dell’utente richiesta
+card locale
++
+indicatore globale sidebar
++
+modale di dettaglio
 ```
 
-Le decisioni proposte sono state approvate integralmente dall’utente.
+L’ultimo snapshot può restare visibile soltanto come `last_verified`, `frozen` o `degraded`.
 
-### Parti solide — nessuna azione necessaria
+### FRONTEND-003 — Start fallito
 
-#### Ownership Evidence globale
+**Stato:** `CONFERMATO; PRIORITÀ CRITICA`
 
-`App.jsx` monta una sola istanza di `useMarketReactionEvidence(...)` e passa il risultato a `MarketReactionsPage`.
+Uno Start non accettato deve invalidare la sessione richiesta, fermare i poller, abortire le request e conservare soltanto gli input del form.
 
-La pagina:
+### FRONTEND-005 — Loop orfani
 
-- non crea un secondo poller;
-- non avvia tracking;
-- non conferma Source Identity;
-- non scrive timeline o journal.
+**Stato:** `CONFERMATO`
 
-Questo ownership deve essere preservato.
+Il cleanup deve impedire alla vecchia closure di programmare un nuovo timeout dopo la conclusione di una fetch.
 
-#### Polling Gate ed Evidence già protetti
+### FRONTEND-006 — Start/Stop concorrenti
 
-`useSourceIdentityGateStatus(...)` e `useMarketReactionEvidence(...)` possiedono già gran parte del modello corretto:
+**Stato:** `CONFERMATO`
 
-```txt
-session generation
-requestId monotono
-AbortController
-una fetch attiva per sessione
-controllo prima di setState
-cleanup timeout
-```
+I comandi richiedono single-flight, `commandId`, stato pending e invalidazione delle risposte precedenti.
 
-Questi hook diventano il riferimento da generalizzare, non un’eccezione isolata.
+### FRONTEND-007 — Stop statico incompleto
 
-#### Source Identity globale distinta da Evidence
+**Stato:** `CONFERMATO`
 
-Lo stato Source Identity globale deriva da:
+Stop Live Tracking deve sospendere SofaScore, Betfair, Evidence, Gate e audio, conservando l’ultimo snapshot come statico.
 
-```txt
-GET /api/match/:eventId/source-identity-status
-```
+### FRONTEND-008 — Falsi indicatori live
 
-Non viene ricostruito dal Match Evidence Snapshot.
-
-La separazione tra:
-
-```txt
-Source Identity live
-Evidence read-only
-persistence integrity
-Betfair health
-```
-
-è corretta e deve restare esplicita.
-
-#### Health Betfair backend-owned
-
-Il frontend riceve lo stato health già classificato dal backend.
-
-`useBetfairHealthAlerts(...)` può gestire:
-
-- transizioni;
-- toast;
-- audio;
-
-ma non deve cambiare il significato di `green`, `yellow`, `red`, `finished` o `unknown`.
-
-#### Money Flow associato tramite `selectionId`
-
-`BetfairDepthCard.jsx` associa history e runner attraverso `selectionId` stringificato.
-
-Il nome resta una label e non viene usato come identità temporale della serie.
-
-### Ampliamento finale collegato a FRONTEND-001 — Response tardive e fuori ordine attraversano la sessione
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
-
-`useMatchPolling(...)` e `useBetfairJson(...)` non possiedono:
-
-```txt
-trackingSessionId
-session generation
-requestId
-AbortController
-single-active-request lock
-guard prima di ogni setState
-```
-
-Una richiesta della sessione A può completarsi dopo Start B e aggiornare:
-
-- snapshot SofaScore;
-- dati Betfair;
-- health;
-- Money Flow history;
-- integrity;
-- timestamp;
-- errori;
-- server status.
-
-Due richieste della stessa sessione possono anche completarsi fuori ordine e permettere al payload più vecchio di sovrascrivere quello più recente.
-
-#### Conferma Source Identity tardiva
-
-La conferma usa una closure con `eventId`, ma non riceve né verifica `trackingSessionId`.
-
-Una conferma A in flight può completarsi dopo Start B e avviare un refresh non più appartenente al contesto che l’ha generata.
-
-#### EventId duplicato
-
-Dopo Start, il frontend ricalcola `eventId` dalla URL confermata e ignora l’`eventId` restituito dal backend.
-
-La sessione accettata deve usare soltanto l’identità restituita da Start.
-
-### Ampliamento collegato a FRONTEND-002 — Persistence integrity raccolta ma scartata prima della UI
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
-
-Gli hook SofaScore e Betfair conservano `integrity`, ma `App.jsx` non la estrae né la passa ai consumer.
-
-`useMarketReactionEvidence(...)` conserva soltanto:
-
-```txt
-payload.latest.marketReactionEvidence
-```
-
-e perde:
-
-```txt
-integrity top-level
-sources
-dataQuality complessiva
-metadata dello snapshot
-```
-
-`useDashboardViewModel(...)` non riceve le integrity e non produce uno stato persistence.
-
-Mancano quindi:
-
-- stato locale SofaScore;
-- stato locale Betfair;
-- stato locale Market Reactions;
-- indicatore globale in fondo alla sidebar;
-- modale persistence;
-- rappresentazione distinta di `partial_persistence`, `recovery_failed` e futuro `integrity_unknown`.
-
-#### Ultimo dato su `409`
-
-Quando il polling SofaScore riceve `409`, azzera `backendData`, ma `dashboardData` resta invariato perché il view model aggiorna il proprio stato soltanto con un input truthy.
-
-L’ultimo snapshot può restare visibile, ma deve essere marcato esplicitamente:
-
-```txt
-last_verified
-frozen
-degraded
-```
-
-Non deve sembrare un dato live corrente.
-
-### Ampliamento finale collegato a FRONTEND-003 — Start fallito lascia sessione e poller nascosti
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
-
-Il frontend esegue prima:
-
-```txt
-applySearchSession
-sessionShellVisible = true
-trackingStopped = false
-beginDashboardBootstrap
-```
-
-poi attende `POST /api/match/track`.
-
-Il cambio della configurazione confermata può quindi attivare i poller prima che il backend abbia accettato lo Start.
-
-Se Start fallisce, il codice:
-
-```txt
-resetDashboardBootstrap
-sessionShellVisible = false
-```
-
-ma non:
-
-- cancella la sessione confermata;
-- ferma Betfair ed Evidence;
-- invalida il comando Start;
-- abortisce le request in flight;
-- resetta tutti i dati transitori;
-- espone un errore Start specifico;
-- esegue cleanup compensativo quando la risposta è ambigua.
-
-`sofaError` appartiene al polling timeline e non rappresenta l’errore di `POST /track`.
-
-### FRONTEND-005 — I vecchi loop possono ricrearsi dopo cleanup
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
-
-I loop SofaScore e Betfair seguono:
-
-```txt
-await fetchData
-→ setTimeout(loop)
-```
-
-Se cleanup o cambio sessione avvengono durante la fetch, il timeout noto viene cancellato, ma la vecchia closure può completare e programmarne uno nuovo.
-
-Il ref `shouldPoll` è condiviso dal vecchio e dal nuovo loop. Un nuovo Start che lo riporta a `true` può riattivare anche una closure precedente.
-
-`React.StrictMode` aumenta la necessità di una cleanup idempotente perché in sviluppo monta, pulisce e rimonta gli effect.
-
-### FRONTEND-006 — Start e Stop concorrenti non serializzati
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** alta
-
-Il pulsante Start è disabilitato tramite `sofaLoading`, che appartiene al polling SofaScore e non al comando Start.
-
-Mancano:
-
-```txt
-startPending
-commandId
-single-flight Start
-deduplicazione
-invalidazione comando precedente
-```
-
-Anche Stop può essere richiamato più volte mentre la prima richiesta è ancora in corso.
-
-### FRONTEND-007 — Stop Live Tracking non crea una modalità statica reale
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
-
-Dopo Stop il frontend esegue soltanto:
-
-```txt
-stopSofaPolling
-trackingStopped = true
-```
-
-Restano attivi:
-
-- polling Betfair;
-- polling Evidence;
-- polling Source Identity Gate;
-- refresh manuale Market Reactions;
-- eventuale audio Betfair.
-
-La modalità statica approvata deve significare:
-
-```txt
-tutti i poller sospesi
-request in flight abortite
-nessun nuovo setState live
-ultimo snapshot verificato conservato
-refresh live disabilitato
-audio fermato
-```
-
-Inoltre la UI interpreta `ok:true` come Stop completo senza esporre cleanup parziale, `remaining` o errori Python.
-
-### FRONTEND-008 — Indicatori live derivati dalla presenza del dato
-
-**Classificazione:** `BUG CONFERMATO`
 **Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
 
-`dashboardConnections.js` considera SofaScore connected quando esiste `backendData`, senza conoscere:
+Le label live/connected/polling active derivano dalla state machine, non dalla sola presenza del dato.
 
-- stato della sessione;
-- Stop;
-- integrity;
-- snapshot frozen;
-- cleanup parziale.
+### FRONTEND-009 — Market Reactions UI
 
-La sidebar mostra quasi sempre `Live Engine Active` o `Dashboard engine active` usando principalmente la health Betfair.
+**Stato:** `IMPL-027 APPROVATA`
 
-La TopBar mantiene un pallino verde globale animato e assegna lo stile attivo anche a badge come:
+Le card devono rispettare `available:false`, lo schema backend reale, qualità, reason e stato provvisorio.
 
-```txt
-BACKEND: ERR
-POLLING: OFF
-```
+### FRONTEND-010 — Pending modal non context-scoped
 
-La card Betfair può mostrare `Polling active (5s)` senza ricevere `isPolling` o `trackingStopped`.
-
-#### Decisione approvata
-
-Ogni indicatore deriva dalla stessa state machine della sessione.
-
-La semplice presenza dell’ultimo dato non autorizza le label:
-
-```txt
-live
-connected
-polling active
-engine active
-```
-
-### FRONTEND-009 — Market Reactions UI promuove rami unavailable e usa campi errati
-
-**Classificazione:** `BUG CONFERMATO`
 **Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
 
-Le card usano:
-
-```jsx
-<AvailabilityBadge available={!!evidence} />
-```
-
-Il backend può però restituire un oggetto completo con:
-
-```txt
-available:false
-```
-
-L’oggetto viene quindi mostrato erroneamente come disponibile.
-
-La card Exchange → Field cerca:
-
-```txt
-runnerName
-amount
-tier
-flowClassification
-```
-
-mentre il contratto backend usa:
-
-```txt
-runner
-observedFlowAmount
-absoluteFlowTier
-interpretation
-```
-
-Altri problemi:
-
-- `causalityClaimed` cercato nel livello sbagliato;
-- array eventi passato a formatter numerico;
-- `not observed` usato anche per unavailable, insufficient data o finestra aperta;
-- schema vecchio non compatibile con le decisioni del Punto 5.
-
-### FRONTEND-010 — Modale pending non legata al vero contesto Source Identity
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
-
-La pending key contiene soltanto:
-
-```txt
-eventId
-nomi SofaScore
-nomi Betfair
-```
-
-Non contiene:
-
-```txt
-trackingSessionId
-marketId
-epoch signature
-selectionIds
-context revision
-```
-
-Un nuovo epoch con gli stessi nomi può quindi non riaprire automaticamente la modale.
-
-#### Decisione approvata
-
-Lo status gate deve esporre un’identità opaca e pubblica del contesto:
+Il gate espone un’identità opaca:
 
 ```txt
 trackingSessionId
@@ -4876,1156 +3757,88 @@ sourceIdentityContextId
 sourceIdentityRevision
 ```
 
-La UI non ha bisogno di URL o payload sensibili.
+### FRONTEND-011 — Preflight non legato agli input
 
-### FRONTEND-011 — Risultati Preflight non legati agli input verificati
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** medio-alta
-
-I check non possiedono:
-
-```txt
-input fingerprint
-requestId
-AbortController
-invalidazione al cambio campo
-```
-
-Una risposta riferita alla URL A può diventare il risultato verde mostrato accanto alla URL B.
-
-Anche modificare un input dopo un check completato non riporta il relativo stato a `idle` o `stale`.
-
-#### Decisione approvata
-
-Ogni risultato Preflight conserva:
-
-```txt
-inputFingerprint
-checkedAt
-requestId
-status
-```
-
-Qualsiasi modifica dell’input invalida il risultato precedente.
-
-### FRONTEND-012 — Layout responsive strutturalmente assente
-
-**Classificazione:** `LIMITE NOTO + STRUTTURA ASSENTE`
-**Stato:** `TASK SEPARATA CONFERMATA`
-**Priorità:** dopo la robustezza
-
-Sono presenti:
-
-```txt
-sidebar fissa w-64
-root overflow-hidden
-TopBar orizzontale non comprimibile
-dashboardGrid sempre a due colonne
-h-screen rigido
-nessuna navigazione mobile
-```
-
-La correzione responsive resta separata secondo `DEC-017`.
-
-Non deve essere inclusa nella stessa task di:
-
-- session authority;
-- polling;
-- integrity;
-- cleanup Strategy;
-- Market Reactions contract.
-
-### Cleanup legacy confermato
-
-#### Strategy UI
-
-Restano montate e raggiungibili:
-
-```txt
-Lay the Winner
-Banca Servizio
-Superbreak
-```
-
-`LayTheWinner` effettua polling verso `http://localhost:3001`.
-
-Le altre due viste mostrano valori statici come:
-
-```txt
-Monitoring
-Medium
-High
-92%
-```
-
-Non devono essere corrette. Devono essere rimosse secondo `CODE-001` e `DEC-008`, preservando Market Reactions.
-
-#### Source Identity authority legacy
-
-`useMarketReactionEvidence(...)` esporta ancora metodi di conferma/revoca.
-
-`SourceIdentityControls.jsx` conserva una seconda UI legacy non montata.
-
-Dopo ultimo inventario dei consumer vanno rimossi:
-
-```txt
-confirmSourceIdentity
-revokeSourceIdentityConfirmation
-SourceIdentityControls
-utility e test esclusivi
-```
-
-L’autorità globale resta `useSourceIdentityGateUi(...)`.
-
-#### Mojibake
-
-Restano stringhe renderizzate come:
-
-```txt
-ModalitÃ
-âEUR”
-```
-
-La correzione è circoscritta e resta separata dal refactor sessione/polling.
-
-### Polling non necessario
-
-L’abilitazione dei poller non è centralizzata.
-
-Il polling Betfair può partire con un eventId anche quando Betfair non è configurato.
-
-Evidence continua a essere interrogata anche quando la vista Market Reactions non è aperta.
-
-Policy approvata:
-
-```txt
-Sofa
-→ sessione accettata e live
-
-Betfair
-→ sessione accettata, live e Betfair configurato
-
-Source Identity Gate
-→ sessione live con Betfair configurato
-
-Evidence
-→ sessione live e vista Market Reactions attiva
-→ fetch immediato all’ingresso
-
-stopped_static
-→ tutti disabilitati
-```
-
-### DOC-028 — Session shell contraddice la session authority approvata
-
-**Classificazione:** `DOCUMENTAZIONE ERRATA`
 **Stato:** `CORREZIONE APPROVATA`
 
-`01-session-shell.mdx` descrive come comportamento da preservare:
+Ogni risultato conserva fingerprint, request ID e timestamp. La modifica dell’input invalida il risultato precedente.
 
-```txt
-applySearchSession prima della risposta Start
-```
+### FRONTEND-012 — Responsive
 
-Documenta inoltre che Betfair, Evidence e Source Identity possono continuare a leggere dopo Stop.
+**Stato:** `TASK SEPARATA`
 
-Questi testi contraddicono `DEC-019`.
+Il responsive non amplia le task di session authority, polling, integrity o Market Reactions.
 
-### DOC-029 — Polling e view model descrivono funzioni non implementate
+### DOC-028, DOC-029 e DOC-030
 
-**Classificazione:** `DOCUMENTAZIONE PIÙ FORTE DEL CODICE`
 **Stato:** `CORREZIONE APPROVATA`
 
-`02-live-polling-and-view-model.mdx` dichiara già esistenti:
+I documenti frontend non devono descrivere come implementati session authority, polling protetto o integrity UI finché il relativo codice non esiste.
 
-- propagation Evidence completa;
-- adapter persistence;
-- view state integrity;
-- cleanup session-safe di tutti i poller.
-
-Il codice corrente non implementa questi contratti.
-
-### DOC-030 — UI Betfair e Market Reactions descritta come integrity-aware
-
-**Classificazione:** `DOCUMENTAZIONE PIÙ FORTE DEL CODICE`
-**Stato:** `CORREZIONE APPROVATA`
-
-`03-betfair-and-market-reactions-ui.mdx` assegna già a BetfairDepthCard e Market Reactions UI comportamenti integrity-aware che non sono collegati nel runtime attuale.
-
-I documenti vanno aggiornati dopo l’implementazione e non usati come prova del comportamento corrente.
-
-### Strutture completamente assenti
-
-#### Riferimento audit a IMPL-025 — Frontend live-session controller
-
-Owner unico di:
+### Strutture risultanti
 
 ```txt
-idle
-starting
-collecting
-pending_confirmation
-live
-stopping
-stopped_static
-stop_partial
-mismatch
-integrity_degraded
-error
-```
-
-Deve conservare:
-
-```txt
-trackingSessionId
-commandId
-eventId restituito dal backend
-requestedConfig
-acceptedConfig
-currentSnapshot
-lastVerifiedSnapshot
-snapshotMode
-startError
-stopResult
-```
-
-#### Riferimento audit a IMPL-026 — Polling runtime session-scoped
-
-Primitive condivisa da Sofa, Betfair, Evidence e Gate:
-
-```txt
-enabled
-sessionKey
-requestId
-AbortController
-single active request
-disposed
-schedule next after response
-retain policy
-expected HTTP classifier
-```
-
-#### Riferimento audit a IMPL-027 — Market Reactions frontend view model
-
-Adapter presentazionale che produce:
-
-```txt
-pageState
-marketLedCard
-fieldLedCard
-availability
-provisional
-quality
-reasons
-source event display
-windows display
-```
-
-Non deve ricalcolare Evidence.
-
-### Test mancanti
-
-#### TEST-044 — Start concorrenti e risposta tardiva
-
-```txt
-Start A in flight
-→ Start B
-→ risposta A ignorata
-→ soltanto B accettata
-```
-
-#### TEST-045 — Start fallito o ambiguo
-
-```txt
-sessione richiesta
-→ Start fallisce o risposta incerta
-→ sessione confermata rimossa
-→ poller fermi
-→ cleanup compensativo
-→ errore visibile
-```
-
-#### TEST-046 — Response vecchie o fuori ordine
-
-```txt
-Sofa/Betfair response vecchia
-→ nessun setState corrente
-```
-
-#### TEST-047 — Cleanup durante fetch
-
-```txt
-cleanup
-→ resolve fetch precedente
-→ nessun nuovo timeout
-```
-
-#### TEST-048 — Stop completo
-
-```txt
-Sofa/Betfair/Evidence/Gate sospesi
-→ ultimo dato frozen
-→ audio fermo
-```
-
-#### TEST-049 — Stop parziale
-
-```txt
-cleanup parziale
-→ UI non mostra completato
-→ detail pubblico bounded
-```
-
-#### TEST-050 — Persistence UI
-
-```txt
-partial/recovery_failed/integrity_unknown
-→ card locale
-→ indicatore globale
-→ modale
-→ ultimo dato degraded/frozen
-```
-
-#### TEST-051 — Identità sessione dalla risposta Start
-
-```txt
-eventId + trackingSessionId backend
-→ uniche authority dei poller
-```
-
-#### TEST-052 — Nuovo contesto Source Identity con stessi nomi
-
-```txt
-contextId cambia
-→ modale riaperta
-→ conferma vecchia ignorata
-```
-
-#### TEST-053 — Preflight input-bound
-
-```txt
-input cambia durante richiesta
-→ vecchio OK ignorato
-→ stato stale/idle
-```
-
-#### TEST-054 — Market Reactions unavailable
-
-```txt
-branch object presente
-+ available:false
-→ card unavailable
-```
-
-#### TEST-055 — Mapping schema Market Reactions reale
-
-```txt
-runner
-observedFlowAmount
-absoluteFlowTier
-interpretation
-→ campi mostrati correttamente
-```
-
-#### TEST-056 — Nessun falso stato live
-
-```txt
-stopped/waiting/polling off/integrity/unknown
-→ nessun verde o engine active falso
-```
-
-#### TEST-057 — Sessione Sofa-only
-
-```txt
-Betfair assente
-→ nessun polling Betfair/Gate non necessario
-```
-
-#### TEST-058 — StrictMode
-
-```txt
-mount/cleanup/remount
-→ una sola catena polling per sessione
-```
-
-#### TEST-059 — Responsive smoke
-
-```txt
-desktop/tablet/mobile
-→ navigazione, Stop, modali e contenuto raggiungibili
-```
-
-### Decisioni approvate
-
-1. implementare il lato frontend di `IMPL-006` attraverso `IMPL-025`;
-2. usare soltanto `eventId` e `trackingSessionId` restituiti dallo Start accettato;
-3. la shell può mostrare `starting`, ma i poller live partono soltanto dopo accettazione;
-4. Start fallito o ambiguo invalida la sessione e usa cleanup compensativo;
-5. tutti i poller adottano `IMPL-026`;
-6. Stop completo sospende tutti i poller e conserva lo snapshot frozen;
-7. Stop parziale resta visibile come parziale;
-8. Betfair polling parte soltanto quando Betfair è configurato;
-9. Evidence polling parte soltanto quando Market Reactions viene consumata;
-10. implementare `IMPL-009` con stato locale e globale;
-11. l’ultimo dato può restare visibile ma marcato `last_verified/frozen/degraded`;
-12. tutti gli indicatori derivano dalla state machine;
-13. Source Identity espone un context ID opaco e la UI pending è session/context scoped;
-14. rimuovere l’authority Source Identity legacy da Market Reactions;
-15. creare `IMPL-027` per il rendering Market Reactions;
-16. legare Preflight al fingerprint dell’input;
-17. rimuovere le tre viste Strategy senza correggerle;
-18. mojibake e piccole correzioni restano una task autonoma;
-19. responsive resta una task separata dopo la robustezza.
-
-### Ordine tecnico risultante
-
-```txt
-IMPL-006
-→ backend/session contract
-
 IMPL-025
-→ frontend live-session controller
+→ Frontend live-session controller
 
 IMPL-026
-→ polling runtime session-scoped
-
-IMPL-009
-→ persistence UI
+→ Polling runtime session-scoped
 
 IMPL-027
 → Market Reactions frontend view model
-
-TEST-044…058
-→ cleanup Strategy
-→ piccole correzioni/mojibake
-→ responsive + TEST-059
-→ Punto 7 test e strutture mancanti
 ```
 
+### Test registrati
+
+```txt
+TEST-044 → Start concorrenti
+TEST-045 → Start fallito o ambiguo
+TEST-046 → response vecchie/fuori ordine
+TEST-047 → cleanup durante fetch
+TEST-048 → Stop completo
+TEST-049 → Stop parziale
+TEST-050 → persistence UI
+TEST-051 → identity dalla risposta Start
+TEST-052 → nuovo Source Identity context
+TEST-053 → Preflight input-bound
+TEST-054 → branch available:false
+TEST-055 → mapping schema reale
+TEST-056 → nessun falso stato live
+TEST-057 → sessione Sofa-only
+TEST-058 → StrictMode
+TEST-059 → responsive smoke
+```
 
 ---
 
-## 22. Secondo audit del codice — Punto 7: Test e strutture mancanti
+## 22. Secondo audit del codice — Punto 7: test e strutture mancanti
 
-**Baseline:** `275008a5cd6451f24c6895068639ee3055395986`
+**Baseline storica del checkpoint:** `275008a5cd6451f24c6895068639ee3055395986`  
 **Stato:** `COMPLETATO E APPROVATO`
-
-### Perimetro letto
-
-Sono stati verificati:
-
-```txt
-backend/package.json
-frontend/package.json
-README.md
-.gitignore
-
-backend/src/server.js
-backend/src/server.test.mjs
-backend/src/sofa/matchHistory/commitId.test.mjs
-backend/src/sofa/matchEvidence/sourceIdentityConfirmation.test.mjs
-backend/src/routes/evidence/evidenceRoute.test.mjs
-
-launcher/tests/test_launcher.py
-scrapers/betfair/graph_url_test.py
-
-frontend/src/hooks/useMatchPolling.test.mjs
-frontend/src/hooks/useBetfairJson.test.mjs
-frontend/src/utils/dashboardConnections.test.mjs
-
-docs/tennis-decision-ui/operations/04-validation-and-rollback.mdx
-
-implementazioni-tennis-decision-ui.md
-todo-list-tennis-decision-ui.md
-implementazioni/03-audit-codice.md
-implementazioni/06-implementazioni-proposte.md
-implementazioni/99-decisioni-utente.md
-```
-
-Sono stati inoltre controllati sul commit corrente:
-
-```txt
-status check GitHub associati
-workflow run associati
-coerenza del diff del Punto 6
-```
-
-Esito:
-
-```txt
-nessun status check associato al commit
-nessun workflow run associato al commit
-suite non eseguite durante l’audit
-```
-
-L’assenza di status check non viene interpretata come failure del codice. Indica soltanto che la repository non possiede ancora una validazione automatica collegata al commit.
-
-### Classificazione usata
-
-Per ogni rilievo sono stati distinti:
-
-```txt
-bug confermato
-limite noto
-miglioria utile
-documentazione mancante
-struttura completamente assente
-nessuna azione necessaria
-decisione dell’utente richiesta
-```
-
-Le decisioni del Punto 7 sono state approvate integralmente dall’utente.
 
 ### Esito generale
 
-Il progetto possiede numerosi test utili, ma non possiede ancora un sistema unitario di validazione.
+Il progetto possiede test Node e Python utili, ma al checkpoint mancavano runner canonico, manifest eseguibile, profili, fixture catalogate, frontend interaction harness e result artifact uniformi.
 
-Esistono:
+### WORKFLOW-004 — Coerenza registri
 
-```txt
-test Node eseguiti come singoli file
-test Python unittest
-build frontend
-node --check
-py_compile / compileall
-smoke HTTP locali
-checklist manuali
-collaudi live documentati
-```
-
-Mancano:
-
-```txt
-runner canonico
-manifest eseguibile
-profili di esecuzione
-test map machine-checkable
-fixture catalogate
-frontend interaction harness
-timeout uniforme
-risultati machine-readable
-baseline ripetibili
-stato corrente per ogni TEST-ID
-```
-
-Non è quindi possibile dichiarare una percentuale di coverage attendibile o una suite completa passata allo SHA corrente.
-
-### Parti solide — nessuna azione distruttiva necessaria
-
-#### Test puri Node
-
-Molti moduli sono già costruiti con:
-
-```txt
-node:assert/strict
-dependency injection
-fake writer
-fake timer
-fake logger
-factory locali
-```
-
-`server.test.mjs` verifica, fra l’altro:
-
-- import senza `listen`;
-- recovery prima dell’apertura del listener;
-- recovery fatale;
-- shutdown idempotente;
-- health HTTP su porta dinamica;
-- redazione degli eventi runtime.
-
-Questi test devono essere registrati dal runner, non riscritti in massa.
-
-#### Isolamento corretto già presente
-
-Diversi test usano:
-
-```txt
-os.tmpdir / tempfile
-mkdtemp
-finally cleanup
-server HTTP in-process
-porta 0 o ricerca di porta libera
-mock subprocess
-ripristino delle variabili globali
-```
-
-Queste tecniche diventano convenzioni da riutilizzare.
-
-#### Python standard library
-
-I moduli Python puri sono già verificabili con `unittest`.
-
-Non è necessario migrare obbligatoriamente a pytest.
-
-#### Collaudi live separati
-
-Il runbook distingue già:
-
-```txt
-test automatico
-build/check
-smoke HTTP
-verifica browser
-collaudo live
-```
-
-La distinzione è corretta e deve restare esplicita.
-
-Un collaudo storico non diventa automaticamente un PASS corrente.
-
-### WORKFLOW-004 — I registri possono divergere durante gli aggiornamenti
-
-**Classificazione:** `BUG DOCUMENTALE CONFERMATO`
 **Stato:** `COMPLETATO`
-**Priorità:** alta per l’affidabilità del registro
 
-Dopo il Punto 6, i contenuti dettagliati erano presenti, ma nella Todo erano rimasti:
+`IMPL-005` controlla SHA, ultimo Punto, ultimo TEST-ID, ultimo IMPL-ID, decisioni e range sintetici. Gli owner duplicati sono stati normalizzati.
 
-```txt
-SHA corrente verificato del Punto 4
-range IMPL-001…024
-```
+### TEST-003 — Runner canonico
 
-mentre erano già stati approvati e inseriti:
+**Stato:** `IMPLEMENTATO NELLA PRIMA VERSIONE`
 
-```txt
-baseline Punto 6
-IMPL-025…027
-```
+La prima versione esegue ogni test legacy come child process separato e non include test live nel profilo predefinito.
 
-Questo non ha modificato il codice, ma dimostra che l’aggiornamento manuale dei cinque registri può lasciare intestazioni sintetiche incoerenti.
+### CODE-005 — Lint frontend
 
-#### Decisione approvata
+**Stato:** `CORREZIONE GRADUALE APPROVATA`
 
-Estendere `IMPL-005` per controllare:
+Un comando lint ufficiale deve essere realmente eseguibile oppure rimosso dalla superficie ufficiale. Il full lint non diventa gate prima di una baseline pulita.
 
-```txt
-SHA baseline dei cinque registri
-ultimo Punto completato
-ultimo TEST-ID
-ultimo IMPL-ID
-ultima DEC
-range sintetici
-prossimo punto
-stati incompatibili
-```
-
-Il controllo resta read-only e non modifica automaticamente i documenti.
-
-Le due incoerenze sono corrette nel checkpoint del Punto 7. `IMPL-005` è stata implementata, la baseline è stata eseguita e i 29 owner duplicati sono stati normalizzati con esito finale verde.
-
-### TEST-003 — Nessun inventario, manifest o comando test canonico
-
-**Classificazione:** `STRUTTURA COMPLETAMENTE ASSENTE`
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
-
-`backend/package.json` e `frontend/package.json` non espongono uno script `test`.
-
-Non esiste un package root che coordini:
-
-- backend Node;
-- frontend Node/build;
-- launcher Python;
-- scraper Python;
-- test persistence;
-- validazioni documentali.
-
-I test Node usano mini-runner differenti:
-
-```txt
-funzione test custom
-runTest custom
-contatori passed/failed
-process.exitCode
-throw finale
-console.log
-```
-
-Il runbook mantiene manualmente elenchi molto lunghi di file.
-
-#### Impatto
-
-- un test presente può non essere eseguito;
-- una rinomina può lasciare un comando obsoleto;
-- non esistono timeout uniformi;
-- non esiste output JSON comune;
-- non è possibile distinguere automaticamente suite minima, estesa, benchmark e live;
-- un test che modifica global state può contaminare un altro se aggregato ingenuamente nello stesso processo.
-
-#### Decisione approvata
-
-Creare `IMPL-028`.
-
-La prima versione del runner esegue ogni test legacy come child process separato, senza richiederne la riscrittura preventiva.
-
-### Ampliamento collegato a CODE-005 — Comando lint pubblicato ma non eseguibile
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** media
-
-`frontend/package.json` espone:
-
-```txt
-npm run lint
-```
-
-Il runbook ordina esplicitamente di non eseguirlo perché manca una configurazione ESLint utilizzabile.
-
-Nei percorsi standard controllati non risultano configurazioni ESLint frontend.
-
-#### Decisione approvata
-
-Non rendere immediatamente il full lint un gate obbligatorio.
-
-Sequenza:
-
-```txt
-configurazione minima realmente eseguibile
-→ fotografia degli errori esistenti
-→ lint mirato sui file modificati
-→ full lint soltanto dopo baseline pulita
-```
-
-Se non si intende configurarlo nella fase corrente, lo script viene rimosso dalla superficie ufficiale anziché lasciato apparentemente supportato.
-
-### Discovery Python non uniforme
-
-**Classificazione:** `BUG DELLA DISCOVERY`
-**Stato:** `CORREZIONE APPROVATA`
-
-Diversi test Python seguono il formato:
-
-```txt
-graph_url_test.py
-diagnostic_redaction_test.py
-cdp_url_test.py
-```
-
-La discovery standard di `unittest` cerca normalmente file `test*.py`.
-
-Il runner iniziale deve quindi enumerare esplicitamente i moduli correnti.
-
-La standardizzazione a `test_*.py` può avvenire gradualmente quando i file vengono modificati per altri motivi.
-
-Nessuna rinomina massiva è richiesta come prerequisito.
-
-### Isolamento filesystem non uniforme
-
-**Classificazione:** `BUG CONFERMATO IN ALMENO UN TEST`
-**Stato:** `CORREZIONE APPROVATA`
-
-`commitId.test.mjs` costruisce una directory sotto:
-
-```txt
-process.cwd()/virtual-commit-id-journal/
-```
-
-senza cleanup finale.
-
-La directory è esclusa da Git, ma questo nasconde l’accumulo invece di garantire isolamento.
-
-#### Regola approvata
-
-Ogni test che scrive usa:
-
-```txt
-fs.mkdtemp(os.tmpdir())
-oppure
-sandbox assegnata dal runner
-```
-
-con cleanup obbligatorio su successo e failure.
-
-Nessun test offline può usare:
-
-```txt
-backend/match_history
-backend/source_identity_confirmations.json
-cache runtime
-journal runtime
-profili Chrome
-dump diagnostici reali
-```
-
-### Test route non sempre end-to-end HTTP
-
-**Classificazione:** `LIMITE NOTO`
-**Stato:** `MIGLIORIA APPROVATA`
-
-Alcuni test estraggono direttamente gli handler da:
-
-```txt
-router.stack
-route.stack
-handler.handle
-```
-
-Questi test verificano bene il mapping locale, ma non coprono:
-
-- mount path reale;
-- middleware;
-- parsing Express;
-- content type;
-- serializzazione HTTP;
-- comportamento asincrono dell’app completa.
-
-#### Decisione approvata
-
-Preservare i test diretti come unit test.
-
-Per le route critiche aggiungere un harness HTTP reale:
-
-```txt
-createApp
-→ listen(0)
-→ fetch 127.0.0.1
-→ assert status/body/header
-→ close
-```
-
-### Copertura reale non misurabile
-
-**Classificazione:** `LIMITE NOTO E STRUTTURA ASSENTE`
-**Stato:** `CONFERMATO`
-
-Non esistono:
-
-```txt
-raccolta coverage
-comando canonico
-elenco completo dei test eseguiti
-ultimo esito associato allo SHA
-distinzione automatica test presente / test passato
-```
-
-I TEST-ID registrati rappresentano obblighi di verifica.
-
-Non implicano automaticamente che il relativo test:
-
-```txt
-esista
-sia stato eseguito
-sia passato
-sia stato osservato live
-```
-
-#### Stati approvati
-
-```txt
-planned
-implemented
-executed
-passed
-failed
-blocked
-live_observed
-not_applicable
-```
-
-Esempio:
-
-```txt
-TEST-048
-→ planned
-→ non ancora implemented
-→ non executed
-
-server.test.mjs / T02
-→ implemented
-→ ultimo esito corrente non noto in questo audit
-```
-
-Nessuna percentuale di coverage viene inserita nei registri senza uno strumento che la produca.
-
-### Frontend interaction harness assente
-
-**Classificazione:** `STRUTTURA COMPLETAMENTE ASSENTE`
-**Stato:** `IMPL-030 APPROVATA`
-**Priorità:** critica per le correzioni del Punto 6
-
-Il frontend dispone di Vite, React e script Node puri, ma non dispone di:
-
-```txt
-Vitest
-jsdom
-React Testing Library
-hook renderer
-fake timer frontend
-DOM assertions
-```
-
-I test correnti di hook verificano utility esportate e normalizzazioni, non montano realmente gli hook.
-
-Senza un harness di interazione non è possibile coprire adeguatamente:
-
-- StrictMode;
-- AbortController;
-- cambio sessione;
-- Stop e snapshot frozen;
-- response tardive;
-- modali;
-- indicatori;
-- responsive smoke.
-
-### Fixture non catalogate
-
-**Classificazione:** `STRUTTURA COMPLETAMENTE ASSENTE`
-**Stato:** `IMPL-029 APPROVATA`
-**Priorità:** alta
-
-Le fixture sono prevalentemente inline e specifiche del file.
-
-Questo è corretto per factory piccole, ma i contratti condivisi possono divergere fra test.
-
-#### Struttura approvata
-
-```txt
-test/
-├── fixtures/
-│   ├── sofa/
-│   ├── betfair/
-│   ├── evidence/
-│   ├── persistence/
-│   └── frontend/
-├── factories/
-├── manifests/
-└── schemas/
-```
-
-Ogni fixture persistita dichiara:
-
-```txt
-fixtureId
-schemaVersion
-kind
-origin: constructed | sanitized_capture
-redactionStatus
-expectedInvariants
-```
-
-Non sono ammessi:
-
-- cookie;
-- token;
-- profili;
-- path locali;
-- dump completi;
-- dati personali non necessari.
-
-Le factory piccole e locali restano accanto al test quando non rappresentano un contratto condiviso.
-
-### Result artifact machine-readable assente
-
-**Classificazione:** `STRUTTURA COMPLETAMENTE ASSENTE`
-**Stato:** `IMPL-031 APPROVATA`
-**Priorità:** alta
-
-Gli script stampano output umano, ma non producono un risultato uniforme associato allo SHA.
-
-#### Contratto approvato
-
-```txt
-test-results/
-└── <timestamp>-<sha>-<profile>.json
-```
-
-Campi minimi:
-
-```txt
-schemaVersion
-repositorySha
-profile
-startedAt
-durationMs
-environment
-commands
-passed
-failed
-skipped
-warnings
-limits
-perTestResults
-buildResult
-browserValidationStatus
-workingTreeStatus
-```
-
-L’artefatto non contiene:
-
-- stdout illimitato;
-- URL operative;
-- stack con segreti;
-- path sensibili;
-- payload reali.
-
-Il result JSON non sostituisce il report umano dell’esecutore né `fileModificati.md`.
-
-### Test map eseguibile
-
-**Classificazione:** `MIGLIORIA NECESSARIA`
-**Stato:** `ESTENSIONE IMPL-003 APPROVATA`
-
-La matrice test ↔ modulo ↔ documento deve essere alimentata dal manifest.
-
-Campi minimi:
-
-```txt
-testId
-area
-owner
-requirementIds
-command
-type
-profile
-timeoutSec
-serialGroup
-fixtures
-mutatesFilesystem
-liveRequired
-status
-lastResultSha
-```
-
-Il controllo rileva:
-
-- TEST-ID documentato ma assente dal manifest;
-- path mancante;
-- TEST-ID duplicato;
-- test senza owner;
-- PASS senza result artifact;
-- path documentali obsoleti.
-
-### Baseline e osservabilità
-
-**Classificazione:** `MIGLIORIA NECESSARIA`
-**Stato:** `ESTENSIONE IMPL-013 APPROVATA`
-
-Le baseline non sono normali unit test.
-
-Non devono fallire per una singola oscillazione di pochi millisecondi.
-
-Ogni benchmark registra:
-
-```txt
-SHA
-ambiente
-fixtureId
-iterazioni
-warmup
-mediana
-p95
-dimensione input/output
-tolleranza
-```
-
-Aree previste:
-
-```txt
-history/timeline size
-journal bytes
-stringify
-write
-rename
-recovery
-acquired→recorded delay
-source skew
-pipeline delay
-build frontend
-durata suite
-```
-
-Le misurazioni usano fixture controllate e non una partita live dell’utente.
-
-### DOC-031 — Runbook Validation monolitico e non verificabile
-
-**Classificazione:** `DOCUMENTAZIONE DA RIFATTORIZZARE`
-**Stato:** `CORREZIONE APPROVATA`
-
-Il runbook contiene procedure utili, ma:
-
-- copia numerosi comandi;
-- mescola suite, smoke, live e storico;
-- non può verificare che i path esistano;
-- può diventare obsoleto dopo rinomine;
-- non produce un risultato associato allo SHA.
-
-Durante il controllo alcuni path documentati non risultano presenti nella posizione indicata.
-
-Questo non dimostra che non esista una copertura equivalente altrove. Dimostra che il runbook non può essere l’inventario eseguibile canonico.
-
-#### Correzione
-
-Il documento conserva:
-
-```txt
-profili
-criteri
-interpretazione dei risultati
-live/manuale
-rollback
-```
-
-L’elenco eseguibile vive nel manifest di `IMPL-028`.
-
-### DOC-032 — Semantica dello stato test assente
-
-**Classificazione:** `DOCUMENTAZIONE MANCANTE`
-**Stato:** `CORREZIONE APPROVATA`
-
-Formalizzare:
-
-```txt
-file presente
-≠ test eseguito
-
-test eseguito in passato
-≠ PASS corrente
-
-build verde
-≠ UI verificata
-
-collaudo live storico
-≠ scenario riprodotto sullo SHA corrente
-```
-
-### CI
-
-**Classificazione:** `MIGLIORIA FUTURA, NON PRIMA STRUTTURA`
-**Stato:** `RINVIATA DOPO IL RUNNER LOCALE`
-
-Ordine approvato:
-
-```txt
-runner locale deterministico
-→ manifest completo
-→ suite offline verde
-→ result artifact
-→ eventuale CI
-```
-
-La CI iniziale, quando introdotta, può eseguire soltanto:
-
-- test offline;
-- build frontend;
-- compile Python;
-- controlli documentali.
-
-Non può:
-
-- avviare Chrome reale;
-- effettuare login Betfair;
-- usare credenziali;
-- eseguire tracking live;
-- modificare persistence reale.
-
-Il runtime completo è Windows-oriented. Un job Linux può verificare moduli portabili, ma non sostituisce la validazione Windows.
-
-### Strutture completamente assenti approvate
+### Strutture risultanti
 
 ```txt
 IMPL-028
@@ -6038,508 +3851,170 @@ IMPL-030
 → frontend interaction test harness
 
 IMPL-031
-→ validation result ledger e artefatti JSON
+→ validation result ledger e artifact JSON
 ```
 
-### TEST-060…075 — Test infrastrutturali mancanti
-
-#### TEST-060 — Manifest univoco
+### Test infrastrutturali registrati
 
 ```txt
-ogni comando previsto
-→ una sola entry
+TEST-060 → manifest univoco
+TEST-061 → path preflight
+TEST-062 → process isolation
+TEST-063 → timeout bounded
+TEST-064 → discovery Python esplicita
+TEST-065 → cleanup sandbox
+TEST-066 → runtime directories protette
+TEST-067 → fixture contract
+TEST-068 → coerenza TEST-ID
+TEST-069 → result schema
+TEST-070 → result redaction
+TEST-071 → frontend StrictMode harness
+TEST-072 → route HTTP harness
+TEST-073 → profilo fast offline
+TEST-074 → benchmark contract
+TEST-075 → lint surface
 ```
 
-#### TEST-061 — Path preflight
+### DOC-031 e DOC-032
 
-```txt
-path inesistente
-→ failure prima di avviare la suite
-```
+**Stato:** `CORREZIONE APPROVATA`
 
-#### TEST-062 — Process isolation
-
-```txt
-ogni test legacy
-→ child process separato
-→ exit code normalizzato
-```
-
-#### TEST-063 — Timeout bounded
-
-```txt
-timeout superato
-→ processo terminato
-→ failure bounded nel report
-```
-
-#### TEST-064 — Discovery Python esplicita
-
-```txt
-moduli *_test.py correnti
-→ inclusi nel manifest
-```
-
-#### TEST-065 — Cleanup sandbox
-
-```txt
-success/failure
-→ sandbox rimossa
-```
-
-#### TEST-066 — Runtime directories protette
-
-```txt
-profilo offline
-→ nessun accesso write alle directory runtime reali
-```
-
-#### TEST-067 — Fixture contract
-
-```txt
-schema + provenance + redaction
-→ validi
-```
-
-#### TEST-068 — Coerenza TEST-ID
-
-```txt
-registri ↔ manifest
-→ nessun missing/duplicate
-```
-
-#### TEST-069 — Result schema
-
-```txt
-SHA + profilo + conteggi + limiti
-→ presenti
-```
-
-#### TEST-070 — Result redaction
-
-```txt
-segreti/URL/path vietati
-→ assenti
-```
-
-#### TEST-071 — Frontend StrictMode harness
-
-```txt
-hook montato con fake timer
-→ lifecycle osservabile
-```
-
-#### TEST-072 — Route HTTP harness
-
-```txt
-porta dinamica
-→ status/body/header reali
-```
-
-#### TEST-073 — Profilo fast offline
-
-```txt
-nessun browser
-nessuna rete esterna
-nessun tracking
-```
-
-#### TEST-074 — Benchmark contract
-
-```txt
-mediana/p95
-→ fixture controllata
-→ nessun dato live
-```
-
-#### TEST-075 — Lint surface
-
-```txt
-npm run lint
-→ realmente eseguibile
-oppure
-→ script rimosso
-```
-
-### Decisioni approvate
-
-1. creare `IMPL-028` come prima struttura del Punto 7;
-2. non riscrivere in massa i test esistenti;
-3. eseguire inizialmente ogni test legacy in un child process separato;
-4. usare un manifest esplicito come unica lista eseguibile;
-5. mantenere Node `assert` o `node:test` per backend e utility nuove;
-6. mantenere Python `unittest` e standardizzare i nomi gradualmente;
-7. introdurre Vitest, jsdom e React Testing Library per il frontend;
-8. escludere qualunque test live dal profilo predefinito;
-9. aggiungere timeout e serial group per filesystem, porte e global state;
-10. obbligare ogni test che scrive a usare una sandbox temporanea;
-11. estendere `IMPL-003` come test map machine-checkable;
-12. distinguere sempre planned, implemented, executed, passed e live-observed;
-13. creare fixture condivise soltanto per contratti riusati;
-14. integrare `IMPL-008`, `IMPL-012` e `IMPL-013` senza fonderle in un mega-harness;
-15. produrre un result artifact JSON per ogni profilo;
-16. mantenere `fileModificati.md` e il report umano dell’esecutore;
-17. non introdurre CI prima che il runner locale sia deterministico;
-18. non rendere il full lint un gate prima di una baseline pulita;
-19. correggere nel checkpoint del Punto 7 SHA e range obsoleti della Todo.
-
-### Ordine tecnico risultante
-
-```txt
-IMPL-005 esteso
-→ IMPL-028 runner e manifest
-→ IMPL-029 fixture e sandbox
-→ IMPL-030 frontend harness
-→ IMPL-003 test map
-→ IMPL-031 result ledger
-→ IMPL-008 persistence profile
-→ IMPL-012 replay profile
-→ IMPL-013 benchmark profile
-→ TEST-060…075
-→ eventuale CI offline
-→ raggruppamento delle task esecutive Punti 1–7
-```
-
-
+Il runbook descrive profili, interpretazione, live/manuale e rollback; il manifest resta la lista eseguibile. Gli stati `planned`, `implemented`, `executed`, `passed`, `failed`, `blocked`, `live_observed` e `not_applicable` non vengono confusi.
 
 ---
 
-## 23. Controllo finale post-audit e avvio della migrazione documentale
+## 23. Controllo finale post-audit e migrazione documentale
 
-**Baseline del codice verificato:** `275008a5cd6451f24c6895068639ee3055395986`
-**Checkpoint dei registri:** `eef267aab3c138395a5ca3d644a942190c5360e8`
+**Checkpoint registri:** `eef267aab3c138395a5ca3d644a942190c5360e8`  
 **Stato:** `COMPLETATO E APPROVATO`
 
-### Scopo
+### DOC-033 — Canonico più forte del codice
 
-Dopo i Punti 1–7 è stato eseguito un controllo trasversale finale sul percorso:
+**Stato:** `POLICY APPROVATA`
 
-```txt
-acquisizione SofaScore / Betfair
-→ scheduler e processi Python
-→ Source Identity Gate
-→ commit history/timeline
-→ journal e recovery
-→ API read-only
-→ Evidence e Market Reactions
-→ polling e presentazione frontend
-→ test e documentazione
-```
-
-Il controllo non ha eseguito suite o collaudi live. Ha confrontato codice corrente, documenti owner, test presenti e decisioni approvate.
-
-### Esito di completezza
-
-Non è emersa una nuova area critica della raccolta dati dimenticata dai Punti 1–7.
-
-Sono già registrati i gap principali relativi a:
-
-```txt
-writer authority
-session authority
-Betfair runtime authority
-local control-plane
-storage/recovery verificati
-provenance temporale
-eligibility Evidence
-polling session-scoped
-integrity UI
-runner e fixture
-```
-
-La distinzione obbligatoria è:
-
-```txt
-decisione o contratto approvato nei registri
-≠
-comportamento già implementato nel prodotto
-```
-
-Esempi ancora non implementati al checkpoint:
-
-- `trackingSessionId` e `commandId` end-to-end;
-- writer lock backend-owned prima della recovery;
-- scraper Betfair legato alla sessione logica;
-- Stop con esito completo/parziale;
-- canonical document contract con revision/head/digest;
-- polling frontend con abort e generation guard uniformi;
-- UI persistence locale e globale;
-- eligibility e provenance complete delle Market Reactions;
-- runner canonico di validazione.
-
-### Decisione sulle nuove funzionalità
-
-Non aprire nuove funzionalità prima della stabilizzazione del nucleo.
-
-Ordine:
-
-```txt
-struttura documentale
-→ validazione minima ripetibile
-→ autorità runtime e storage
-→ frontend ed Evidence
-→ baseline e replay
-→ nuova analisi funzionale
-```
-
-Le idee future possono restare nei registri o in archivio storico, ma non devono essere presentate come stato corrente della documentazione canonica.
-
-### DOC-033 — Documentazione canonica che anticipa contratti non implementati
-
-**Classificazione:** `BUG DOCUMENTALE CONFERMATO`
-**Stato:** `POLICY DI CORREZIONE APPROVATA`
-**Priorità:** critica per la riscrittura
-
-Alcuni documenti owner descrivono come già collegati o completi comportamenti che il codice non possiede ancora, in particolare:
-
-```txt
-session authority frontend
-polling protetto da response tardive
-persistence integrity UI completa
-Market Reactions eligibility e availability uniformi
-storage contract verificato esteso
-```
-
-#### Policy approvata
-
-La documentazione canonica nuova descrive soltanto:
+La documentazione canonica descrive soltanto:
 
 ```txt
 implementato
-implementato con limiti espliciti
+implementato con limiti
 validato
 validazione aperta
-deprecato ma ancora presente
+deprecato ma presente
 ```
 
-Le voci soltanto approvate o pianificate restano nei registri fino alla relativa implementazione.
+Le decisioni soltanto approvate restano nei registri.
 
-### WORKFLOW-005 — Migrazione documentale per batch
-
-**Classificazione:** `WORKFLOW APPROVATO`
-**Stato storico del checkpoint:** `BATCH 0 PREPARATO`; `IMPL-032` è stata completata nel checkpoint documentale successivo.
-
-La migrazione non viene eseguita con una rinomina massiva.
-
-Ogni batch deve includere:
-
-```txt
-SHA base
-file completi
-mapping vecchio → nuovo
-owner e stato
-link da aggiornare
-controlli eseguiti
-limiti
-rollback
-```
-
-Prima della consegna verificare:
-
-1. completezza dell’inventario;
-2. assenza di informazioni tecniche uniche perse;
-3. coerenza col codice corrente;
-4. distinzione fra corrente, storico, deprecato e futuro;
-5. link relativi;
-6. assenza di duplicati canonici;
-7. nessuna cancellazione anticipata.
-
-### TEST-076…079 — Controlli della migrazione
-
-```txt
-TEST-076
-→ tutti i documenti indicizzati inventariati una sola volta
-
-TEST-077
-→ mapping univoco .mdx → .md e nessun duplicato canonico
-
-TEST-078
-→ link dei file migrati validi e nessun riferimento a path rimossi
-
-TEST-079
-→ stato corrente/deprecato/storico/futuro coerente con codice e registri
-```
-
-`TEST-076` è stato eseguito nel Batch 0 sui quaranta documenti elencati dall’indice canonico.
-
-`TEST-077…079` devono essere ripetuti per ogni batch e prima della rimozione finale dei `.mdx`.
-
-### Confini del Batch 0
-
-Il Batch 0 produce soltanto:
-
-```txt
-aggiornamento dei registri
-inventario documenti
-manifest di migrazione
-owner matrix
-link report
-piano dei batch
-checklist di validazione
-```
-
-Non sostituisce, rinomina o elimina alcun documento canonico.
-
----
-
-## 24. Schede owner dei controlli di migrazione documentale
-
-Le righe sintetiche `TEST-076…079` erano già presenti nella Todo e il controllo
-di coerenza ha confermato l'assenza delle corrispondenti schede owner singole.
-Le schede seguenti completano il registro senza rinumerare o cambiare il
-significato dei test.
-
-### TEST-076 — Inventario univoco dei documenti canonici
+### WORKFLOW-005 — Migrazione per batch
 
 **Stato:** `COMPLETATO`
-**Area:** migrazione documentale
 
-Verifica che tutti i documenti indicizzati siano inventariati una sola volta.
-Il controllo è stato eseguito nel Batch 0 sui quaranta documenti dell'indice
-canonico allora corrente.
+Ogni batch ha incluso baseline, file completi, mapping, owner, link, controlli, limiti e rollback.
 
-### TEST-077 — Mapping univoco MDX → Markdown
+### Controlli di migrazione
 
-**Stato:** `CONFERMATO`
-**Area:** migrazione documentale
-
-Verifica, per ogni batch, che ogni sostituzione abbia un solo mapping, che il
-nuovo owner sia identificato e che la sovrapposizione temporanea `.mdx`/`.md`
-non venga presentata come doppia fonte canonica.
-
-### TEST-078 — Link relativi dei file migrati
-
-**Stato:** `CONFERMATO`
-**Area:** migrazione documentale
-
-Verifica che i link relativi risolvano sulla working tree combinata e distingue
-target mancanti, anchor mancanti o non verificabili e riferimenti `.mdx` ancora
-ammessi soltanto durante la transizione. `scripts/check_documentation_links.py`
-fornisce ora il controllo ricorsivo read-only.
-
-### TEST-079 — Coerenza fra corrente, deprecato, storico e futuro
-
-**Stato:** `CONFERMATO`
-**Area:** migrazione documentale
-
-Verifica che gli owner canonici descrivano il codice corrente, che le
-validazioni storiche non diventino prove correnti, che i componenti deprecati
-restino espliciti finché esistono e che il planning futuro non sia presentato
-come implementato.
+```txt
+TEST-076 → inventario univoco
+TEST-077 → mapping MDX → Markdown univoco
+TEST-078 → link relativi validi
+TEST-079 → corrente/deprecato/storico/futuro coerenti
+```
 
 ---
 
-## 24. Implementazione iniziale di IMPL-028
+## 24. Schede owner dei controlli di migrazione
 
-**Data:** `2026-08-03`
-**Stato:** `IMPLEMENTATA, DA VALIDARE SULLA WORKING TREE LOCALE`
+### TEST-076 — Inventario univoco
 
-### Perimetro
+**Stato:** `COMPLETATO`
 
-È stata introdotta la prima versione del runner locale a manifest senza modificare runtime, tracker, scraper o contratti applicativi.
+Tutti i documenti indicizzati sono stati inventariati una sola volta nel Batch 0.
 
-```txt
-scripts/validation/test-manifest.json
-scripts/validation/run.mjs
-scripts/validation/support/
-scripts/validation/run.test.mjs
-manifest-schema.json
-result-schema.json
-```
+### TEST-077 — Mapping univoco
 
-### Comportamento implementato
+**Stato:** `PASS FINALE`
 
-```txt
-profilo esplicito
-→ preflight dell'intero manifest
-→ selezione entry abilitate
-→ esecuzione seriale in child process separati
-→ timeout per entry
-→ output redatto e bounded
-→ exit code 0 / 1 / 2
-→ result artifact atomico sotto test-results/
-```
+Ogni sostituzione `.mdx` → `.md` ha un mapping unico e nessun doppio owner canonico.
 
-Il profilo `fast` rifiuta entry che dichiarano browser, credenziali, rete esterna o tracking. `full-offline` non accetta entry live.
+### TEST-078 — Link dei file migrati
 
-### Manifest iniziale
+**Stato:** `PASS FINALE`
 
-Sono registrati:
+Il link checker ricorsivo verifica target, anchor e assenza di riferimenti `.mdx` vietati.
 
-- checker documentali;
-- test del runner;
-- test backend selezionati e verificati nel Punto 7;
-- test frontend Node selezionati e build;
-- compileall Python;
-- moduli unittest Python enumerati esplicitamente.
+### TEST-079 — Stato documentale
 
-`commitId.test.mjs` è catalogato ma disabilitato finché non usa una sandbox temporanea con cleanup garantito. Non viene nascosto come PASS o skip ordinario.
+**Stato:** `PASS FINALE`
 
-### Limiti dichiarati
+Corrente, deprecato, storico e futuro risultano separati.
 
-- esecuzione interamente seriale;
-- mappa dei test non ancora completa (`IMPL-003`);
-- artifact corrente senza ledger storico (`IMPL-031`);
-- nessun harness persistence (`IMPL-008`);
-- nessun benchmark (`IMPL-013`);
-- nessun frontend interaction harness (`IMPL-030`);
-- nessun browser, login, tracking o test live;
-- nessuna CI.
+### Implementazione iniziale di IMPL-028
 
-### Verifica del pacchetto
+**Data storica:** `2026-08-03`  
+**Stato:** `IMPLEMENTATA E VALIDATA LOCALMENTE`
+
+Sono stati introdotti manifest, runner, support library, schema manifest/result e test del runner.
+
+Profili:
 
 ```txt
-node --check sui file .mjs
-JSON parse dei tre file JSON
-17 test runner passati
-0 falliti
+fast
+backend
+frontend
+python
+full-offline
 ```
 
-Il manifest e i cinque profili offline sono stati inoltre eseguiti su una repository sintetica che riproduce path, comandi e package boundary senza contenere il codice applicativo:
+Il preflight reale ha individuato due path test inesistenti e ha bloccato la suite con exit code 2. Le entry prive di test reali sono state rimosse senza inventare sostituti.
+
+Dopo l’hotfix Windows per `npm.cmd`, i profili offline risultano verdi. Questa validazione non equivale a browser, login, tracking o collaudo live.
+
+---
+
+## 25. Chiusura archive e completamento IMPL-015
+
+Il cleanup archive ha consolidato le fonti uniche nei rispettivi owner e ha rimosso copie duplicate, mantenendo `docs/archive/README.md` come registro fonte → destinazione.
+
+### Esito implementazione IMPL-015
 
 ```txt
-fast → 6/6
-backend → 6/6
-frontend → 5/5
-python → 5/5
-full-offline → 19/19
+Prompt 1 e Fix 1:
+ac0361ef720831173619636b8ce0057348282fa4
+
+Prompt 2 e Fix 1:
+f86ac267919ca13859c98db7015362f26176ba36
 ```
 
-Questa prova valida infrastruttura, selezione e artifact; non equivale all'esecuzione dei test applicativi reali. Non è stato possibile eseguire i profili backend/frontend/python completi sul codice reale nell'ambiente di preparazione perché non contiene la working tree applicativa. La validazione operativa deve essere eseguita sulla copia locale dell'utente e il risultato non va anticipato.
-
-### Correzione post-validazione locale del manifest
-
-Il preflight reale sulla working tree Windows ha rilevato due `pathChecks` inesistenti per journal e recovery. Tutti i profili hanno restituito exit code `2` prima di avviare child process, confermando il comportamento fail-closed del runner.
-
-Le entry `backend-commit-journal` e `backend-recovery` sono state rimosse dal manifest. Non esiste evidenza di test sostitutivi con quei contratti nel percorso corrente; la copertura resta aperta e non viene conteggiata come PASS o skip. I conteggi corretti sono `backend 4` e `full-offline 17`.
-
-
-
-## 25. Chiusura archive e selezione della prossima task
-
-**Baseline remota:** `2697f66ea8e17a9e35481299cb47ec402558df55`
-
-Sono stati controllati tutti i 64 Markdown della superficie documentale
-pubblicata e, separatamente, i due ODT presenti in
-`docs/archive/planning/legacy/`.
-
-Esito:
+Risultato:
 
 ```txt
-owner canonici → mantenuti
-validations con evidenza → mantenute
-registri e audit di lavoro → mantenuti
-8 Markdown archive duplicati → consolidati e rimossi
-2 ODT → letti, requisiti unici consolidati e rimossi
-archive → solo registro fonte/destinazione
+writer authority backend-owned
+→ acquisizione prima della recovery
+→ active e unknown bloccanti
+→ reclaim soltanto su owner positivamente morto
+→ listener readiness
+→ release nei failure path
+→ terminal tracker barrier
+→ tracker drain
+→ authority retained se il drain fallisce
 ```
 
-Sono state corrette anche due dichiarazioni obsolete: il runner canonico è ora
-disponibile e `IMPL-032` è completata. La pulizia non cambia codice runtime.
+Test pubblicati:
 
-### Prossima task urgente
+```txt
+writer authority: 26 passati
+matchTracker: 10 passati
+server: 30 passati
+falliti: 0
+```
 
-`IMPL-015` resta il primo intervento tecnico perché due backend avviati da
-percorsi differenti possono condividere `backend/match_history` senza una
-writer authority comune. La task blocca il secondo writer prima della recovery
-e fonda la sequenza approvata `IMPL-015 → IMPL-019 → IMPL-020 → IMPL-021`.
+Limite:
+
+```txt
+collaudo manuale con due backend reali concorrenti
+→ non eseguito
+```
+
+`RUNTIME-003`, `DOC-024` e `TEST-004` sono chiusi da IMPL-015. `RUNTIME-002` e gli altri finding della session authority restano aperti e non vengono assorbiti.
+
+Nessuna task successiva viene selezionata da questo riallineamento.
+

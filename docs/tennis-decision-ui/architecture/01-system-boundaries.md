@@ -40,16 +40,16 @@ launcher/
 
 ## Ownership per livello
 
-| Livello         | Owner corrente                                         | Responsabilità                                                | Non deve fare                                                      |
-| --------------- | ------------------------------------------------------ | ------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Frontend        | `frontend/`                                            | Input operatore, stato UI, polling HTTP, rendering            | Leggere filesystem o journal, avviare Python, ricostruire Evidence |
-| Router HTTP     | `backend/src/routes/`                                  | Validazione richiesta, status e payload HTTP, delega          | Duplicare logica di dominio o persistenza                          |
-| Tracking        | `backend/src/sofa/matchTracker.js` e moduli update     | Scheduler, concorrenza per evento, Source Identity Gate, stop | Gestire rendering o dettagli browser                               |
-| Dominio         | `backend/src/sofa/`                                    | Normalizzazione, health, Evidence, flow e allineamento        | Dipendere da React o mutare contratti HTTP direttamente            |
-| Persistenza     | `matchHistory.js`, `timelineStore.js`, `matchHistory/` | History, timeline, commit journal e recovery                  | Avviare scraper o produrre strategie                               |
-| Runtime backend | `backend/src/runtime/`                                 | Registry, generation e terminazione dei figli Python          | Terminare processi non registrati o Chrome esterno                 |
-| Scraper Python  | wrapper root e `scrapers/`                             | Acquisizione e diagnostica esterna                            | Possedere history, timeline, journal o decisioni UI                |
-| Launcher        | `avvio.py`, `launcher/`, script di avvio               | Coordinare servizi locali identificati                        | Decidere regole di dominio o riparare la persistenza               |
+| Livello         | Owner corrente                                         | Responsabilità                                                                         | Non deve fare                                                      |
+| --------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Frontend        | `frontend/`                                            | Input operatore, stato UI, polling HTTP, rendering                                     | Leggere filesystem o journal, avviare Python, ricostruire Evidence |
+| Router HTTP     | `backend/src/routes/`                                  | Validazione richiesta, status e payload HTTP, delega                                   | Duplicare logica di dominio o persistenza                          |
+| Tracking        | `backend/src/sofa/matchTracker.js` e moduli update     | Scheduler, concorrenza per evento, Source Identity Gate, stop e drain di shutdown      | Gestire rendering o dettagli browser                               |
+| Dominio         | `backend/src/sofa/`                                    | Normalizzazione, health, Evidence, flow e allineamento                                 | Dipendere da React o mutare contratti HTTP direttamente            |
+| Persistenza     | `matchHistory.js`, `timelineStore.js`, `matchHistory/` | History, timeline, commit journal e recovery                                           | Avviare scraper o produrre strategie                               |
+| Runtime backend | `backend/src/runtime/`                                 | Registry e terminazione dei figli Python, logging e writer authority sulla storage identity | Terminare processi non registrati o Chrome esterno                 |
+| Scraper Python  | wrapper root e `scrapers/`                             | Acquisizione e diagnostica esterna                                                     | Possedere history, timeline, journal o decisioni UI                |
+| Launcher        | `avvio.py`, `launcher/`, script di avvio               | Coordinare servizi locali identificati e impedire launcher concorrenti                 | Decidere regole di dominio o riparare la persistenza               |
 
 ## Confine HTTP
 
@@ -102,7 +102,52 @@ campione autorizzato
 
 Evidence e frontend possono leggere lo stato `integrity`, ma non possiedono journal o recovery.
 
-Il launcher dispone di un proprio lock operativo. Il backend non acquisisce ancora un lock esclusivo project-owned prima della recovery e del listener: l'audit considera quindi ancora aperta l'autorità esclusiva del writer della persistenza.
+Il progetto mantiene due autorità distinte:
+
+```txt
+launcher lock
+→ autorità sull'orchestrazione della sessione locale
+→ impedisce orchestratori launcher concorrenti
+→ non è la writer authority della persistenza
+
+matchHistory writer authority
+→ autorità esclusiva backend-owned
+→ protegge `backend/match_history`
+→ identifica repository e storage identity
+→ viene acquisita prima della recovery e del listener
+→ vale sia per l'avvio tramite launcher sia per l'avvio manuale
+```
+
+Tutti i percorsi pubblici di avvio del backend convergono infatti su `startServer()`. La sequenza corrente è:
+
+```txt
+backend bootstrap
+→ createMatchHistoryWriterAuthority()
+→ acquire writer authority
+→ recovery
+→ listener readiness
+→ registrazione shutdown
+→ runtime
+```
+
+Un secondo backend che usa la stessa storage identity viene bloccato in modalità fail-closed prima di recovery, listener, tracking e scritture canoniche. Un owner vivo e verificato produce stato `active`; un owner non verificabile produce stato `unknown`; entrambi impediscono l'avvio. Il recupero è consentito soltanto quando l'owner precedente è positivamente morto.
+
+Lo shutdown mantiene l'authority fino alla conclusione delle operazioni capaci di raggiungere la persistenza:
+
+```txt
+server.close richiesto
+→ terminal tracker barrier
+→ stop tracker e scheduler
+→ tracker drain delle operazioni SofaScore e Betfair già avviate
+→ cleanup processi Python
+→ listener chiuso
+→ release writer authority
+→ exit
+```
+
+Il release avviene soltanto dopo un tracker drain positivo e la chiusura del listener. Un drain fallito, un risultato non verificabile o il force timeout non autorizzano il release anticipato: il record può restare presente ed essere classificato dal backend successivo dopo la morte positiva dell'owner.
+
+Questa persistence authority non equivale a una tracking session authority end-to-end. IMPL-006 resta separata.
 
 ## Confine Source Identity
 

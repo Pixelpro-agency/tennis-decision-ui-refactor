@@ -61,18 +61,20 @@ Il backend Node non deve importare o invocare direttamente moduli interni di `sc
 
 ## Stato
 
-Validato live, inclusa la correzione finale:
+Validato live, inclusa la correzione finale del launcher:
 
 ```txt
 avvio canonico
-seconda invocazione bloccata dal lock attivo
+seconda invocazione launcher bloccata dal lock attivo
 shutdown Ctrl+C
 terminazione backend/frontend owned
 preservazione CDP reused
 riavvio pulito
 ```
 
-Il collaudo finale ha confermato che la seconda invocazione termina senza `session_reuse`, `browser_open` o nuovi servizi e lascia invariati lock, manifest e identità della prima sessione.
+Il collaudo finale del launcher ha confermato che la seconda invocazione termina senza `session_reuse`, `browser_open` o nuovi servizi e lascia invariati lock, manifest e identità della prima sessione.
+
+Il backend Node implementa inoltre una writer authority separata dal launcher lock. I test automatici IMPL-015 sono passati, ma non è stato eseguito un collaudo manuale con due backend reali concorrenti.
 
 Restano da validare live:
 
@@ -80,6 +82,7 @@ Restano da validare live:
 fallback backend/frontend con porte occupate da processi esterni
 CDP reale alternativo
 force-kill realmente necessario
+due backend reali concorrenti sulla stessa storage identity
 ```
 
 ## Launcher
@@ -106,26 +109,42 @@ launcher/
 
 `system.py` non termina processi in base alla sola porta.
 
-## Ownership e registri
+## Ownership e autorità distinte
 
 ```txt
-launcher
-→ owner di backend/frontend avviati
+launcher lock
+→ appartiene al launcher Python
+→ impedisce orchestratori launcher concorrenti
+→ governa ownership e riuso della sessione locale
 
-backend
-→ owner esclusivo dei figli Python registrati
+writer authority
+→ appartiene al bootstrap backend Node
+→ impedisce backend writer concorrenti sulla stessa storage identity
+→ viene acquisita dentro startServer()
+
+backend process registry
+→ possiede esclusivamente i figli Python registrati
 
 wrapper Python
 → entrypoint compatibili
 ```
 
-Il launcher non mantiene un registry concorrente degli scraper.
+Il launcher non mantiene un registry concorrente degli scraper e non possiede il record `.writer_authority`.
+
+Il launcher:
+
+- non crea record writer authority;
+- non rimuove record writer authority;
+- non recupera record writer authority;
+- non interpreta gli stati `active`, `unknown`, `reclaimed` o `already_owned`.
+
+Tutti gli avvii backend, incluso quello effettuato dal launcher, convergono su `startServer()` e rispettano la stessa writer authority.
 
 ## Lock e riuso della sessione
 
 ```txt
 lock attivo o non verificabile
-→ seconda invocazione bloccata
+→ seconda invocazione launcher bloccata
 → nessun session_reuse
 → nessun browser_open
 
@@ -137,6 +156,8 @@ lock assente o positivamente stale
 → rilascio del lock acquisito dalla nuova invocazione
 ```
 
+Il launcher lock non dimostra l'ownership della persistenza. Un backend avviato manualmente su un'altra porta viene comunque sottoposto alla writer authority Node.
+
 ## Sequenza runtime
 
 ```txt
@@ -146,6 +167,11 @@ python avvio.py
 → manifest runtime iniziale
 → risoluzione CDP
 → risoluzione backend
+→ backend startServer()
+   → acquire writer authority
+   → recovery
+   → listener readiness
+   → shutdown registrar
 → risoluzione frontend
 → manifest pronto
 → apertura browser
@@ -173,15 +199,16 @@ Il frontend viene avviato direttamente tramite Node e CLI Vite locale, con bind 
 
 Il launcher usa l'URL frontend effettivamente scelto nel manifest e per aprire il browser.
 
-## Percorsi runtime aggiunti
+## Percorsi runtime collegati
 
 ```txt
 scrapers/betfair/cdp_url.py
 backend/src/runtime/pythonProcessRegistry.js
 backend/src/runtime/runtimeLogger.js
+backend/src/runtime/matchHistoryWriterAuthority.js
 ```
 
-Il documento collega questi moduli senza assorbirne i contratti completi.
+Il documento collega questi moduli senza assorbirne i contratti completi. Il contratto owner della writer authority è descritto in [Commit journal e recovery](../storage/02-commit-journal-and-recovery.md).
 
 ## CDP
 
@@ -216,11 +243,25 @@ backend health valido
 
 I processi riusati non diventano owned.
 
+Il manifest non rappresenta la writer authority e non deve contenere o interpretare il record `.writer_authority`.
+
 ## Shutdown
 
 Con Ctrl+C, il launcher tenta prima un arresto pulito dei soli processi owned.
 
-Dopo un'attesa limitata, può usare il fallback sul process tree soltanto per il PID owned registrato.
+Il backend, quando riceve il segnale, esegue autonomamente:
+
+```txt
+server.close richiesto
+→ terminal tracker barrier
+→ tracker drain
+→ cleanup processi Python
+→ listener chiuso
+→ release writer authority
+→ exit
+```
+
+Dopo un'attesa limitata, il launcher può usare il fallback sul process tree soltanto per il PID owned registrato.
 
 Non termina:
 
@@ -229,6 +270,8 @@ processi riusati
 Chrome/CDP
 processi esterni che occupano una porta preferita
 ```
+
+Un force timeout o una terminazione brutale possono lasciare il record authority presente. Il launcher non lo cancella: il backend successivo lo classifica e può recuperarlo soltanto quando l'owner è positivamente morto.
 
 Non usare cleanup basati su:
 
@@ -260,9 +303,18 @@ Infine, quando necessario:
 python .\avvio.py
 ```
 
+La writer authority è verificata dai test Node owner, non dai test launcher:
+
+```txt
+backend/src/runtime/matchHistoryWriterAuthority.test.mjs
+backend/src/server.test.mjs
+backend/src/sofa/matchTracker.test.mjs
+```
+
 ## Documenti collegati
 
 * [Runtime locale](../../operations/01-local-runtime.md)
+* [Commit journal e recovery](../storage/02-commit-journal-and-recovery.md)
 * [Scraper SofaScore](./02-sofascore-scraper.md)
 * [Scraper Betfair](./03-betfair-scraper.md)
 * [Lifecycle scraper Betfair](../betfair/01-scraper-lifecycle.md)

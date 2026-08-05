@@ -41,6 +41,31 @@ Il commit journal non è un dato canonico e non sostituisce history o timeline.
 
 È un sidecar tecnico usato per coordinare commit logici incompleti e repair deterministici.
 
+## Precondizione di processo: writer authority
+
+Prima di recovery e runtime il processo backend deve possedere la writer authority esclusiva della repository e della storage identity.
+
+```txt
+startServer()
+→ createMatchHistoryWriterAuthority()
+→ acquire()
+→ recovery
+→ listener readiness
+→ runtime
+```
+
+La writer authority vive nel sidecar tecnico:
+
+```txt
+backend/match_history/.writer_authority/
+```
+
+Il sidecar non è canonico, non è una timeline, non è una history, non è un commit journal, non è una fonte dati e non è una cache. Non viene esposto dalle API e non deve essere manipolato dai writer business.
+
+`saveTimeline(...)`, `saveHistory(...)`, `addSofaUpdate(...)` e `addBetfairUpdate(...)` non acquisiscono né verificano autonomamente l'authority. La precondizione viene garantita dal processo backend attraverso `startServer()`.
+
+Di conseguenza, una chiamata diretta ai writer non è automaticamente protetta cross-process. I percorsi canonici runtime sono protetti perché il secondo backend sulla stessa storage identity viene bloccato prima della recovery e del listener.
+
 ## Precondizione Source Identity Gate
 
 Nel flusso live coordinato da `matchTracker.js`, con URL Betfair timeline e history vengono aggiornate soltanto dopo l’autorizzazione del Source Identity Gate.
@@ -583,6 +608,8 @@ deduplicazione
 → bootstrap SofaScore → Betfair senza duplicazione
 → nel tracking coordinato, mismatch non crea tick causale
 → fallimento Betfair dopo bootstrap SofaScore non fa rollback automatico
+→ writer authority acquisita prima della recovery e del runtime
+→ secondo backend bloccato prima delle scritture canoniche
 ```
 
 ### Controlli Betfair: validità tecnica e integrità tick

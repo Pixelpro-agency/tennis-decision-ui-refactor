@@ -2,11 +2,12 @@
 
 ## Scopo
 
-Questo documento definisce il coordinamento dei commit logici tra history e timeline.
+Questo documento definisce il coordinamento dei commit logici tra history e timeline e il contratto process-level che garantisce un solo backend writer per repository e storage identity.
 
 History e timeline restano file canonici distinti e atomicamente riscritti per singolo file. Il journal non sostituisce questi file: registra lo stato temporaneo di un commit multi-documento e permette repair deterministico quando una scrittura resta incompleta.
 
 ```txt
+backend/src/runtime/matchHistoryWriterAuthority.js
 backend/src/sofa/matchHistory/commitId.js
 backend/src/sofa/matchHistory/commitJournal.js
 backend/src/sofa/matchHistory/commitJournal/
@@ -18,6 +19,9 @@ backend/src/sofa/matchHistory/recovery.js
 ## Stato
 
 ```txt
+writer authority backend-owned
+→ implementata e integrata nel bootstrap e nello shutdown
+
 percorso ordinario live con commit completi
 → validato
 
@@ -31,17 +35,38 @@ failure filesystem reale
 → da validare
 ```
 
-Le regole di recovery, sicurezza e single-process restano invariate.
+I test automatici IMPL-015 sono stati eseguiti sul codice pubblicato:
+
+```txt
+writer authority: 26 passati, 0 falliti
+matchTracker: 10 passati, 0 falliti
+server: 30 passati, 0 falliti
+```
+
+Non è stato eseguito un collaudo manuale con due backend reali concorrenti.
 
 ## Collocazione
 
-I journal pending sono sidecar locali sotto:
+I sidecar locali vivono sotto:
 
 ```txt
 backend/match_history/.pending_commits/
+backend/match_history/.writer_authority/
 ```
 
-Non sono history, non sono timeline e non devono essere scoperti come file business.
+La distinzione è obbligatoria:
+
+```txt
+.pending_commits
+→ stato di un commit logico incompleto per evento/source
+
+.writer_authority
+→ ownership esclusiva process-level della repository/storage identity
+```
+
+Nessuno dei due è history o timeline. Non devono essere scoperti come file business.
+
+`.writer_authority/` non è un journal di commit, una fonte dati, una cache o un artefatto API. I writer business non lo creano, non lo verificano e non lo rimuovono autonomamente.
 
 Il `commitId` correla:
 
@@ -67,6 +92,82 @@ Il formato del `commitId` è filename-safe:
 sofa-<uuid>
 betfair-<uuid>
 ```
+
+## Writer authority
+
+La writer authority è creata soltanto dentro `startServer()` tramite:
+
+```txt
+createMatchHistoryWriterAuthority()
+```
+
+`createApp()` resta priva di side effect: costruisce app, middleware e route, ma non acquisisce authority, non esegue recovery e non apre listener.
+
+La writer authority identifica in forma bounded almeno:
+
+```txt
+schema
+project
+instanceId
+pid
+process start fingerprint
+createdAt
+repository identity
+storage identity
+```
+
+La documentazione non riporta path personali o record reali.
+
+### Classificazione dell'authority
+
+```txt
+record assente
+→ acquired
+
+record appartenente alla stessa identità owner
+→ already_owned
+
+owner positivamente morto o PID riciclato verificato
+→ reclaimed
+
+owner vivo e identità verificata
+→ active
+→ startup bloccato
+
+owner o identità non verificabili
+→ unknown
+→ startup bloccato fail-closed
+```
+
+La classificazione non usa la sola porta. Launcher lock, process ownership e persistence writer authority restano concetti separati.
+
+## Bootstrap corretto
+
+La sequenza backend corrente è:
+
+```txt
+createApp()
+→ createMatchHistoryWriterAuthority()
+→ acquire()
+→ runPendingCommitRecovery(...)
+→ start listener
+→ wait listener readiness
+→ register shutdown
+```
+
+La recovery non inizia se l'acquisizione non restituisce un risultato positivo e verificabile. Un secondo backend sulla stessa storage identity non raggiunge recovery, listener, tracking o scritture canoniche.
+
+Dopo un'acquisizione positiva, il backend tenta il release nei failure path del bootstrap:
+
+```txt
+recovery fatal
+recovery rejection
+listen throw sincrono
+startup error prima della listener readiness
+failure nella registrazione dello shutdown
+```
+
+Il failure del release viene loggato in forma bounded e non deve mascherare l'errore primario del bootstrap.
 
 ## Sequenza di commit
 
@@ -323,26 +424,25 @@ Evidence
 
 ## Bootstrap recovery
 
-Il bootstrap backend esegue la recovery prima dell’apertura del listener Express:
+La recovery backend è protetta dalla writer authority e precede l'apertura del listener Express:
 
 ```txt
 createApp()
+→ acquire writer authority
 → runPendingCommitRecovery(...)
-→ app.listen(...)
+→ wait listener readiness
+→ register shutdown
 ```
-
-`createApp()` costruisce app, middleware e route senza avviare il listener.
-
-`startServer(...)` esegue la recovery e apre il listener soltanto dopo il completamento del passaggio bootstrap.
 
 Fatalità globale e failure per-file sono distinte:
 
 ```txt
 fatal globale
-→ blocca app.listen
+→ release authority
+→ blocca listener
 
 errori per-file non fatali
-→ non bloccano app.listen
+→ non bloccano il listener
 ```
 
 Errori per-file non fatali includono:
@@ -354,33 +454,77 @@ alreadyRecoveryFailed
 invalidJournal
 ```
 
-Questa scelta mantiene il backend resiliente: un singolo journal problematico non impedisce l’avvio dell’intero backend.
+Questa scelta mantiene il backend resiliente: un singolo journal problematico non impedisce l'avvio dell'intero backend, purché il risultato non sia classificato come fatal globale.
+
+## Shutdown e release
+
+Il processo backend mantiene la writer authority durante l'intero runtime.
+
+Sequenza corrente:
+
+```txt
+shutdown richiesto
+→ server.close richiesto
+→ terminal tracker barrier attivata
+→ stop tracker e scheduler
+→ avvio tracker drain
+→ terminazione processi Python
+→ completamento tracker drain
+→ completamento chiusura listener
+→ release writer authority
+→ exit
+```
+
+Il registro process-local include almeno le operazioni SofaScore iniziali e gli update SofaScore/Betfair dello scheduler. Le Promise vengono rimosse sia su fulfillment sia su rejection; una rejection gestita dell'update non rende da sola fallito il drain.
+
+Il release avviene soltanto quando il drain restituisce:
+
+```txt
+ok: true
+drained: true
+activeOperations: 0
+```
+
+Se il drain rigetta, lancia o restituisce un risultato non positivo o invalido:
+
+```txt
+tracker_drain_failed
+→ authority retained
+→ nessun secondo tentativo di release
+→ exit comunque
+```
+
+Un force timeout esegue l'uscita senza rilasciare anticipatamente l'authority. Il record residuo viene valutato dal backend successivo attraverso la verifica alive/dead/unknown dell'owner.
+
+Un release fallito dopo drain positivo viene loggato in forma bounded e non blocca l'uscita.
 
 ## Invariant single-process
 
-Il progetto assume un solo processo backend writer sulla stessa directory:
+Il progetto enforce un solo processo backend writer per repository e storage identity:
 
 ```txt
 backend/match_history
 ```
 
-Non sono supportati in questa fase:
+L'invariante viene applicata dal bootstrap backend, non dal launcher e non dai singoli writer.
+
+Non sono supportati:
 
 ```txt
-due backend Node contemporanei sulla stessa match_history
-PM2 cluster
+PM2 cluster con writer sulla stessa directory
 repliche Docker sulla stessa directory
 worker separati che scrivono direttamente match_history
 trading engine separato che scrive file canonici
+multi-writer
 ```
 
-Il journal usa scritture atomiche per singolo file e controlli sui commit pendenti, ma non implementa ancora un lock cross-process.
+Un backend manuale su una porta alternativa non può acquisire la stessa storage identity mentre l'owner corrente è `active` o `unknown`.
 
-Un lock cross-process sarà necessario solo se il progetto passerà a più writer sulla stessa `match_history`.
+L'authority non rende supportati più writer: impedisce che partano contemporaneamente.
 
 ## Strict mode futura
 
-Una modalità strict opzionale è un hardening futuro, non default.
+Una modalità strict opzionale per gli esiti non fatali della recovery è un hardening futuro, non default.
 
 Comportamento proposto:
 
@@ -395,12 +539,12 @@ Con strict mode:
 ```txt
 retryablePending > 0
 oppure invalidJournal > 0
-→ blocca app.listen
+→ blocca listener
 ```
 
-Non abilitarla come comportamento ordinario senza una valutazione dedicata.
+Non abilitarla come comportamento ordinario senza una valutazione dedicata. Questa opzione è distinta dalla writer authority, che è già una precondizione obbligatoria del bootstrap.
 
-## Sicurezza del journal
+## Sicurezza del journal e dell'authority
 
 Il journal non deve conservare:
 
@@ -448,6 +592,8 @@ Il valore non viene redatto e salvato: il record viene rifiutato come invalido.
 diagnostics.networkCaptureSummary
 ```
 
+I log pubblici dell'authority devono restare bounded e non devono esporre owner token, path personali, stack, URL, payload o dettagli raw degli errori.
+
 ## Confini
 
 Questo documento non definisce:
@@ -463,17 +609,18 @@ validità tecnica dei campioni Betfair
 scraper Python
 network capture diagnostica
 retention cache runtime
+tracking session authority end-to-end
 ```
 
 Le timeline e le history canoniche restano owner del documento principale storage.
 
-Le API documentano solo l’esposizione pubblica read-only di `integrity`.
+Le API documentano solo l'esposizione pubblica read-only di `integrity`.
 
-Evidence documenta l’effetto di `persistenceComplete` e il blocco cross-source.
+Evidence documenta l'effetto di `persistenceComplete` e il blocco cross-source.
 
 ## Verifica
 
-Comandi mirati:
+Comandi mirati storage:
 
 ```txt
 node --check backend/src/sofa/matchHistory/commitId.js
@@ -493,6 +640,19 @@ node backend/src/sofa/matchHistory/recovery/invalidJournal.integration.test.mjs
 node backend/src/sofa/matchHistory/recovery/retryAndFailure.integration.test.mjs
 ```
 
+Controlli IMPL-015 eseguiti sul codice pubblicato:
+
+```txt
+node backend/src/runtime/matchHistoryWriterAuthority.test.mjs
+→ 26 passati, 0 falliti
+
+node backend/src/sofa/matchTracker.test.mjs
+→ 10 passati, 0 falliti
+
+node backend/src/server.test.mjs
+→ 30 passati, 0 falliti
+```
+
 Verificare almeno:
 
 ```txt
@@ -509,10 +669,17 @@ fixture residue condivise in commitJournalTestFixtures.mjs
 removeCompletedCommit solo dopo documenti completati
 payload sensibili rifiutati
 read-only integrity senza side effect
-single-process invariant preservato
+acquire prima della recovery
+secondo bootstrap bloccato prima di recovery e listener
+release nei failure path del bootstrap
+listener readiness prima della registrazione shutdown
+tracker drain prima del release
+segnali ripetuti idempotenti
+force timeout senza release anticipato
+drain fallito con authority retained
 ```
 
-La validazione locale non sostituisce una prova live/replay reale con failure operative, riavvio del processo e filesystem non simulato.
+La validazione automatica non sostituisce una prova live/replay reale con failure operative, due processi backend reali concorrenti, riavvio del processo e filesystem non simulato.
 
 ## Documenti collegati
 
