@@ -252,11 +252,13 @@ Con Ctrl+C, il launcher tenta prima un arresto pulito dei soli processi owned.
 Il backend, quando riceve il segnale, esegue autonomamente:
 
 ```txt
-server.close richiesto
+server.close richiesto; la chiusura del listener procede in parallelo
 → terminal tracker barrier
-→ tracker drain
+→ stop tracker e scheduler
+→ tracker drain avviato
 → cleanup processi Python
-→ listener chiuso
+→ completamento del tracker drain fino al registro vuoto
+→ attesa/verifica della chiusura del listener
 → release writer authority
 → exit
 ```

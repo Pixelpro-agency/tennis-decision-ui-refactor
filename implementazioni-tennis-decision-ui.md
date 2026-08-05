@@ -156,3 +156,5 @@ Batch successivi
 ```
 
 IMPL-015 è completata: codice, test e documentazione sono riallineati. La task tecnica successiva deve essere selezionata separatamente.
+
+Prossimo passo: DA SELEZIONARE.

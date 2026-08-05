@@ -135,12 +135,13 @@ Un secondo backend che usa la stessa storage identity viene bloccato in modalit�
 Lo shutdown mantiene l'authority fino alla conclusione delle operazioni capaci di raggiungere la persistenza:
 
 ```txt
-server.close richiesto
+server.close richiesto; la chiusura del listener procede in parallelo
 → terminal tracker barrier
 → stop tracker e scheduler
-→ tracker drain delle operazioni SofaScore e Betfair già avviate
+→ tracker drain avviato per le operazioni SofaScore e Betfair già in corso
 → cleanup processi Python
-→ listener chiuso
+→ completamento del tracker drain fino al registro vuoto
+→ attesa/verifica della chiusura del listener
 → release writer authority
 → exit
 ```
