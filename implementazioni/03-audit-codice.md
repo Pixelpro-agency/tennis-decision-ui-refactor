@@ -118,7 +118,7 @@ I concetti strategici restano registrati in `IMPL-010` come strumenti autonomi o
 
 ### CODE-002 — Il preflight Betfair accetta host e protocolli non sufficientemente vincolati
 
-**Stato:** `CONFERMATO E AMPLIATO`
+**Stato:** `CONFERMATO`
 
 **Priorità:** alta
 
@@ -390,8 +390,8 @@ Nessuna feature frontend deve dipendere direttamente dalla porta preferita del b
 
 ## RUNTIME-002 — Nuovo Start non invalida callback della sessione precedente
 
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
+**Stato:** `CONFERMATO` tramite analisi statica
+**Priorità:** alta
 **Area:** tracking, generation, gate e persistenza
 
 ### Sequenza
@@ -516,7 +516,7 @@ Il test canonico ispezionato copre regressioni ordinarie, duplicati, cleanup leg
 
 ---
 
-## Decisione iniziale collegata a EVIDENCE-001 — `selectionId` obbligatorio solo nel confronto runner Field → Market
+## EVIDENCE-001 — `selectionId` obbligatorio solo nel confronto runner Field → Market
 
 **Stato:** `APPROVATO`
 **Priorità:** media
@@ -619,8 +619,8 @@ B4 — Frontend e Python
 
 ## FRONTEND-001 — Risposte tardive SofaScore e Betfair attraversano il cambio sessione
 
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
+**Stato:** `CONFERMATO` tramite analisi statica
+**Priorità:** alta
 **Area:** polling frontend e bootstrap dashboard
 
 ### Comportamento
@@ -695,8 +695,8 @@ Nessuna richiesta appartenente a un vecchio `eventId` può modificare lo stato d
 
 ## FRONTEND-002 — Persistence integrity raccolta dagli hook ma scartata prima della UI
 
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
+**Stato:** `CONFERMATO`
+**Priorità:** alta
 **Area:** App, view model, Betfair UI ed Evidence UI
 
 ### SofaScore
@@ -749,8 +749,8 @@ Una pipeline esplicita e testata deve portare integrity dagli hook ai consumer s
 
 ## FRONTEND-003 — Start fallito lascia una sessione confermata e polling nascosti
 
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
+**Stato:** `CONFERMATO` tramite analisi statica
+**Priorità:** medio-alta
 **Area:** sessione e azioni Start
 
 ### Sequenza
@@ -926,7 +926,7 @@ fetch result contiene dump_dir locale
 
 ## SECURITY-002 — Cache filename Betfair derivato dalla URL completa
 
-**Stato:** `CONFERMATO E AMPLIATO`
+**Stato:** `CONFERMATO` tramite analisi statica
 **Priorità:** alta
 **Area:** cache Python
 
@@ -1002,8 +1002,8 @@ log interno
 
 ## PYTHON-001 — Task della network capture non tracciate né attese
 
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** alta
+**Stato:** `CONFERMATO` tramite analisi statica
+**Priorità:** media
 **Area:** network capture Betfair
 
 `install_network_capture(...)` crea task con:
@@ -1128,8 +1128,8 @@ B5 — Operations e roadmap
 
 ## CLEANUP-002 — Offline check limitato a lock e porte preferite
 
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** alta
+**Stato:** `CONFERMATO` tramite analisi statica
+**Priorità:** media
 **Area:** retention cache runtime
 
 `check_apply_session_safety(...)` blocca l’apply quando esiste il launcher lock, quando è occupata la porta 3000 o 3001, oppure quando un controllo fallisce.
@@ -1209,8 +1209,8 @@ B6 — Controlli trasversali
 
 ## CODE-005 — Script `lint` frontend esposto ma privo di configurazione utilizzabile
 
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** media
+**Stato:** `CONFERMATO`
+**Priorità:** bassa
 **Area:** tooling frontend
 
 `frontend/package.json` espone:
@@ -1247,7 +1247,7 @@ B. rimuovere script e dipendenze ESLint inutilizzate
 
 ---
 
-## Nota iniziale collegata a TEST-003 — Nessun inventario o comando test canonico
+## TEST-003 — Nessun inventario o comando test canonico
 
 **Stato:** `CONFERMATO`
 **Priorità:** media-alta
@@ -1642,7 +1642,7 @@ Il registry Python protegge correttamente il lifecycle fisico dei figli:
 
 Queste protezioni non equivalgono a un’autorità completa della sessione applicativa.
 
-### Ampliamento collegato a RUNTIME-002 — Il nuovo Start non invalida la sessione precedente
+### RUNTIME-002 — Il nuovo Start non invalida la sessione precedente
 
 **Stato:** `CONFERMATO E AMPLIATO`
 **Priorità:** critica
@@ -1784,7 +1784,7 @@ trackingSessionId obbligatoria nella conferma
 → 409 stale_session
 ```
 
-### Estensione intermedia collegata a FRONTEND-001 — Risposte SofaScore e Betfair attraversano il cambio sessione
+### FRONTEND-001 — Risposte SofaScore e Betfair attraversano il cambio sessione
 
 **Stato:** `CONFERMATO E AMPLIATO`
 **Priorità:** critica
@@ -1801,7 +1801,7 @@ Una risposta vecchia può modificare dati, health, Money Flow, integrity, timest
 
 `useSourceIdentityGateStatus` e `useMarketReactionEvidence` costituiscono il modello locale corretto da uniformare.
 
-### Estensione intermedia collegata a FRONTEND-003 — Start fallito lascia una sessione nascosta
+### FRONTEND-003 — Start fallito lascia una sessione nascosta
 
 **Stato:** `CONFERMATO`
 **Priorità:** alta
@@ -1816,7 +1816,7 @@ In caso di failure non:
 - invalida il comando Start;
 - esegue cleanup compensativo quando necessario.
 
-### Nota iniziale collegata a FRONTEND-005 — I vecchi loop di polling possono ricrearsi dopo il cleanup
+### FRONTEND-005 — I vecchi loop di polling possono ricrearsi dopo il cleanup
 
 **Stato:** `CONFERMATO`
 **Priorità:** critica
@@ -1832,7 +1832,7 @@ Il cleanup cancella il timeout noto, ma una fetch già in attesa può programmar
 
 Il ref `shouldPoll` è condiviso: un nuovo Start può riportarlo a `true` e riattivare anche il vecchio loop.
 
-### Nota iniziale collegata a FRONTEND-006 — Start concorrenti non sono serializzati
+### FRONTEND-006 — Start concorrenti non sono serializzati
 
 **Stato:** `CONFERMATO`
 **Priorità:** alta
@@ -1846,7 +1846,7 @@ Mancano:
 - deduplicazione;
 - invalidazione esplicita del comando precedente.
 
-### Nota iniziale collegata a FRONTEND-007 — Stop Live Tracking lascia attivi altri poller
+### FRONTEND-007 — Stop Live Tracking lascia attivi altri poller
 
 **Stato:** `CONFERMATO`
 **Priorità:** medio-alta
@@ -1886,7 +1886,7 @@ command/request identity
 
 ### Gap test
 
-#### Requisiti aggiuntivi collegati a TEST-002 — Lifecycle frontend
+#### TEST-002 — Lifecycle frontend
 
 **Stato:** `MANCANTE`
 
@@ -2218,7 +2218,7 @@ route mutanti solo POST JSON
 
 La struttura è registrata come `IMPL-017`.
 
-### Ampliamento collegato a CODE-002 — Validazione Betfair non condivisa
+### CODE-002 — Validazione Betfair non condivisa
 
 **Stato:** `CONFERMATO E AMPLIATO`
 **Priorità:** alta
@@ -2379,7 +2379,7 @@ Freshness e validazione temporale devono derivare dall’acquisizione, non solta
 
 Money Flow deve essere soppresso/degradato quando lo skew Graph supera una soglia documentata.
 
-### Ampliamento collegato a PYTHON-001 — Network capture asincrona non controllata
+### PYTHON-001 — Network capture asincrona non controllata
 
 **Stato:** `CONFERMATO E AMPLIATO`
 **Priorità:** alta
@@ -2430,7 +2430,7 @@ error code pubblico stabile
 log interno redatto separato
 ```
 
-### Ampliamento collegato a SECURITY-002 — Cache con filename e identità inadeguati
+### SECURITY-002 — Cache con filename e identità inadeguati
 
 **Stato:** `CONFERMATO E AMPLIATO`
 **Priorità:** alta
@@ -2482,7 +2482,7 @@ Decisione approvata:
 - rendere l’eccezione configurabile e collaudabile;
 - non indebolire silenziosamente TLS o sandbox.
 
-### Ampliamento collegato a CLEANUP-002 — Authority offline incompleta
+### CLEANUP-002 — Authority offline incompleta
 
 **Stato:** `CONFERMATO E AMPLIATO`
 **Priorità:** alta
@@ -2538,7 +2538,7 @@ I dump non devono essere trattati come cache normali, ma non possono crescere se
 
 ### Strutture approvate
 
-#### Riferimento audit a IMPL-016 — Betfair runtime command authority
+#### IMPL-016 — Betfair runtime command authority
 
 Coordina:
 
@@ -2552,7 +2552,7 @@ Coordina:
 - handoff login → tracking;
 - un solo comando Betfair mutante globale.
 
-#### Riferimento audit a IMPL-017 — Local control-plane boundary
+#### IMPL-017 — Local control-plane boundary
 
 Impone:
 
@@ -2562,7 +2562,7 @@ Impone:
 - nessuna mutazione GET;
 - validazione dei comandi locali.
 
-#### Riferimento audit a IMPL-018 — Betfair acquisition envelope e provenance
+#### IMPL-018 — Betfair acquisition envelope e provenance
 
 Introduce almeno:
 
@@ -3334,7 +3334,7 @@ Non viene introdotto un secondo journal per questo archivio.
 
 ### Implementazioni risultanti
 
-#### Riferimento audit a IMPL-019 — Event persistence authority
+#### IMPL-019 — Event persistence authority
 
 ```txt
 shared history event-scoped
@@ -3344,7 +3344,7 @@ shared history event-scoped
 → pending cross-source bloccante
 ```
 
-#### Riferimento audit a IMPL-020 — Canonical document contract e verified recovery
+#### IMPL-020 — Canonical document contract e verified recovery
 
 ```txt
 schema + identity + revision + digest
@@ -3355,7 +3355,7 @@ schema + identity + revision + digest
 → migrazione legacy non distruttiva
 ```
 
-#### Riferimento audit a IMPL-021 — Recovery control plane
+#### IMPL-021 — Recovery control plane
 
 ```txt
 summary bootstrap reale
@@ -6089,7 +6089,7 @@ IMPL-031
 → validation result ledger e artefatti JSON
 ```
 
-### TEST-060…075 — Test infrastrutturali mancanti
+### TEST-060…075 — Requisiti infrastrutturali individuati al checkpoint del Punto 7
 
 #### TEST-060 — Manifest univoco
 
@@ -6208,6 +6208,25 @@ npm run lint
 oppure
 → script rimosso
 ```
+
+#### Stato successivo dopo IMPL-028
+
+Il checkpoint del Punto 7 registrava requisiti mancanti. Dopo l’implementazione e la validazione locale di `IMPL-028`, lo stato è:
+
+```txt
+TEST-060, TEST-061, TEST-062, TEST-063, TEST-064, TEST-068, TEST-073
+→ implementati e passati nel runner self-test
+
+TEST-069, TEST-070
+→ copertura parziale presente
+→ requirement ID non ancora formalmente chiusi dal manifest
+→ restano aperti
+
+TEST-065, TEST-066, TEST-067, TEST-071, TEST-072, TEST-074, TEST-075
+→ ancora aperti
+```
+
+Questo addendum non riscrive retroattivamente lo stato storico del Punto 7. Registra l’esito successivo e mantiene separati requisiti implementati, copertura parziale e requisiti ancora mancanti.
 
 ### Decisioni approvate
 

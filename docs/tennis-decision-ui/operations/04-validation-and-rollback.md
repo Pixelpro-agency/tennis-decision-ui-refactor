@@ -282,13 +282,26 @@ I collaudi manuali sono conservati in [docs/validations](../../validations/READM
 
 ## Stato dell'infrastruttura
 
-Sono implementati:
+Sono implementati e validati localmente:
 
+- manifest delle suite in `scripts/validation/test-manifest.json`;
+- runner canonico in `scripts/validation/run.mjs`;
+- profili offline `fast`, `backend`, `frontend`, `python` e `full-offline`;
+- child process separato, preflight dei path, timeout bounded e output redatto;
+- artefatto JSON per l'esecuzione del profilo corrente;
 - controllo ricorsivo dei link Markdown/MDX;
 - controllo di coerenza Todo ↔ registri;
-- test Python mirati delle due utility.
+- test mirati del runner e dei checker documentali.
 
-Manifest delle suite, runner canonico, sandbox condivisa, harness frontend e result ledger sono approvati nei registri ma non ancora implementati. Questo documento non li presenta come strumenti disponibili.
+Restano aperti e non devono essere presentati come disponibili:
+
+- inventario completo test ↔ owner ↔ documento (`IMPL-003`);
+- sandbox e harness isolato della persistenza (`IMPL-008`, `IMPL-029`);
+- frontend interaction harness con StrictMode e fake timer (`IMPL-030`);
+- ledger storico degli esiti fra più esecuzioni (`IMPL-031`);
+- profili `persistence`, `benchmark` e `live`.
+
+La presenza dell'artefatto JSON della singola esecuzione non equivale al ledger storico pianificato da `IMPL-031`.
 
 ## Documenti collegati
 

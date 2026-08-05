@@ -12,7 +12,7 @@ La documentazione deve spiegare responsabilità, confini, contratti, invarianti,
 | --- | --- |
 | `docs/tennis-decision-ui/` | Documentazione tecnica canonica e corrente |
 | `docs/validations/` | Collaudi e verifiche storiche con data, SHA, ambiente e limiti |
-| `docs/archive/` | Materiale non canonico conservato per riferimento |
+| `docs/archive/` | Registro delle fonti consolidate; eventuali materiali successivi non canonici |
 | `implementazioni/` | Audit, proposte e decisioni; non sostituisce gli owner tecnici |
 
 Una specifica futura non implementata non appartiene all'indice canonico. I requisiti futuri restano nei registri e vengono trasformati in documentazione owner soltanto insieme all'implementazione.

@@ -191,6 +191,12 @@ IMPL-015 completata:
 
 # BLOCCO B — Audit documentazione
 
+> Checkpoint storico dell’audit. Le checkbox e le descrizioni dei finding nei
+> Blocchi B e C rappresentano lo stato osservato durante l’audit originario.
+> Non costituiscono il backlog corrente. Gli stati successivi e le
+> implementazioni completate sono riportati nei Blocchi E/F e negli addendum
+> finali dei registri owner.
+
 ## B1 — Ingresso e orientamento
 
 - [x] README root — verificato
@@ -629,7 +635,7 @@ DA RIAPRIRE
 - [x] `CLEANUP-001` — Authority Source Identity legacy frontend — **RIMOZIONE APPROVATA; AUTHORITY GLOBALE UNICA**
 - [ ] `TEST-001` — Test dedicato tick Betfair `status-only` — **MANCANTE**
 - [ ] `TEST-002` — Test lifecycle cambio sessione/Start fallito — **MANCANTE**
-- [x] `TEST-003` — Inventario, manifest e comando test canonico — **IMPLEMENTATO NELLA PRIMA VERSIONE; VALIDAZIONE LOCALE DEI PROFILI APERTA**
+- [x] `TEST-003` — Inventario, manifest e comando test canonico — **RUNNER, MANIFEST E COMANDO CANONICO IMPLEMENTATI E VALIDATI LOCALMENTE; INVENTARIO COMPLETO TEST ↔ OWNER ↔ DOCUMENTO ANCORA APERTO SOTTO IMPL-003**
 - [x] `TEST-004` — Secondo bootstrap sulla stessa storage identity bloccato prima di recovery e listener — **IMPLEMENTATO E PASSATO; TEST AUTOMATICO, NON COLLAUDO LIVE**
 - [ ] `TEST-005` — Matrice sostituzione sessione backend — **MANCANTE**
 - [ ] `TEST-006` — Riuso Betfair session-safe — **MANCANTE**
@@ -686,20 +692,20 @@ DA RIAPRIRE
 - [ ] `TEST-057` — Sessione Sofa-only senza polling Betfair — **MANCANTE**
 - [ ] `TEST-058` — StrictMode con una sola catena polling — **MANCANTE**
 - [ ] `TEST-059` — Smoke responsive desktop/tablet/mobile — **MANCANTE**
-- [ ] `TEST-060` — Manifest enumera ogni comando una sola volta — **MANCANTE**
-- [ ] `TEST-061` — Path mancante nel manifest fallisce prima della suite — **MANCANTE**
-- [ ] `TEST-062` — Test legacy eseguiti in processi isolati — **MANCANTE**
-- [ ] `TEST-063` — Timeout termina il processo e produce failure bounded — **MANCANTE**
-- [ ] `TEST-064` — Moduli Python `*_test.py` inclusi esplicitamente — **MANCANTE**
+- [x] `TEST-060` — Manifest enumera ogni comando una sola volta — **IMPLEMENTATO E PASSATO NEL RUNNER SELF-TEST**
+- [x] `TEST-061` — Path mancante nel manifest fallisce prima della suite — **IMPLEMENTATO E PASSATO NEL RUNNER SELF-TEST**
+- [x] `TEST-062` — Test legacy eseguiti in processi isolati — **IMPLEMENTATO E PASSATO NEL RUNNER SELF-TEST**
+- [x] `TEST-063` — Timeout termina il processo e produce failure bounded — **IMPLEMENTATO E PASSATO NEL RUNNER SELF-TEST**
+- [x] `TEST-064` — Moduli Python `*_test.py` inclusi esplicitamente — **IMPLEMENTATO E PASSATO NEL RUNNER SELF-TEST**
 - [ ] `TEST-065` — Sandbox rimossa su successo e fallimento — **MANCANTE**
 - [ ] `TEST-066` — Nessun test accede alle directory runtime reali — **MANCANTE**
 - [ ] `TEST-067` — Fixture schema, provenance e redaction validate — **MANCANTE**
-- [ ] `TEST-068` — TEST-ID dei registri coerenti con il manifest — **MANCANTE**
-- [ ] `TEST-069` — Result JSON contiene SHA, profilo, conteggi e limiti — **MANCANTE**
-- [ ] `TEST-070` — Result JSON non contiene segreti, URL o path vietati — **MANCANTE**
+- [x] `TEST-068` — TEST-ID dei registri coerenti con il manifest — **IMPLEMENTATO E PASSATO NEL RUNNER SELF-TEST**
+- [ ] `TEST-069` — Result JSON contiene SHA, profilo, conteggi e limiti — **COPERTURA PARZIALE PRESENTE; REQUIREMENT ID NON FORMALMENTE CHIUSO DAL MANIFEST**
+- [ ] `TEST-070` — Result JSON non contiene segreti, URL o path vietati — **COPERTURA PARZIALE PRESENTE; REQUIREMENT ID NON FORMALMENTE CHIUSO DAL MANIFEST**
 - [ ] `TEST-071` — Frontend harness monta hook in StrictMode con fake timer — **MANCANTE**
 - [ ] `TEST-072` — Route harness verifica HTTP reale su porta dinamica — **MANCANTE**
-- [ ] `TEST-073` — Profilo `fast` non avvia browser, rete esterna o tracking — **MANCANTE**
+- [x] `TEST-073` — Profilo `fast` non avvia browser, rete esterna o tracking — **IMPLEMENTATO E PASSATO NEL RUNNER SELF-TEST**
 - [ ] `TEST-074` — Benchmark registra mediana/p95 senza dati live — **MANCANTE**
 - [ ] `TEST-075` — Comando lint eseguibile oppure rimosso dalla superficie ufficiale — **MANCANTE**
 - [x] `TEST-076` — Tutti i documenti canonici indicizzati sono inventariati una sola volta — **ESEGUITO NEL BATCH 0**
