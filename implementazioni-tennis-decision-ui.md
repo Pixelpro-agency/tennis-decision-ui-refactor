@@ -146,7 +146,7 @@ Batch 1 e 2
 Controlli read-only
 → link checker ricorsivo implementato
 → registry consistency checker implementato
-→ finding strutturali da normalizzare prima del runner
+→ finding strutturali normalizzati; registry checker verde
 
 Batch successivi
 → file .md completi

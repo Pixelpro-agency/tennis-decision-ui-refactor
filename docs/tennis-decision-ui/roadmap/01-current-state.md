@@ -148,7 +148,6 @@ Questi test includono l'esclusione deterministica di un secondo bootstrap sulla 
 - API e UI Strategy;
 - endpoint Match di debug e untrack già individuati;
 - endpoint Betfair `/odds`;
-- documentazione canonica Markdown, con validazioni e planning separati.
 
 Finché il codice esiste, la documentazione API corrente deve descriverlo. Non deve però essere esteso con nuove funzionalità.
 
@@ -178,7 +177,10 @@ Non sono implementati:
 - CI deterministica;
 - profili persistence, benchmark e live del runner.
 
-Le specifiche storiche di replay e Journal sono conservate sotto `docs/archive/planning/` esclusivamente per tracciabilità e non sono owner attivi.
+Le specifiche storiche di replay e Journal sono state consolidate nei registri
+(`IMPL-010`, `IMPL-012` e `IMPL-023`). `docs/archive/README.md` conserva soltanto la
+mappa di provenienza delle fonti rimosse; queste specifiche restano non
+implementate e non sono owner attivi.
 
 ## Fonti per le task aperte
 
