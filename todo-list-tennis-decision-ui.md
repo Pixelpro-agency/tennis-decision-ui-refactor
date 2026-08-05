@@ -280,10 +280,10 @@ IMPL-015 completata:
 
 ## C2 — Server e runtime backend
 
-- [ ] Bootstrap server
-- [ ] Recovery iniziale
+- [x] Bootstrap server
+- [x] Recovery iniziale
 - [x] Health — contratto e test HTTP verificati
-- [ ] Shutdown backend
+- [x] Shutdown backend
 - [ ] Registry Python
 - [ ] Runtime logger
 - [ ] Redazione dati

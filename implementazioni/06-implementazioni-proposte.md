@@ -1021,7 +1021,7 @@ repository/storage identity
 ### Classificazione
 
 ```txt
-lock assente
+record writer authority assente
 → acquisibile
 
 owner positivamente morto
@@ -1051,7 +1051,7 @@ create backend identity
 
 ### Vincoli
 
-- lock launcher e writer lock restano distinti;
+- launcher lock e writer authority restano distinti;
 - nessun controllo basato soltanto sulla porta;
 - nessun kill del writer esistente;
 - nessuna modalità multi-writer;
@@ -1068,7 +1068,7 @@ create backend identity
 - recovery fatal rilascia l’autorità acquisita;
 - failure di listen rilascia l’autorità;
 - shutdown ripetuto non rilascia authority altrui;
-- backend manuale e launcher rispettano lo stesso writer lock.
+- backend manuale e launcher rispettano la stessa writer authority.
 
 ### Esito implementazione
 

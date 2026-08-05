@@ -162,7 +162,7 @@ Il launcher lock non dimostra l'ownership della persistenza. Un backend avviato 
 
 ```txt
 python avvio.py
-→ lock launcher
+→ launcher lock
 → eventuale verifica di una sessione riusabile
 → manifest runtime iniziale
 → risoluzione CDP

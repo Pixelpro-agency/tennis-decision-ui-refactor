@@ -1129,14 +1129,14 @@ B5 — Operations e roadmap
 **Priorità:** alta
 **Area:** retention cache runtime
 
-`check_apply_session_safety(...)` blocca l’apply quando esiste il lock launcher, quando è occupata la porta 3000 o 3001, oppure quando un controllo fallisce.
+`check_apply_session_safety(...)` blocca l’apply quando esiste il launcher lock, quando è occupata la porta 3000 o 3001, oppure quando un controllo fallisce.
 
 Il launcher può usare porte alternative. La utility non legge manifest, `selectedPort`, health backend, identity frontend o registry processi.
 
 Scenario residuo:
 
 ```txt
-lock assente
+launcher lock assente
 + backend/frontend manuale o residuo su porta alternativa
 → 3000 e 3001 libere
 → apply considerato offline
@@ -1147,7 +1147,7 @@ Prima di `unlink`, la utility ricontrolla soltanto che il path sia un file regol
 Correzione proposta:
 
 ```txt
-lock assente
+launcher lock assente
 + manifest assente o positivamente stale
 + endpoint selezionati non raggiungibili
 + metadata invariati prima di unlink
@@ -1428,7 +1428,7 @@ Questi punti non devono ampliare le prime task di robustezza.
 Restano confermati:
 
 - wrapper `avvio.py` sottile;
-- lock launcher prima del riuso;
+- launcher lock prima del riuso;
 - classificazione conservativa del lock;
 - fingerprint del processo contro PID riciclati;
 - massimo cinque porte candidate;
@@ -1456,7 +1456,7 @@ npm run dev
 scripts/start-backend-dev.ps1
 ```
 
-prima di IMPL-015 entravano in `startServer()` senza acquisire il lock launcher e senza acquisire una writer authority specifica.
+prima di IMPL-015 entravano in `startServer()` senza acquisire il launcher lock e senza acquisire una writer authority specifica.
 
 Il rischio storico era che due backend potessero vivere su porte differenti e condividere:
 
@@ -2486,7 +2486,7 @@ Decisione approvata:
 
 L’utility è prudente su allow-list, symlink, ricorsione e dry-run, ma l’`apply` controlla soltanto:
 
-- lock launcher;
+- launcher lock;
 - porta 3000;
 - porta 3001.
 
@@ -6303,7 +6303,7 @@ comportamento già implementato nel prodotto
 Esempi ancora non implementati al checkpoint:
 
 - `trackingSessionId` e `commandId` end-to-end;
-- writer lock backend-owned prima della recovery;
+- writer authority backend-owned prima della recovery;
 - scraper Betfair legato alla sessione logica;
 - Stop con esito completo/parziale;
 - canonical document contract con revision/head/digest;
