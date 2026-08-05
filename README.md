@@ -62,7 +62,7 @@ npm --prefix frontend run build
 python scripts/check_registry_consistency.py
 
 # Link Markdown/MDX
-python scripts/check_documentation_links.py
+python scripts/check_documentation_links.py --forbid-mdx-links
 
 # Profilo rapido offline
 node scripts/validation/run.mjs fast

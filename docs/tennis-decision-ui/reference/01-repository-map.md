@@ -19,8 +19,7 @@ Tennis Decision UI refactor/
 ├── scrapers/
 ├── scripts/
 ├── docs/
-├── implementazioni/
-└── legacy/
+└── implementazioni/
 ```
 
 | Percorso                   | Responsabilità                                                                         |
@@ -28,14 +27,13 @@ Tennis Decision UI refactor/
 | `avvio.py`                 | Wrapper pubblico del launcher locale                                                   |
 | `scraper.py`               | Wrapper pubblico dello scraper SofaScore                                               |
 | `betfair_scraper.py`       | Wrapper pubblico dello scraper Betfair                                                 |
-| `backend/`                 | API, tracking, normalizzazione, writer authority, persistenza, recovery ed Evidence   |
+| `backend/`                 | API, tracking, normalizzazione, writer authority, persistenza, recovery ed Evidence    |
 | `frontend/`                | Dashboard React, polling e presentazione                                               |
 | `launcher/`                | Avvio e shutdown coordinato dei servizi locali                                         |
 | `scrapers/`                | Implementazione Python di SofaScore e Betfair                                          |
 | `scripts/`                 | Utility operative, manutenzione, controlli documentali e runner di validazione offline |
 | `docs/tennis-decision-ui/` | Documentazione tecnica canonica                                                        |
 | `implementazioni/`         | Audit, proposte e decisioni                                                            |
-| `legacy/`                  | Materiale non canonico; non usarlo come fonte primaria                                 |
 
 ## Avvio locale
 
@@ -114,20 +112,20 @@ backend/src/
 └── sofa/
 ```
 
-| Area             | Percorsi principali                                                 | Responsabilità                                                                      |
-| ---------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Area             | Percorsi principali                                                 | Responsabilità                                                                        |
+| ---------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | Server           | `server.js`                                                         | Express, writer authority, recovery bootstrap, listener readiness, shutdown e release |
-| API Match        | `routes/match.js`, `routes/match/`                                  | Tracking, stop, status Source Identity, history, timeline e analisi                 |
-| API Betfair      | `routes/betfair.js`, `routes/betfair/`                              | Latest, timeline, health, log, login e endpoint Betfair ancora presenti             |
-| API Evidence     | `routes/evidence.js`, `routes/evidence/`                            | Snapshot Evidence e mutazioni Source Identity esplicite                             |
-| API Preflight    | `routes/test.js`, `routes/test/`                                    | Controlli leggeri prima dello Start                                                 |
-| Runtime          | `runtime/`                                                          | Process registry, runtime logger e matchHistory writer authority                    |
-| Tracking         | `sofa/matchTracker.js`, `trackerUpdate.js`, `sourceIdentityGate.js` | Scheduler, gate, registro operazioni, stop ordinario e tracker drain                |
-| SofaScore        | `sofa/normalizeSnapshot.js`, `pointByPoint.js`, `localContext.js`   | Snapshot e contesto descrittivo                                                     |
-| Betfair          | `sofa/betfairFetch.js`, `sofa/betfair/`                             | Lifecycle scraper, validazione, normalizzazione, Money Flow e commit                |
-| Storage          | `sofa/matchHistory.js`, `timelineStore.js`, `matchHistory/`         | History, timeline, journal, integrity e recovery                                    |
-| Evidence         | `sofa/matchEvidence.js`, `sofa/matchEvidence/`                      | Snapshot read-only, qualità, identity e no-trade reasons                            |
-| Market Reactions | `sofa/marketReactionEvidence.js` e moduli collegati                 | Osservazioni temporali senza causalità dichiarata                                   |
+| API Match        | `routes/match.js`, `routes/match/`                                  | Tracking, stop, status Source Identity, history, timeline e analisi                   |
+| API Betfair      | `routes/betfair.js`, `routes/betfair/`                              | Latest, timeline, health, log, login e endpoint Betfair ancora presenti               |
+| API Evidence     | `routes/evidence.js`, `routes/evidence/`                            | Snapshot Evidence e mutazioni Source Identity esplicite                               |
+| API Preflight    | `routes/test.js`, `routes/test/`                                    | Controlli leggeri prima dello Start                                                   |
+| Runtime          | `runtime/`                                                          | Process registry, runtime logger e matchHistory writer authority                      |
+| Tracking         | `sofa/matchTracker.js`, `trackerUpdate.js`, `sourceIdentityGate.js` | Scheduler, gate, registro operazioni, stop ordinario e tracker drain                  |
+| SofaScore        | `sofa/normalizeSnapshot.js`, `pointByPoint.js`, `localContext.js`   | Snapshot e contesto descrittivo                                                       |
+| Betfair          | `sofa/betfairFetch.js`, `sofa/betfair/`                             | Lifecycle scraper, validazione, normalizzazione, Money Flow e commit                  |
+| Storage          | `sofa/matchHistory.js`, `timelineStore.js`, `matchHistory/`         | History, timeline, journal, integrity e recovery                                      |
+| Evidence         | `sofa/matchEvidence.js`, `sofa/matchEvidence/`                      | Snapshot read-only, qualità, identity e no-trade reasons                              |
+| Market Reactions | `sofa/marketReactionEvidence.js` e moduli collegati                 | Osservazioni temporali senza causalità dichiarata                                     |
 
 Modulo runtime authority:
 
@@ -231,18 +229,18 @@ Owner correnti: documenti sotto `modules/frontend/`. Questi documenti contengono
 
 Escludere dal normale contesto e dai commit:
 
-| Percorso o categoria                               | Regola                                              |
-| -------------------------------------------------- | --------------------------------------------------- |
-| `backend/match_history/`                           | Dati canonici locali; usare solo per task esplicite |
-| `.pending_commits/`                                | Journal di recovery; non cancellare manualmente     |
+| Percorso o categoria                               | Regola                                                     |
+| -------------------------------------------------- | ---------------------------------------------------------- |
+| `backend/match_history/`                           | Dati canonici locali; usare solo per task esplicite        |
+| `.pending_commits/`                                | Journal di recovery; non cancellare manualmente            |
 | `.writer_authority/`                               | Sidecar authority; non cancellare o modificare manualmente |
-| `backend/scraper_cache/`, `backend/betfair_cache/` | Cache non canoniche                                 |
-| profili browser                                    | Sensibili e non condivisibili                       |
-| `backend/betfair_network_dump/`                    | Diagnostica potenzialmente sensibile                |
-| log runtime                                        | Diagnostica, non fonte canonica                     |
-| `launcher/.runtime/`                               | Launcher lock e manifest effimeri                   |
-| `node_modules/`, build                             | Artefatti generati                                  |
-| `.env`                                             | Credenziali locali                                  |
+| `backend/scraper_cache/`, `backend/betfair_cache/` | Cache non canoniche                                        |
+| profili browser                                    | Sensibili e non condivisibili                              |
+| `backend/betfair_network_dump/`                    | Diagnostica potenzialmente sensibile                       |
+| log runtime                                        | Diagnostica, non fonte canonica                            |
+| `launcher/.runtime/`                               | Launcher lock e manifest effimeri                          |
+| `node_modules/`, build                             | Artefatti generati                                         |
+| `.env`                                             | Credenziali locali                                         |
 
 La utility `scripts/cleanup_runtime_cache.py` opera soltanto sulle cache allow-list e non deve essere usata come cleanup generico o per manipolare `.writer_authority/`.
 
@@ -313,7 +311,7 @@ Per convenzioni e gerarchia:
 | -------------- | --------------------------------------------------------------------- |
 | Endpoint HTTP  | router, modulo response, test vicino e documento API owner            |
 | Tracking       | `matchTracker.js`, update interessato e Source Identity Gate          |
-| Persistenza    | writer authority, facade, writer, journal, recovery e test storage   |
+| Persistenza    | writer authority, facade, writer, journal, recovery e test storage    |
 | Betfair        | `betfairFetch.js`, sottoprogetto Betfair e scraper Python coinvolto   |
 | Frontend       | hook o componente target, consumer diretto e documento frontend owner |
 | Launcher       | wrapper `avvio.py`, package `launcher/` e runbook runtime             |

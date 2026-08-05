@@ -87,26 +87,29 @@ La matrice non deve dichiarare `PASS` senza un output corrente.
 ### IMPL-004 — Archivio separato dei collaudi storici
 
 **Classificazione:** `CONSIGLIATA`
-**Stato:** `CONFERMATO, STRUTTURA DA APPROVARE`
+**Stato:** `IMPLEMENTATA E COMPLETATA TRAMITE DEC-013`
 
-Motivo:
+La separazione fra documenti owner e collaudi storici è implementata nella struttura corrente:
 
-- roadmap e runbook contengono collaudi 9A-R2B, 9B e report live;
-- procedure correnti e osservazioni storiche sono mescolate;
-- un report storico non deve essere interpretato come prova corrente.
+```txt
+docs/validations/
+├── README.md
+└── report di validazione datati
+```
 
-Struttura minima proposta:
+`DEC-013` stabilisce che i collaudi approfonditi restino separati dai documenti owner e confluiscano in `docs/validations/`.
+
+La proposta storica:
 
 ```txt
 docs/tennis-decision-ui/archive/validations/
-└── YYYY-MM-DD-<area>.md
 ```
 
-Ogni report deve indicare data, SHA, ambiente, passi, risultati, limiti e artefatti disponibili.
+è superata e non deve essere ricreata.
 
-Rischio da evitare:
+Ogni nuova validazione deve indicare data, SHA o baseline, ambiente, scopo, azioni o comandi, risultati osservati, scenari non osservati, artefatti disponibili e limiti.
 
-- creare un secondo sistema documentale troppo pesante.
+Il rischio di creare un secondo sistema documentale viene evitato mantenendo un solo indice in `docs/validations/README.md`.
 
 ### IMPL-005 — Controllo di coerenza Todo ↔ registri
 
@@ -139,7 +142,7 @@ Non deve cambiare automaticamente priorità, risolvere decisioni, rinumerare ID 
 2. IMPL-003 — matrice test
 3. IMPL-001 — link checker prima della migrazione docs
 4. IMPL-002 — inventario endpoint prima della riscrittura API
-5. IMPL-004 — archivio collaudi durante la nuova struttura docs
+5. IMPL-004 — archivio collaudi completato in `docs/validations/`
 ```
 
 ## 13.2 Cosa non fare adesso
@@ -495,7 +498,7 @@ eventuale pannello diagnostico
 6. IMPL-008 — harness persistence/recovery
 7. IMPL-001 — link checker prima migrazione docs
 8. IMPL-002 — inventario endpoint
-9. IMPL-004 — archivio collaudi
+9. IMPL-004 — archivio collaudi già completato in `docs/validations/`
 ```
 
 L’ordine definitivo dipende dal raggruppamento delle task e dalle decisioni dell’utente.

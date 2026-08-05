@@ -12,6 +12,12 @@ L’endpoint attuale espone il view model della strategia Lay The Winner.
 
 Non è un endpoint di tracking e non modifica timeline o history. Legge la timeline Betfair persistita e costruisce un’analisi SofaScore per comporre il view model.
 
+## Stato
+
+**Deprecato.**
+
+Il router e i relativi consumer sono ancora presenti nel codice corrente, ma la loro rimozione è approvata. Non estendere questa API e non usarla come base per nuove strategie. Match Evidence e Market Reactions restano fuori dal perimetro della rimozione.
+
 ## Endpoint
 
 ```txt

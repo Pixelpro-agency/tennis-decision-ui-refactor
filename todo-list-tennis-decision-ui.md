@@ -733,7 +733,7 @@ DA RIAPRIRE
 - [x] `IMPL-001` — Link checker Markdown/MDX — **IMPLEMENTATA; SCAN READ-ONLY DISPONIBILE**
 - [x] `IMPL-002` — Inventario endpoint — **CONSIGLIATA**
 - [x] `IMPL-003` — Matrice test ↔ modulo ↔ documento — **NECESSARIA**
-- [x] `IMPL-004` — Archivio collaudi storici — **CONSIGLIATA; STRUTTURA DA APPROVARE**
+- [x] `IMPL-004` — Archivio collaudi storici — **IMPLEMENTATA E COMPLETATA TRAMITE DEC-013; STRUTTURA CORRENTE IN `docs/validations/`**
 - [x] `IMPL-005` — Coerenza Todo ↔ registri — **IMPLEMENTATA E VERIFICATA; FINDING NORMALIZZATI E CHECKER VERDE**
 - [x] `IMPL-006` — Session authority end-to-end — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
 - [x] `IMPL-007` — Serializer pubblico diagnostica/errori — **NECESSARIA**
