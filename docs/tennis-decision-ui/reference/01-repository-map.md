@@ -294,7 +294,7 @@ Non è stato eseguito un collaudo manuale con due backend reali concorrenti.
 docs/
 ├── tennis-decision-ui/   # owner tecnici correnti
 ├── validations/          # collaudi e osservazioni storiche
-└── archive/              # planning, brief e materiale non canonico
+└── archive/              # registro fonti consolidate; materiali successivi non canonici
 ```
 
 Per convenzioni e gerarchia:

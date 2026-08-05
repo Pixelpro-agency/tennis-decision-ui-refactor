@@ -194,11 +194,11 @@ IMPL-015 completata:
 ## B1 — Ingresso e orientamento
 
 - [x] README root — verificato
-- [x] `docs/tennis-decision-ui/index.mdx` — verificato
+- [x] Indice canonico — verificato; al checkpoint B1 il percorso era `docs/tennis-decision-ui/index.mdx`
 - [x] repository map — `DOC-002`, `DOC-006`
 - [x] system boundaries — `DOC-006`
 - [x] data lifecycle — `DOC-006`
-- [-] link e frontmatter — formato verificato; inventario globale link ancora aperto
+- [x] link e frontmatter — formato verificato; inventario globale e scansione strict completati
 
 ## B2 — API
 
@@ -705,7 +705,7 @@ DA RIAPRIRE
 - [x] `TEST-076` — Tutti i documenti canonici indicizzati sono inventariati una sola volta — **ESEGUITO NEL BATCH 0**
 - [x] `TEST-077` — Ogni sostituzione `.mdx` → `.md` ha mapping univoco e nessun duplicato canonico — **PASS FINALE**
 - [x] `TEST-078` — Tutti i link relativi dei file migrati risolvono e non puntano a percorsi rimossi — **PASS FINALE**
-- [x] `TEST-079` — Stato corrente, deprecato, storico e futuro sono coerenti con codice e registri — **PASS FINALE**
+- [x] `TEST-079` — Stato corrente, deprecato, storico e futuro sono coerenti con codice e registri — **PASS FINALE DELLA MIGRAZIONE; RICONTROLLI SUCCESSIVI SEPARATI**
 
 ---
 
@@ -728,7 +728,7 @@ DA RIAPRIRE
 - [x] `IMPL-002` — Inventario endpoint — **CONSIGLIATA**
 - [x] `IMPL-003` — Matrice test ↔ modulo ↔ documento — **NECESSARIA**
 - [x] `IMPL-004` — Archivio collaudi storici — **CONSIGLIATA; STRUTTURA DA APPROVARE**
-- [x] `IMPL-005` — Coerenza Todo ↔ registri — **IMPLEMENTATA; BASELINE CON FINDING DA NORMALIZZARE**
+- [x] `IMPL-005` — Coerenza Todo ↔ registri — **IMPLEMENTATA E VERIFICATA; FINDING NORMALIZZATI E CHECKER VERDE**
 - [x] `IMPL-006` — Session authority end-to-end — **CONFERMATA E APPROVATA; PRIORITÀ CRITICA**
 - [x] `IMPL-007` — Serializer pubblico diagnostica/errori — **NECESSARIA**
 - [x] `IMPL-008` — Harness offline persistence/recovery — **CONSIGLIATA**
@@ -854,7 +854,7 @@ Per ogni rilievo approvato:
 - [ ] Prima serie di task esecutive completata
 - [x] Documentazione canonica aggiornata
 - [ ] Collaudi necessari conclusi
-- [ ] Stato finale verificato sul nuovo SHA
+- [ ] Stato finale post-correzione da verificare sul nuovo SHA pubblicato
 
 ---
 

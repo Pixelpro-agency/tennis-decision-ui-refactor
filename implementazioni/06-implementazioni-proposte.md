@@ -3357,7 +3357,21 @@ python → 5
 full-offline → 17
 ```
 
-Journal e recovery restano una lacuna esplicita da coprire con `IMPL-003` e `IMPL-008`. La baseline reale deve essere rieseguita dopo questa correzione.
+Journal e recovery restano una lacuna esplicita da coprire con `IMPL-003` e `IMPL-008`.
+
+#### Esito finale della validazione locale
+
+Dopo la correzione del manifest e l'hotfix Windows per l'invocazione di `npm.cmd`, i profili eseguibili sono stati rieseguiti sulla working tree reale con esito positivo:
+
+```txt
+fast → PASS
+backend → PASS
+frontend → PASS
+python → PASS
+full-offline → PASS
+```
+
+La validazione locale di `IMPL-028` è quindi completata. I profili `persistence`, `benchmark` e `live` restano non implementati e non sono inclusi implicitamente in questo esito.
 
 ---
 

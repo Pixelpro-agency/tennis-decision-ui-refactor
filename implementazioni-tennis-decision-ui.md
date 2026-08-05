@@ -120,6 +120,9 @@ checkpoint audit materiali locali
 → writer authority esclusiva implementata
 → tracker drain implementato
 → riallineamento documentale conclusivo
+→ ricontrollo semantico post-push dei 15 documenti eseguito su aacced388b252bc09433c2867465c53668c7f1e0
+→ correzioni residue di stato, archivio e checkpoint applicate
+→ verifica finale da ripetere sul nuovo SHA pubblicato
 → precisione
 → robustezza
 → utilità

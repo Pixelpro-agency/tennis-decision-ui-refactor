@@ -108,12 +108,12 @@ La writer authority identifica in forma bounded almeno:
 ```txt
 schema
 project
-instanceId
+backendInstanceId
 pid
-process start fingerprint
+processStartFingerprint
 createdAt
-repository identity
-storage identity
+repositoryIdentity
+storageIdentity
 ```
 
 La documentazione non riporta path personali o record reali.

@@ -306,6 +306,9 @@ Nessuna feature frontend deve dipendere direttamente dalla porta preferita del b
 
 ## 11. Aree da ricontrollare nel codice
 
+> Checkpoint storico del primo audit. Le checkbox seguenti descrivono
+> lo stato di quel momento e non rappresentano il backlog corrente.
+
 ### Root e runtime locale
 
 - [ ] `avvio.py`;
@@ -1113,7 +1116,7 @@ Python
 → Graph URL coerente
 ```
 
-Prossimo audit:
+Passo successivo previsto al checkpoint B4 (storico):
 
 ```txt
 B5 — Operations e roadmap
@@ -6474,7 +6477,7 @@ come implementato.
 
 ---
 
-## 24. Implementazione iniziale di IMPL-028
+## 24.1 Implementazione iniziale di IMPL-028
 
 **Data:** `2026-08-03`
 **Stato:** `IMPLEMENTATA, DA VALIDARE SULLA WORKING TREE LOCALE`
@@ -6558,7 +6561,19 @@ Il preflight reale sulla working tree Windows ha rilevato due `pathChecks` inesi
 
 Le entry `backend-commit-journal` e `backend-recovery` sono state rimosse dal manifest. Non esiste evidenza di test sostitutivi con quei contratti nel percorso corrente; la copertura resta aperta e non viene conteggiata come PASS o skip. I conteggi corretti sono `backend 4` e `full-offline 17`.
 
+### Esito finale post-correzione sulla working tree reale
 
+Dopo la correzione del manifest e l'hotfix Windows per l'invocazione di `npm.cmd`, i cinque profili eseguibili sono stati rieseguiti sulla working tree reale:
+
+```txt
+fast → PASS
+backend → PASS
+frontend → PASS
+python → PASS
+full-offline → PASS
+```
+
+Questo esito chiude la validazione locale di `IMPL-028`. Restano non implementati i profili `persistence`, `benchmark` e `live`; la mappa completa test ↔ owner ↔ documento resta `IMPL-003`.
 
 ## 25. Chiusura archive e completamento IMPL-015
 
