@@ -20,12 +20,13 @@ Non sostituisce il codice, i test, i documenti tecnici canonici o i collaudi.
 Repository: Pixelpro-agency/tennis-decision-ui-refactor
 Branch canonico: main
 SHA codice verificato: aefc0ba5894d8fca60e5811088fede3ebbfde98a
-SHA checkpoint registri: 8f936d1a3686b775e967e375576f52f19da461a5
-Data del checkpoint: 2026-08-06
-Nota: 8f936d1 è un commit documentale; il codice applicativo verificato resta aefc0ba.
+SHA base del recupero documentale: 8f936d1a3686b775e967e375576f52f19da461a5
+Commit di applicazione del recupero: 2ebe7e8ad0935bf0195679452d2e54e1de4d63dc
+Data del recupero documentale: 2026-08-06
+Nota: 8f936d1 è la base del recupero; 2ebe7e8 è il commit che lo applica. Il codice applicativo verificato resta aefc0ba.
 ```
 
-Il branch locale e `origin/main` risultano allineati sul commit documentale `8f936d1`.
+Il recupero documentale è stato pubblicato nel commit `2ebe7e8`.
 
 ## Fonti correnti
 

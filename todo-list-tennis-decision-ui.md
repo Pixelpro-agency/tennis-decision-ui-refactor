@@ -21,14 +21,15 @@ Le motivazioni e le evidenze complete vivono nei moduli sotto `implementazioni/`
 Repository: Pixelpro-agency/tennis-decision-ui-refactor
 Branch canonico: main
 SHA codice verificato: aefc0ba5894d8fca60e5811088fede3ebbfde98a
-SHA checkpoint registri: 8f936d1a3686b775e967e375576f52f19da461a5
-Data del checkpoint: 2026-08-06
+SHA base del recupero documentale: 8f936d1a3686b775e967e375576f52f19da461a5
+Commit di applicazione del recupero: 2ebe7e8ad0935bf0195679452d2e54e1de4d63dc
+Data del recupero documentale: 2026-08-06
 ```
 
-- [x] Branch locale e `origin/main` allineati sul commit documentale `8f936d1`
-- [x] Il commit 8f936d1 modifica soltanto documentazione e registri; la baseline del codice resta aefc0ba
+- [x] Il recupero documentale è stato pubblicato nel commit `2ebe7e8`
+- [x] La base 8f936d1 e il commit di applicazione 2ebe7e8 riguardano soltanto documentazione e registri; la baseline del codice resta aefc0ba
 - [x] Documentazione e registri verificati dopo la modularizzazione
-- [x] Working tree pulita al checkpoint pubblicato
+- [x] Working tree pulita al momento della pubblicazione del recupero
 
 ## Legenda
 
@@ -70,7 +71,7 @@ Lo stato testuale in grassetto è l’autorità sintetica. Una checkbox `[x]` no
 - [ ] A11 — Inventario completo package Python
 - [ ] A12 — Inventario script operativi
 - [ ] A13 — Inventario test
-- [x] A14 — Inventario documenti canonici — 40 documenti indicizzati verificati sullo SHA checkpoint
+- [x] A14 — Inventario documenti canonici — 40 documenti indicizzati verificati sullo SHA base del recupero documentale
 - [-] A15 — Inventario legacy e file generati — materiali locali classificati; riferimenti canonici `chapters/` e `sections/` verificati assenti
 - [-] A16 — Matrice codice ↔ documentazione — owner matrix Batch 0 creata; completamento progressivo per i batch comportamentali
 
@@ -777,16 +778,17 @@ Per ogni task selezionata devono essere definiti:
 - [x] Documentazione canonica aggiornata
 - [x] Registri modularizzati
 - [x] Checker e link verificati
-- [x] Stato dei registri verificato sul commit documentale `8f936d1`
+- [x] Recupero documentale verificato e pubblicato nel commit `2ebe7e8`
 - [ ] Prima serie di nuove task esecutive completata
 - [ ] Test mancanti implementati
 - [ ] Collaudi live residui conclusi
 - [ ] Stato finale del prodotto dopo le prossime correzioni tecniche
 
-## Verifiche dell’ultimo checkpoint
+## Verifiche del recupero pubblicato
 
 ```txt
-checkpoint registri: 8f936d1
+base del recupero documentale: 8f936d1
+commit di applicazione del recupero: 2ebe7e8
 registry checker tests: 18 PASS
 nested registry tests: 2 PASS
 registry consistency: 240 owner ID, 214 righe Todo, 0 errori, 0 warning
