@@ -117,7 +117,8 @@
       "requirementIds": [],
       "command": [
         "${PYTHON}",
-        "scripts/check_documentation_links.py"
+        "scripts/check_documentation_links.py",
+        "--forbid-mdx-links"
       ],
       "cwd": ".",
       "type": "documentation-check",

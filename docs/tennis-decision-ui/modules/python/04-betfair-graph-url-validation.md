@@ -2,11 +2,35 @@
 
 ## Stato
 
-**Implementato, da validare.**
+**Implementato, con percorso positivo osservato live e matrice completa ancora da validare.**
 
 Il parser, il mapping e i test unitari puri sono completati.
 
-Resta da validare il comportamento in una sessione reale Playwright/Betfair, con Graph URL valide, URL invalide e login Betfair attivo o mancante.
+Nel collaudo live `9B` è stato osservato almeno il percorso positivo:
+
+```txt
+mode=cdp reale
+→ Graph URL valida
+→ runner assegnato
+→ ladder utilizzabile
+→ matched volume aggiornato
+```
+
+Sono stati inoltre osservati live il requisito di login sulla pagina Graph e il successivo ritorno a `Connected` dopo autenticazione, nel flusso logout Graph documentato dagli owner Betfair.
+
+Restano da validare come matrice live dedicata:
+
+```txt
+URL sintatticamente invalide
+marketId non coerente
+selectionId assente
+selectionId duplicata
+login mancante all’avvio della sessione
+ladder vuota o temporaneamente non disponibile
+più Graph URL con combinazioni miste valide/invalide
+```
+
+I test puri non aprono browser o rete e non sostituiscono questa matrice live.
 
 ## Scopo
 
@@ -57,14 +81,16 @@ https://graphs.betfair.it/1.23456789/101/0
 
 ## Regole di parsing
 
-La URL deve rispettare tutte queste condizioni:
+La URL deve rispettare:
 
 ```txt
 schema
 → esclusivamente https
 
 host
-→ esclusivamente graphs.betfair.it, senza credenziali nella URL né porta esplicita
+→ esclusivamente graphs.betfair.it
+→ nessuna credenziale
+→ nessuna porta esplicita
 
 path
 → marketId / selectionId / 0
@@ -76,7 +102,7 @@ selectionId
 → sole cifre
 ```
 
-L’endpoint `runnerChartData` viene rifiutato esplicitamente:
+L’endpoint `runnerChartData` viene rifiutato con:
 
 ```txt
 bad_graph_url_unsupported_endpoint
@@ -90,17 +116,17 @@ bad_graph_url_invalid
 
 ## Regole di mapping
 
-Il mapping usa questo flusso:
+Flusso:
 
 ```txt
 fetch_market_data_api(...)
 → selection_map dei soli runner con selectionId non nullo
 → expected_market_id da market_info.market_id
 → seen_selection_ids per l’esecuzione corrente
-→ runner già risolto
+→ runner risolto
 ```
 
-Failure reason di mapping:
+Failure reason:
 
 ```txt
 bad_graph_url_market_mismatch
@@ -129,7 +155,7 @@ selectionId già visto
 
 La selezione viene riservata subito dopo il mapping riuscito, prima dell’apertura della pagina ladder.
 
-Se la lettura della prima URL produce ladder vuota, errore temporaneo o login richiesto, una URL successiva con la stessa `selectionId` resta comunque duplicata e non viene ritentata.
+Se la prima URL produce ladder vuota, errore temporaneo o login richiesto, una URL successiva con la stessa `selectionId` resta duplicata e non viene ritentata.
 
 Non esiste fallback per:
 
@@ -153,16 +179,16 @@ URL invalida o mapping non riuscito
 → continuazione con la URL seguente
 ```
 
-Le failure diagnostiche memorizzate sono limitate alle prime cinque; i contatori restano comunque completi.
+Le failure diagnostiche memorizzate sono limitate alle prime cinque; i contatori restano completi.
 
-URL e testo delle failure diagnostiche devono essere redatti prima dell’esposizione nel risultato dello scraper.
+URL e testo delle failure devono essere redatti prima dell’esposizione:
 
 ```txt
 graph_diagnostics.failures[].url
 graph_diagnostics.failures[].text
 ```
 
-La redazione avviene prima del troncamento diagnostico e non cambia reason, contatori o decisione di skip.
+La redazione avviene prima del troncamento e non cambia reason, contatori o decisione di skip.
 
 Il login richiesto è l’eccezione:
 
@@ -174,9 +200,7 @@ login_required dalla pagina Graph
 → interruzione delle Graph URL rimanenti
 ```
 
-Questo documento descrive dove compaiono le failure Graph URL. Le regole generali di redazione appartengono allo scraper Betfair e al runbook diagnostico.
-
-Se `event_status.hasFinished` è `true`, lo scraper non tenta alcuna Graph URL:
+Se `event_status.hasFinished` è `true`, lo scraper non tenta Graph URL:
 
 ```txt
 skippedBecauseFinished = true
@@ -184,6 +208,27 @@ graphUrlsAttempted = 0
 ```
 
 Una URL sintatticamente valida non garantisce login attivo, ladder disponibile, righe ladder o Money Flow valido.
+
+## Preflight backend e parser Python
+
+Il preflight backend controlla una grammatica preliminare e distinta.
+
+```txt
+POST /api/test/graph-urls
+→ controllo leggero backend
+→ non prova l’accettazione definitiva dello scraper
+```
+
+L’accettazione definitiva appartiene a questo modulo Python:
+
+```txt
+https://graphs.betfair.it/<marketId>/<selectionId>/0
+→ parser Python
+→ marketId coerente
+→ selectionId presente
+→ duplicato escluso
+→ ladder assegnata
+```
 
 ## Confini
 
@@ -202,15 +247,11 @@ redazione diagnostica generale
 cache Betfair
 ```
 
-Questo documento descrive dove compaiono le failure Graph URL. Le regole generali di redazione appartengono allo scraper Betfair e al runbook diagnostico.
-
-Il preflight backend controlla una grammatica distinta e preliminare.
-
-L’accettazione definitiva della Graph URL per lo scraper appartiene a questo modulo Python.
+Le regole generali di redazione appartengono allo scraper Betfair e al runbook diagnostico.
 
 ## Verifica
 
-Dalla cartella che contiene il package `scrapers/`:
+Dalla cartella che contiene `scrapers/`:
 
 ```bash
 python -m py_compile \
@@ -221,10 +262,10 @@ python -m py_compile \
 python -m unittest -v scrapers.betfair.graph_url_test
 ```
 
-I test devono verificare soltanto helper puri:
+I test puri devono verificare:
 
 ```txt
-parser URL, inclusi query string, fragment e slash finale
+parser URL, incluse query string, fragment e slash finale
 endpoint runnerChartData non supportato
 market mismatch
 selection assente
@@ -234,9 +275,30 @@ assenza della chiave "None"
 
 Non devono aprire browser, rete o Betfair reale.
 
+### Verifica live già osservata
+
+```txt
+Graph URL valida
+→ mapping runner
+→ ladder utilizzabile
+→ matched volume aggiornato
+```
+
+### Verifica live ancora aperta
+
+```txt
+URL invalide
+market mismatch reale
+selection assente reale
+duplicato reale
+login inizialmente assente
+ladder vuota o temporanea
+lista mista di URL
+```
+
 ## Documenti collegati
 
-* [Scraper Betfair](./03-betfair-scraper.md)
-* [Diagnostica Betfair](../../operations/03-betfair-diagnostics.md)
-* [Validazione e rollback](../../operations/04-validation-and-rollback.md)
-* [API Preflight](../../api/05-preflight.md)
+- [Scraper Betfair](./03-betfair-scraper.md)
+- [Diagnostica Betfair](../../operations/03-betfair-diagnostics.md)
+- [Validazione e rollback](../../operations/04-validation-and-rollback.md)
+- [API Preflight](../../api/05-preflight.md)

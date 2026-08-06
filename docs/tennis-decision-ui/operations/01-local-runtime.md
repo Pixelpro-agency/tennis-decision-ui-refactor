@@ -331,11 +331,12 @@ history
 timeline
 journal sidecar
 writer authority sidecar
-Evidence snapshot
 conferme Source Identity
 dump diagnostici
 cache senza policy esplicita
 ```
+
+Evidence non compare nell’elenco perché lo snapshot corrente è una vista read-only ricostruibile dagli input canonici; non esiste un file o uno store Evidence autonomo da preservare o cancellare.
 
 Non usare cleanup basati su:
 

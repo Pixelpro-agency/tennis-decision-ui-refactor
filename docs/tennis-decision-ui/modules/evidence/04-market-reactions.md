@@ -332,12 +332,14 @@ frontend/src/components/marketReactions/
 
 Ownership:
 
-| Livello                        | Responsabilità                                                          |
-| ------------------------------ | ----------------------------------------------------------------------- |
-| `App.jsx`                      | Crea l’unica istanza del polling Evidence e gestisce Source Identity UI |
-| `useMarketReactionEvidence.js` | Carica snapshot, refresh, conferma e revoca                             |
-| `MarketReactionsPage.jsx`      | Consumer presentazionale dei dati già caricati                          |
-| Card Market Reactions          | Visualizzano finestre, qualità, reasons e limiti interpretativi         |
+| Livello                        | Responsabilità                                                                                            |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `App.jsx`                      | Crea l’unica istanza del polling Evidence e gestisce Source Identity UI                                   |
+| `useMarketReactionEvidence.js` | Carica e conserva `latest.marketReactionEvidence`, gestisce refresh ed espone helper di conferma e revoca |
+| `MarketReactionsPage.jsx`      | Consumer presentazionale dei dati già caricati                                                            |
+| Card Market Reactions          | Visualizzano finestre, qualità, reasons e limiti interpretativi                                           |
+
+L’hook non conserva il wrapper Evidence completo: i blocchi top-level come `integrity`, `sources` e le altre sezioni dello snapshot non entrano nel suo stato pubblico. Il flusso globale corrente della Source Identity UI resta governato dal controller dedicato; gli helper di conferma e revoca dell’hook non diventano l’autorità del gate frontend.
 
 `MarketReactionsPage.jsx` non deve:
 
