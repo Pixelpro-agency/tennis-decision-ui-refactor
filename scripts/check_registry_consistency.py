@@ -152,7 +152,7 @@ def collect_owner_cards(root: Path) -> dict[str, list[Location]]:
     if not registry_root.is_dir():
         raise FileNotFoundError(REGISTRY_DIR.as_posix())
 
-    for path in sorted(registry_root.glob("*.md")):
+    for path in sorted(registry_root.rglob("*.md")):
         lines = read_lines(path)
         for index, line in enumerate(lines):
             match = OWNER_HEADING_RE.match(line)
@@ -204,7 +204,7 @@ def collect_declared_prefixes(root: Path) -> set[str]:
 def collect_all_ids(root: Path) -> dict[str, list[Location]]:
     occurrences: dict[str, list[Location]] = defaultdict(list)
     candidates = [root / TODO_PATH, root / "implementazioni-tennis-decision-ui.md"]
-    candidates.extend(sorted((root / REGISTRY_DIR).glob("*.md")))
+    candidates.extend(sorted((root / REGISTRY_DIR).rglob("*.md")))
     for path in candidates:
         if not path.is_file():
             continue
@@ -291,15 +291,21 @@ def collect_summary_metadata(
         if next_step:
             next_steps[relative_path(root, path)] = next_step
 
-    audit_path = root / REGISTRY_DIR / "03-audit-codice.md"
-    audit_point = None
-    if audit_path.is_file():
-        points = [
+    audit_paths = [root / REGISTRY_DIR / "03-audit-codice.md"]
+    audit_parts_root = root / REGISTRY_DIR / "audit-codice"
+    if audit_parts_root.is_dir():
+        audit_paths.extend(sorted(audit_parts_root.glob("*.md")))
+
+    audit_points: list[int] = []
+    for audit_path in audit_paths:
+        if not audit_path.is_file():
+            continue
+        audit_points.extend(
             int(match.group(1))
             for line in read_lines(audit_path)
             if (match := POINT_HEADING_RE.match(line))
-        ]
-        audit_point = max(points) if points else None
+        )
+    audit_point = max(audit_points) if audit_points else None
 
     summary_points: dict[str, int] = {}
     for path in summary_paths:
