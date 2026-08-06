@@ -64,23 +64,25 @@ errore Source Identity
 
 ## Classificazione iniziale
 
-| Sintomo                                                                                 | Interpretazione iniziale                                                                |
-| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `event_status.hasFinished === true`                                                     | Mercato concluso; polling Betfair fermato                                               |
-| `404` + health `unknown`                                                                | Nessuna timeline e nessun errore runtime attivo                                         |
-| `404` + health `yellow/DEGRADED`                                                        | Nessuna timeline, ma retry tecnico attivo                                               |
-| `409 persistence_integrity`                                                             | Timeline assente o non leggibile per persistenza incompleta nota                        |
-| `integrity.status = partial_persistence`                                                | Commit canonico incompleto noto; non è health, freshness o runtime scraper              |
-| `integrity.status = recovery_failed`                                                    | Recovery bootstrap fallita; serve validazione controllata                               |
-| yellow/DEGRADED                                                                         | Errore tecnico runtime attivo; nessun alert login strutturato                           |
-| yellow/STALE                                                                            | Tick canonico o ladder usabile oltre 45 secondi, senza segnale auth strutturato         |
-| Tick recente + ladder stale                                                             | Dati mercato recenti, ladder degradata; non equivale a mercato fermo                    |
-| red/ALERT                                                                               | Logout Graph rilevato e tick status-only persistito; auth sospetta e alert login attivo |
-| `error`, `api_error`, runner mancanti o vuoti, `total_matched` assente, invalido o zero | Campione tecnico scartato; polling da ritentare                                         |
-| Timeout o DNS                                                                           | Fetch non riuscito; polling da ritentare                                                |
-| Errore Graph URL isolato con runner e volume affidabili                                 | Non rende da solo inutilizzabile il campione                                            |
-| Grafico fermo ma ladder visibile                                                        | History, timestamp o point validi non avanzano                                          |
-| Pagina non aggiornata                                                                   | Connessione Vite persa                                                                  |
+| Sintomo                                                                                 | Interpretazione iniziale                                                                          |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `event_status.hasFinished === true`                                                     | Mercato concluso; polling Betfair fermato                                                         |
+| `404` + health `unknown`                                                                | Nessuna timeline e nessun errore runtime attivo                                                   |
+| `404` + health `yellow/DEGRADED`                                                        | Nessuna timeline, ma retry tecnico attivo                                                         |
+| `409 persistence_integrity`                                                             | Timeline assente o non leggibile per persistenza incompleta nota                                  |
+| `integrity.status = partial_persistence`                                                | Commit canonico incompleto noto; non è health, freshness o runtime scraper                        |
+| `integrity.status = recovery_failed`                                                    | Recovery bootstrap fallita; serve validazione controllata                                         |
+| yellow/DEGRADED                                                                         | Errore tecnico runtime attivo; nessun alert login strutturato                                     |
+| yellow/STALE                                                                            | Tick canonico o ladder usabile oltre 45 secondi, senza segnale auth strutturato                   |
+| Tick recente + ladder stale                                                             | Dati mercato recenti, ladder degradata; non equivale a mercato fermo                              |
+| red/ALERT                                                                               | Autenticazione Graph sospetta nel tick corrente o in un tick canonico recente; alert login attivo |
+| `error`, `api_error`, runner mancanti o vuoti, `total_matched` assente, invalido o zero | Campione tecnico scartato; polling da ritentare                                                   |
+| Timeout o DNS                                                                           | Fetch non riuscito; polling da ritentare                                                          |
+| Errore Graph URL isolato con runner e volume affidabili                                 | Non rende da solo inutilizzabile il campione                                                      |
+| Grafico fermo ma ladder visibile                                                        | History, timestamp o point validi non avanzano                                                    |
+| Pagina non aggiornata                                                                   | Connessione Vite persa                                                                            |
+
+Il solo stato `red/ALERT` non dimostra che il tick corrente sia una transizione `status-only`. La conferma richiede `latest.diagnostics.statusOnlyGraphLogin === true`; in sua assenza, il rosso indica comunque un segnale auth strutturato corrente o recente.
 
 Soglia freshness:
 
@@ -568,10 +570,13 @@ L’azione di login è appropriata soltanto quando esistono segnali auth struttu
 
 ```txt
 latest.graphHealth.status = auth_suspected
+oppure
 latest.diagnostics.graphLoginRequired = true
-latest.diagnostics.statusOnlyGraphLogin = true
+oppure
 health red / ALERT
 ```
+
+`latest.diagnostics.statusOnlyGraphLogin = true` identifica inoltre la specifica transizione canonica `status-only`, ma non è richiesto per classificare l’alert auth.
 
 Quando Graph indica login mancante:
 
@@ -721,7 +726,8 @@ verificare CDP
 Per logout Graph con `red / ALERT`:
 
 ```txt
-verificare diagnostics.graphLoginRequired e statusOnlyGraphLogin
+verificare il segnale auth strutturato
+→ quando presente, usare statusOnlyGraphLogin per distinguere la specifica transizione status-only
 → completare login Betfair nel browser CDP
 → attendere un nuovo scrape utilizzabile
 → verificare che l’alert auth non sia più attivo

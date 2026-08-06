@@ -347,7 +347,7 @@ I collaudi manuali sono conservati in [docs/validations](../../validations/READM
 
 ## Stato dell’infrastruttura
 
-Sono implementati e validati localmente:
+Sono implementati e configurati:
 
 - manifest in `scripts/validation/test-manifest.json`;
 - runner in `scripts/validation/run.mjs`;
@@ -357,6 +357,8 @@ Sono implementati e validati localmente:
 - link checker strict con `--forbid-mdx-links` nei profili documentali;
 - controllo coerenza Todo ↔ registri;
 - test mirati del runner e dei checker.
+
+La configurazione strict introdotta nel branch deve ancora essere rieseguita tramite il profilo `fast` o `full-offline` sullo stesso commit. Fino a un output reale positivo, il wiring corrente non va dichiarato validato localmente.
 
 Restano aperti:
 

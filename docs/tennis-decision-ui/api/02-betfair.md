@@ -52,7 +52,7 @@ backend/src/sofa/
 | `loginWindowLifecycle.js`   | Deduplica il login-only e coordina `spawnReady` e stato attivo              |
 | `pythonProcessRegistry.js`  | Possiede fisicamente il figlio `betfair_login`                              |
 | `runtimeLogger.js`          | Logging strutturato, lettura bounded e redazione                            |
-| `matchHistory.js`           | Espone letture canoniche Betfair e adapter `getBetfairPersistenceIntegrity` |
+| `matchHistory.js`           | Espone letture canoniche Betfair e adapter `getMatchPersistenceIntegrity` |
 
 ## Endpoint
 
@@ -107,7 +107,7 @@ modificare marketState
 Per queste route il router usa l’adapter read-only:
 
 ```txt
-getBetfairPersistenceIntegrity(eventId, source = 'betfair')
+getMatchPersistenceIntegrity(eventId, 'betfair')
 ```
 
 Nel contratto Betfair questo adapter viene usato solo con:
