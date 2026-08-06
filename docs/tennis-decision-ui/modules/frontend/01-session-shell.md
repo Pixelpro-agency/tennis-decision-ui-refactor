@@ -85,9 +85,9 @@ confirmedCdpUrl
 
 ### URL CDP effettivo
 
-`cdpUrl` e `confirmedCdpUrl` conservano l'endpoint effettivo della sessione.
+`cdpUrl` e `confirmedCdpUrl` conservano l’endpoint effettivo della sessione.
 
-Precedenza reale:
+Precedenza:
 
 ```txt
 valore current definito
@@ -100,13 +100,13 @@ altrimenti
 → ""
 ```
 
-Un valore vuoto resta vuoto. Il frontend non introduce alcun fallback a `http://127.0.0.1:9222`.
+Un valore vuoto resta vuoto. Il frontend non introduce fallback a `http://127.0.0.1:9222`.
 
-In modalità `cdp`, preflight, login e tracking usano lo stesso valore normalizzato; quando è vuoto, l'azione si ferma senza inventare un endpoint.
+In modalità `cdp`, preflight, login e tracking usano lo stesso valore normalizzato; quando è vuoto, l’azione si ferma senza inventare un endpoint.
 
 ## Visibilità shell
 
-`App.jsx` compone gli hook di sessione e usa `sessionShellVisible` per separare il form iniziale dalla sessione live.
+`App.jsx` usa `sessionShellVisible` per separare il form iniziale dalla sessione live.
 
 Dopo Start:
 
@@ -117,46 +117,32 @@ applySearchSession(...)
 → startMatchTracking(...)
 ```
 
-La shell `DashboardWorkspace` appare subito dopo Start anche quando:
+La shell `DashboardWorkspace` appare subito dopo Start anche con:
 
 ```txt
 dashboardData === null
 ```
 
-La sidebar resta visibile durante bootstrap.
+Sidebar e TopBar restano renderizzate durante il bootstrap. `MatchOverviewBar` viene invece mostrata soltanto quando `dashboardData` è disponibile.
 
-Anche la TopBar resta renderizzata durante bootstrap, inclusi i casi in cui:
-
-```txt
-dashboardData === null
-```
+Il contenuto centrale usa:
 
 ```txt
-TopBar
-→ stato sorgenti e ultimo aggiornamento disponibili anche durante buffering
-
-MatchOverviewBar
-→ renderizzato soltanto quando dashboardData è disponibile
-```
-
-Il contenuto centrale non usa direttamente `phase` Source Identity per decidere se mostrare la dashboard.
-
-La condizione effettiva è:
-
 dashboardContentReady
 + dashboardData disponibile
+```
 
-Dopo Start, `useDashboardBootstrapState.js` attende un reset del dato precedente e poi il primo `backendData` della nuova sessione. Finché questa condizione non è soddisfatta, `App.jsx` renderizza `SourceIdentityGateWaitingScreen`.
+Dopo Start, `useDashboardBootstrapState.js` attende il reset del dato precedente e il primo `backendData` della nuova sessione. Fino a quel momento viene mostrata `SourceIdentityGateWaitingScreen`.
 
-La presentazione Source Identity determina testo della waiting screen, modale pending, indicatore, toast e gestione mismatch; non è una condizione frontend diretta per nascondere una dashboard già pronta.
+La presentazione Source Identity determina testo e tono della waiting screen, ma non sblocca direttamente la dashboard.
 
-In pratica, durante `collecting` o `pending` la waiting screen resta normalmente visibile perché la timeline canonica SofaScore non ha ancora prodotto `backendData`. Se `dashboardData` diventa disponibile, il codice corrente mostra la dashboard anche senza un controllo esplicito sulla phase.
+Durante `collecting` o `pending` la waiting screen resta normalmente visibile perché la timeline canonica SofaScore non ha ancora prodotto `backendData`. Se `dashboardData` diventa disponibile, il codice corrente mostra la dashboard senza un controllo diretto della phase.
 
-`mismatch` resta un caso separato: chiude automaticamente la shell e riporta al form.
+`mismatch` chiude automaticamente la shell e riporta al form.
 
 ## Avvio tracking
 
-Flusso attuale:
+Flusso corrente:
 
 ```txt
 StartAnalysisPanel
@@ -179,10 +165,6 @@ chromeProfilePath
 cdpUrl
 ```
 
-Il frontend non deve ricostruire manualmente lo stesso payload in più componenti.
-
-### Comportamento da preservare
-
 `applySearchSession(...)` viene eseguito prima di attendere la risposta di `startMatchTracking(...)`.
 
 Se Start fallisce:
@@ -195,13 +177,13 @@ sessionShellVisible = false
 → nessun toast mismatch
 ```
 
-Non cambiare questo ordine senza aggiornare comportamento UX e test collegati.
+Non cambiare questo ordine senza aggiornare comportamento UX e test.
 
 ## Login Betfair
 
 Il flusso UI resta `Link Accounts & Start`; non esiste un pulsante login-only separato.
 
-`buildBetfairLoginRequest(...)` usa la precedenza current/confirmed descritta sopra e invia:
+`buildBetfairLoginRequest(...)` invia:
 
 ```txt
 url
@@ -210,11 +192,9 @@ profileDir
 cdpUrl
 ```
 
-`liveSessionApi.openBetfairLoginWindow(...)` riceve le risposte strutturate `no_target`, `started` e `already_active`. Gli errori, incluso `login_runtime_conflict`, vengono trasformati in eccezioni statiche dal service.
+`liveSessionApi.openBetfairLoginWindow(...)` riceve `no_target`, `started` e `already_active`. Errori come `login_runtime_conflict` vengono trasformati dal service in eccezioni statiche.
 
-L’hook `useBetfairLoginAction(...)` restituisce il payload in caso di successo; in caso di errore registra `betfair_login_failed` e restituisce `null`. Quindi l’interfaccia attuale non propaga integralmente il `code` strutturato dell’errore come stato UI.
-
-Login e tracking restano nello stesso flusso UI corrente.
+`useBetfairLoginAction(...)` restituisce il payload in caso di successo; in caso di errore registra `betfair_login_failed` e restituisce `null`. L’interfaccia corrente non propaga integralmente il `code` strutturato dell’errore come stato UI.
 
 ## Stop Live Tracking
 
@@ -236,11 +216,11 @@ risposta con ok: true
 → setTrackingStopped(true)
 ```
 
-Il service HTTP restituisce il payload completo, incluso `pythonCleanup`. Gli handler UI attuali usano soprattutto `ok` e non espongono integralmente la summary `pythonCleanup` ai componenti.
+Il service restituisce il payload completo, incluso `pythonCleanup`. Gli handler UI usano soprattutto `ok` e non espongono integralmente la summary ai componenti.
 
-Il backend usa `scope=tracking`: preserva `betfair_login`, backend, frontend e CDP. Il frontend non presenta lo stop come selettivo.
+Il backend usa `scope=tracking`: preserva `betfair_login`, backend, frontend e CDP.
 
-Lo stop non svuota dashboard, URL, snapshot o dati persistiti. Gli hook Betfair, Evidence e Source Identity possono restare montati e continuare a leggere dati già persistiti o ricevere `404`, ma non riavviano il tracking backend.
+Lo stop non svuota dashboard, URL, snapshot o dati persistiti. Gli hook Betfair, Evidence e Source Identity possono restare montati e leggere dati già persistiti o ricevere `404`, ma non riavviano il tracking backend.
 
 ## Logging runtime frontend
 
@@ -256,21 +236,23 @@ superbreak
 market-reactions
 ```
 
-| View               | Componente                                          |
-| ------------------ | --------------------------------------------------- |
-| `overview`         | `OverviewDashboard.jsx`                             |
-| `lay`              | `LayTheWinner.jsx`                                  |
-| `banca`            | `BancaServizio.jsx`                                 |
-| `superbreak`       | `Superbreak.jsx`                                    |
-| `market-reactions` | `MarketReactionsPage.jsx`                           |
+| View               | Componente                  | Stato                         |
+| ------------------ | --------------------------- | ----------------------------- |
+| `overview`         | `OverviewDashboard.jsx`     | corrente                      |
+| `lay`              | `LayTheWinner.jsx`          | legacy Strategy, deprecata    |
+| `banca`            | `BancaServizio.jsx`         | legacy Strategy, deprecata    |
+| `superbreak`       | `Superbreak.jsx`            | legacy Strategy, deprecata    |
+| `market-reactions` | `MarketReactionsPage.jsx`   | corrente, read-only Evidence  |
+
+Le viste Strategy legacy restano presenti finché il codice non viene rimosso, ma non devono essere estese o usate come base per nuove strategie. La loro rimozione richiede una task dedicata. Match Evidence e Market Reactions restano fuori da tale rimozione.
 
 Cambiare vista non deve:
 
-* avviare scraper;
-* reinizializzare la sessione;
-* cancellare timeline;
-* creare un secondo polling;
-* modificare Source Identity.
+- avviare scraper;
+- reinizializzare la sessione;
+- cancellare timeline;
+- creare un secondo polling;
+- modificare Source Identity.
 
 ## Source Identity UI
 
@@ -283,13 +265,11 @@ useSourceIdentityGateStatus(eventId)
 → GET /api/match/:eventId/source-identity-status
 ```
 
-Lo stato passato ai componenti UI è:
+Lo stato passato ai componenti è:
 
 ```txt
 sourceIdentityStatusForUi
 ```
-
-`sourceIdentityStatusForUi` rappresenta lo stato live del gate backend oppure un errore sintetico di polling.
 
 Non applica simulazioni o override client-side.
 
@@ -304,7 +284,7 @@ sidebar
 → mismatch handling
 ```
 
-Lo status gate è inoltrato alla shell soltanto come input di presentazione per lo stato Sofa.
+Lo status gate è inoltrato alla shell solo come input di presentazione.
 
 ```txt
 collecting/pending + persistence buffering
@@ -340,17 +320,7 @@ betfairRunners
 reasons
 ```
 
-Non mostra:
-
-```txt
-URL
-marketId
-selectionId
-payload raw
-token
-cookie
-path locali
-```
+Non mostra URL, marketId, selectionId, payload raw, token, cookie o path locali.
 
 ### Conferma reale
 
@@ -369,7 +339,7 @@ refresh status gate
 → toast verde normale
 ```
 
-La dashboard viene visualizzata soltanto quando il bootstrap ha prodotto `dashboardContentReady` e `dashboardData` disponibili; non è sbloccata direttamente da `recording/aligned`.
+La dashboard viene visualizzata soltanto quando il bootstrap ha prodotto `dashboardContentReady` e `dashboardData`.
 
 ### Mismatch
 
@@ -383,31 +353,55 @@ toast rosso persistente
 → ritorno al form
 ```
 
-`clearConfirmedSession()` pulisce soltanto la configurazione confermata.
+`clearConfirmedSession()` pulisce soltanto la configurazione confermata. Gli input del form restano disponibili per correggere e riavviare.
 
-Gli input del form restano disponibili per correggere e riavviare.
+## Persistence integrity nella shell
+
+Le API Match e Betfair espongono `integrity`, ma la shell corrente non possiede ancora un controller completo e uniforme di persistence integrity.
+
+Stato reale:
+
+```txt
+useMatchPolling
+→ conserva integrity
+→ usa serverStatus partial_persistence | recovery_failed
+
+useBetfairJson
+→ conserva integrity internamente
+
+App.jsx
+→ non destruttura né inoltra le integrity degli hook
+
+useDashboardViewModel
+→ non riceve integrity
+→ non costruisce un persistence view state
+
+componenti shell
+→ non mostrano ancora uno stato persistence uniforme
+```
+
+Questa limitazione non autorizza la UI a ricostruire journal, history o timeline. L’eventuale completamento del wiring deve essere una task dedicata con test di lifecycle React.
 
 ## Confini
 
-`App.jsx` deve comporre hook e viste, non assorbire logica visiva, chiamate HTTP o trasformazioni pure.
+`App.jsx` deve comporre hook e viste, non assorbire logica visuale, chiamate HTTP o trasformazioni pure.
 
 Non inserire in `App.jsx`:
 
-* SVG complessi;
-* rendering dettagliato ladder;
-* calcoli Money Flow;
-* mapping dashboard duplicato;
-* chiamate fetch sparse nei componenti figli;
-* logica Source Identity backend;
-* parsing di timeline.
+- SVG complessi;
+- rendering dettagliato ladder;
+- calcoli Money Flow;
+- mapping dashboard duplicato;
+- chiamate fetch sparse nei componenti figli;
+- logica Source Identity backend;
+- parsing di timeline;
+- lettura o repair di journal.
 
 ## Verifica
 
 ```bash
 npm run build
-
 node src/hooks/useMatchPolling.test.mjs
-
 node src/utils/sourceIdentityGatePresentation.test.mjs
 node src/utils/analysisSessionState.test.mjs
 node src/utils/liveSessionRequests.test.mjs
@@ -419,9 +413,7 @@ node src/utils/dashboardStats.test.mjs
 node src/utils/betfairMoneyFlow.test.mjs
 ```
 
-Non eseguire `npm run lint`.
-
-Il repository non contiene una configurazione ESLint; il comando fallisce prima di analizzare il codice.
+Non eseguire `npm run lint`: il repository non contiene una configurazione ESLint e il comando fallisce prima di analizzare il codice.
 
 Verifica manuale completata:
 
@@ -431,9 +423,9 @@ Start
 → collecting grigio
 
 recording/aligned
-→ toast verde circa 5 secondi
+→ toast verde
 
-bootstrap con `dashboardContentReady` + `dashboardData`
+bootstrap con dashboardContentReady + dashboardData
 → dashboard reale
 
 mismatch
@@ -446,41 +438,27 @@ restart dopo mismatch
 → aligned
 ```
 
-La verifica pending reale resta aperta nel registro live:
+Restano aperti:
 
 ```txt
-conferma manuale
+pending reale
+→ conferma manuale
 → bootstrap
-→ decline
+
+pending reale
+→ decline/stop
 → ritorno al form
-```
 
-Verifica aggiuntiva da completare:
-
-```txt
-sessione live
-+ phase collecting oppure pending
-+ persistence buffering
-+ GET /api/match/:eventId/json = 404
-→ shell e sidebar visibili
-→ waiting screen visibile
-→ TopBar visibile
-→ Sofa: In attesa
-→ nessun check
-→ tempo —
-→ nessun SofaScore JSON polling error applicativo
-
-quando GET /api/match/:eventId/json diventa 200
-→ Sofa: Connected
-→ dashboard reale quando il bootstrap registra `dashboardContentReady` e `dashboardData` disponibili
+persistence integrity
+→ wiring UI uniforme non implementato
 ```
 
 ## Documenti collegati
 
-* [Polling e view model](./02-live-polling-and-view-model.md)
-* [UI Betfair e Market Reactions](./03-betfair-and-market-reactions-ui.md)
-* [Source Identity](../evidence/02-source-identity.md)
-* [API Match](../../api/01-match.md)
-* [API Evidence](../../api/03-evidence.md)
-* [API Preflight](../../api/05-preflight.md)
-* [Verifica live Source Identity](../../../validations/source-identity-live-verification.md)
+- [Polling e view model](./02-live-polling-and-view-model.md)
+- [UI Betfair e Market Reactions](./03-betfair-and-market-reactions-ui.md)
+- [Source Identity](../evidence/02-source-identity.md)
+- [API Match](../../api/01-match.md)
+- [API Evidence](../../api/03-evidence.md)
+- [API Preflight](../../api/05-preflight.md)
+- [Verifica live Source Identity](../../../validations/source-identity-live-verification.md)

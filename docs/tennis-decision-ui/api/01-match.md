@@ -52,6 +52,24 @@ backend/src/sofa/
 | `POST` | `/api/match/analyze`                         | Esegue un’analisi SofaScore singola                                 |
 | `POST` | `/api/match/snapshot`                        | Redirect `307` verso `/api/match/analyze`                           |
 
+## Stato delle superfici deprecate
+
+Gli endpoint seguenti sono ancora presenti e devono continuare a essere documentati finché il codice esiste, ma sono **deprecati**:
+
+```txt
+GET /api/match/debug-last
+POST /api/match/untrack
+```
+
+Regole:
+
+- non estendere questi endpoint con nuovi comportamenti;
+- non usarli come base per nuove superfici applicative;
+- il controllo UI corrente per fermare il live usa `POST /api/match/stop`;
+- la rimozione futura richiede una task dedicata con aggiornamento di codice, test, documentazione e consumer.
+
+La deprecazione non cambia il contratto HTTP corrente descritto in questo documento.
+
 ## Letture
 
 Gli endpoint di lettura non avviano scraper, browser, tracking o scritture.
@@ -79,13 +97,13 @@ source: 'sofa'
 
 L’adapter:
 
-* legge lo stato journal tramite `journalStore.getPersistenceIntegrityStatus(eventId, source)`;
-* normalizza il risultato al contratto pubblico;
-* non crea directory;
-* non scrive journal;
-* non esegue recovery;
-* non accede a payload journalizzati;
-* non espone target, path locali o dettagli filesystem.
+- legge lo stato journal tramite `journalStore.getPersistenceIntegrityStatus(eventId, source)`;
+- normalizza il risultato al contratto pubblico;
+- non crea directory;
+- non scrive journal;
+- non esegue recovery;
+- non accede a payload journalizzati;
+- non espone target, path locali o dettagli filesystem.
 
 ## Integrity Match read-only
 
@@ -328,6 +346,8 @@ Le modifiche a `integrity` non cambiano il comportamento di `track`, `untrack`, 
 }
 ```
 
+L’endpoint resta operativo ma deprecato. Il frontend corrente non lo usa come controllo principale; il percorso ordinario visibile è lo stop globale.
+
 ### Stop globale
 
 ```txt
@@ -446,16 +466,16 @@ L’endpoint `analyze` non restituisce `409 persistence_integrity`: la gestione 
 
 Il router:
 
-* non implementa calcolo point-by-point;
-* non implementa parsing scraper;
-* non persiste direttamente timeline o history;
-* non ricostruisce Source Identity;
-* non avvia acquisizione da endpoint read-only;
-* non esegue recovery journal;
-* non marca journal come recovered o failed;
-* non crea directory o file canonici durante le letture;
-* non espone payload journalizzati, target locali o dettagli filesystem;
-* non espone dati sensibili o dettagli interni del runtime.
+- non implementa calcolo point-by-point;
+- non implementa parsing scraper;
+- non persiste direttamente timeline o history;
+- non ricostruisce Source Identity;
+- non avvia acquisizione da endpoint read-only;
+- non esegue recovery journal;
+- non marca journal come recovered o failed;
+- non crea directory o file canonici durante le letture;
+- non espone payload journalizzati, target locali o dettagli filesystem;
+- non espone dati sensibili o dettagli interni del runtime.
 
 `integrity` è osservabilità read-only della persistenza, non un comando di repair e non una conferma live del Source Identity Gate.
 
@@ -472,9 +492,19 @@ node routes/match/readResponses.test.mjs
 node routes/match/trackingResponses.test.mjs
 node routes/match/analysisResponse.test.mjs
 node routes/match/sourceIdentityStatusResponse.test.mjs
-node sofa/matchHistory/commitJournal.test.mjs
-node sofa/matchHistory/recovery.test.mjs
+node sofa/matchHistory/commitJournal/lifecycle.test.mjs
+node sofa/matchHistory/commitJournal/integrityStatus.test.mjs
+node sofa/matchHistory/commitJournal/residualRecovery.test.mjs
+node sofa/matchHistory/recovery/basicRecovery.integration.test.mjs
+node sofa/matchHistory/recovery/completedTargetVerification.integration.test.mjs
 node sofa/matchHistory/sofaUpdates.test.mjs
+```
+
+I vecchi percorsi monolitici seguenti non esistono nella tree corrente e non devono essere usati:
+
+```txt
+sofa/matchHistory/commitJournal.test.mjs
+sofa/matchHistory/recovery.test.mjs
 ```
 
 Verificare almeno:
@@ -523,6 +553,7 @@ track CDP senza cdpUrl
 
 untrack
 → stop selettivo del solo eventId richiesto
+→ superficie deprecata non estesa
 
 stop
 → scope globale idempotente
@@ -540,13 +571,13 @@ analyze
 
 ## Documenti collegati
 
-* [Confini del sistema](../architecture/01-system-boundaries.md)
-* [Ciclo di vita dei dati](../architecture/02-data-lifecycle.md)
-* [Tracking live](../modules/sofa/01-live-tracking.md)
-* [Contesto locale e point-by-point](../modules/sofa/02-local-context-and-point-by-point.md)
-* [Timeline e history](../modules/storage/01-timelines-and-history.md)
-* [Commit journal e recovery](../modules/storage/02-commit-journal-and-recovery.md)
-* [Source Identity](../modules/evidence/02-source-identity.md)
-* [Polling live e view model](../modules/frontend/02-live-polling-and-view-model.md)
-* [Validazione e rollback](../operations/04-validation-and-rollback.md)
-* [Selezione del contesto per API AI](../ai/01-context-selection.md)
+- [Confini del sistema](../architecture/01-system-boundaries.md)
+- [Ciclo di vita dei dati](../architecture/02-data-lifecycle.md)
+- [Tracking live](../modules/sofa/01-live-tracking.md)
+- [Contesto locale e point-by-point](../modules/sofa/02-local-context-and-point-by-point.md)
+- [Timeline e history](../modules/storage/01-timelines-and-history.md)
+- [Commit journal e recovery](../modules/storage/02-commit-journal-and-recovery.md)
+- [Source Identity](../modules/evidence/02-source-identity.md)
+- [Polling live e view model](../modules/frontend/02-live-polling-and-view-model.md)
+- [Validazione e rollback](../operations/04-validation-and-rollback.md)
+- [Selezione del contesto per API AI](../ai/01-context-selection.md)
