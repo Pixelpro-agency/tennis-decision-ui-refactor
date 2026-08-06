@@ -192,7 +192,7 @@ Esempio `json` con persistenza incompleta:
     "status": "partial_persistence",
     "reason": "commit_incomplete",
     "source": "betfair",
-    "commitId": "betfair-16305613-000001",
+    "commitId": "betfair-550e8400-e29b-41d4-a716-446655440000",
     "affectedDocuments": ["timeline"]
   }
 }
@@ -251,7 +251,7 @@ Esempio:
     "status": "partial_persistence",
     "reason": "commit_incomplete",
     "source": "betfair",
-    "commitId": "betfair-16305613-000001",
+    "commitId": "betfair-550e8400-e29b-41d4-a716-446655440000",
     "affectedDocuments": ["history", "timeline"]
   }
 }

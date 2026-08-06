@@ -149,7 +149,7 @@ Esempio di risposta `json` riuscita con persistenza incompleta nota:
     "status": "partial_persistence",
     "reason": "commit_incomplete",
     "source": "sofa",
-    "commitId": "sofa-16305613-000001",
+    "commitId": "sofa-550e8400-e29b-41d4-a716-446655440000",
     "affectedDocuments": ["timeline"]
   }
 }
@@ -211,7 +211,7 @@ Payload previsto:
     "status": "partial_persistence",
     "reason": "commit_incomplete",
     "source": "sofa",
-    "commitId": "sofa-16305613-000001",
+    "commitId": "sofa-550e8400-e29b-41d4-a716-446655440000",
     "affectedDocuments": ["history", "timeline"]
   }
 }
