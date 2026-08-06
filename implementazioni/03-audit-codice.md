@@ -2538,7 +2538,7 @@ I dump non devono essere trattati come cache normali, ma non possono crescere se
 
 ### Strutture approvate
 
-#### IMPL-016 — Betfair runtime command authority
+#### Sintesi IMPL-016 — Betfair runtime command authority
 
 Coordina:
 
@@ -2552,7 +2552,7 @@ Coordina:
 - handoff login → tracking;
 - un solo comando Betfair mutante globale.
 
-#### IMPL-017 — Local control-plane boundary
+#### Sintesi IMPL-017 — Local control-plane boundary
 
 Impone:
 
@@ -2562,7 +2562,7 @@ Impone:
 - nessuna mutazione GET;
 - validazione dei comandi locali.
 
-#### IMPL-018 — Betfair acquisition envelope e provenance
+#### Sintesi IMPL-018 — Betfair acquisition envelope e provenance
 
 Introduce almeno:
 
@@ -3334,7 +3334,7 @@ Non viene introdotto un secondo journal per questo archivio.
 
 ### Implementazioni risultanti
 
-#### IMPL-019 — Event persistence authority
+#### Sintesi IMPL-019 — Event persistence authority
 
 ```txt
 shared history event-scoped
@@ -3344,7 +3344,7 @@ shared history event-scoped
 → pending cross-source bloccante
 ```
 
-#### IMPL-020 — Canonical document contract e verified recovery
+#### Sintesi IMPL-020 — Canonical document contract e verified recovery
 
 ```txt
 schema + identity + revision + digest
@@ -3355,7 +3355,7 @@ schema + identity + revision + digest
 → migrazione legacy non distruttiva
 ```
 
-#### IMPL-021 — Recovery control plane
+#### Sintesi IMPL-021 — Recovery control plane
 
 ```txt
 summary bootstrap reale
