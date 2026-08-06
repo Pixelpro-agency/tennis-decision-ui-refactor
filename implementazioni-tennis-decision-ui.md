@@ -1,163 +1,169 @@
-# Tennis Decision UI — Revisione, implementazioni e controlli residui
+# Tennis Decision UI — Registro operativo della revisione
 
 ## Scopo
 
-Questo file è l’indice breve del registro modulare della revisione tecnica e documentale.
+Questo file è il punto di ingresso corrente per la revisione tecnica e documentale di **Tennis Decision UI**.
 
-Non è:
+Serve a:
 
-- documentazione tecnica canonica;
-- cronologia completa dei prompt;
-- autorizzazione automatica a modificare il progetto;
-- sostituto del codice, dei test o dei collaudi.
+- indicare la baseline verificata;
+- collegare la Todo sintetica ai registri analitici;
+- distinguere il lavoro completato dalle implementazioni ancora aperte;
+- orientare la preparazione delle prossime task;
+- evitare che note di migrazione o cronologie operative diventino documentazione permanente.
 
-## Baseline
+Non sostituisce il codice, i test, i documenti tecnici canonici o i collaudi.
+
+## Baseline verificata
 
 ```txt
 Repository: Pixelpro-agency/tennis-decision-ui-refactor
 Branch canonico: main
-SHA iniziale esaminato: ae9766dde97de08425d65cf62fe929aece3ba6a2
-SHA codice verificato: 275008a5cd6451f24c6895068639ee3055395986
-SHA checkpoint registri e avvio migrazione: eef267aab3c138395a5ca3d644a942190c5360e8
+SHA codice verificato: aefc0ba5894d8fca60e5811088fede3ebbfde98a
+SHA checkpoint registri: aefc0ba5894d8fca60e5811088fede3ebbfde98a
+Data del checkpoint: 2026-08-06
 ```
 
-## Registri
+Il branch locale e `origin/main` risultano allineati sul commit `aefc0ba`.
 
-- [Todo list e stato operativo](./todo-list-tennis-decision-ui.md)
-- [Indice dei moduli analitici](./implementazioni/README.md)
+## Fonti correnti
+
+### Stato operativo
+
+- [Todo list corrente](./todo-list-tennis-decision-ui.md)
+- [Indice dei registri analitici](./implementazioni/README.md)
 - [Metodo, stati e regole](./implementazioni/00-metodo-e-stati.md)
 - [Piano generale dell’audit](./implementazioni/01-piano-generale-audit.md)
-- [Audit documentazione](./implementazioni/02-audit-documentazione.md)
-- [Audit codice](./implementazioni/03-audit-codice.md)
-- [Ricontrollo task completate](./implementazioni/04-task-completate.md)
-- [Audit di docs/planning](./implementazioni/05-audit-docs-planning.md)
-- [Implementazioni proposte](./implementazioni/06-implementazioni-proposte.md)
 - [Decisioni dell’utente](./implementazioni/99-decisioni-utente.md)
 
-## Regole di utilizzo
+### Registri analitici
+
+- [Audit della documentazione](./implementazioni/02-audit-documentazione.md) — 4 moduli;
+- [Audit del codice](./implementazioni/03-audit-codice.md) — 7 moduli;
+- [Ricontrollo delle task completate](./implementazioni/04-task-completate.md);
+- [Audit dei materiali planning](./implementazioni/05-audit-docs-planning.md);
+- [Implementazioni proposte](./implementazioni/06-implementazioni-proposte.md) — 7 moduli.
+
+### Documentazione tecnica
+
+- [Indice canonico](./docs/tennis-decision-ui/index.md)
+- [Validazioni correnti](./docs/validations/)
+
+La documentazione canonica descrive il comportamento reale. I registri contengono finding, decisioni, limiti, task approvate e lavoro futuro.
+
+## Stato complessivo
+
+### Audit e revisione
 
 ```txt
-Todo
-→ stato sintetico e punto corrente
-
-modulo tematico
-→ motivazioni, evidenze, rischi e criteri
-
-codice, test e documenti owner
-→ fonti tecniche effettive
-```
-
-Non duplicare rilievi completi in questo indice.
-
-## Punto corrente
-
-```txt
-audit documentazione e codice B1–B6
+Audit documentazione B1–B6
 → completato
 
-ricontrollo task D1–D18
+Audit statico del codice
 → completato
 
-decisioni di prodotto e cleanup
-→ completate
+Punto 7 completato
+→ secondo audit Punti 1–7 concluso e approvato
 
-workflow multi-esecutore
-→ definito
+Ricontrollo D1–D18
+→ completato
 
-dieci fonti storiche fuori dalla documentazione canonica
-→ lette integralmente
-→ classificate
-→ contenuti utili assorbiti nei registri e nelle validations
-→ copie duplicate rimosse
-→ `docs/archive/README.md` conserva il registro fonte → destinazione delle dieci fonti rimosse
-
-checkpoint corrente
-→ Punti 1–7 registrati
-→ audit tecnico completo
-→ controllo finale post-audit completato
-→ riscrittura documentale per batch approvata
-→ Batch 0: inventario e manifest di migrazione
-→ Batch 1 e Batch 2: documentazione strutturale approvata
-→ Batch finale: 40 `.mdx` rimossi, link strict verde e workspace eliminato
-→ IMPL-001 e IMPL-005: utility read-only implementate e verificate
-→ 29 owner duplicati normalizzati; registry checker verde
-→ migrazione finale pubblicata: `2697f66ea8e17a9e35481299cb47ec402558df55`
-→ cleanup archive pubblicato: `3de08ca09ac7cf3d64533b2e72b8f61d1d32f196`
-→ IMPL-015 completata e pubblicata
-→ codice, test e documentazione riallineati
-→ prossimo passo tecnico da selezionare
+Decisioni di prodotto, cleanup e workflow
+→ registrate
 ```
 
-Dopo la pubblicazione del checkpoint:
+### Documentazione e registri
 
 ```txt
-checkpoint audit materiali locali
-→ pubblicazione
-→ nuova lettura approfondita del codice
-→ Punto 1 completato
-→ writer authority approvata
-→ Punto 2 completato
-→ session authority approvata
-→ Punto 3 completato
-→ hardening e autorità Betfair approvati
-→ Punto 4 completato
-→ autorità persistence per evento e recovery verificata approvate
-→ Punto 5 completato
-→ eligibility, provenance temporale e semantica Market Reactions approvate
-→ Punto 6 completato
-→ session controller, polling session-scoped e integrity UI approvati
-→ Punto 7 completato
-→ runner, fixture, test map, result ledger e baseline approvati
-→ controllo finale della raccolta dati e della robustezza completato
-→ nessuna nuova area critica dimenticata rispetto ai Punti 1–7
-→ DEC-025: documentazione canonica solo sullo stato reale
-→ IMPL-032: migrazione documentale per batch con manifest e controlli
-→ IMPL-028 implementata e validata sulla working tree reale
-→ manifest corretto senza inventare test sostitutivi
-→ profili fast/backend/frontend/python/full-offline verdi, incluso hotfix Windows per npm.cmd
-→ IMPL-015 Prompt 1 e Fix 1: `ac0361ef720831173619636b8ce0057348282fa4`
-→ IMPL-015 Prompt 2 e Fix 1: `f86ac267919ca13859c98db7015362f26176ba36`
-→ writer authority esclusiva implementata
-→ tracker drain implementato
-→ riallineamento documentale conclusivo
-→ ricontrollo semantico post-push dei 15 documenti eseguito su aacced388b252bc09433c2867465c53668c7f1e0
-→ correzioni residue di stato, archivio e checkpoint applicate
-→ verifica finale da ripetere sul nuovo SHA pubblicato
-→ precisione
-→ robustezza
-→ utilità
-→ strutture mancanti
-→ preparazione delle task esecutive prioritarie
+Migrazione .mdx → .md
+→ completata
+→ 40 file legacy sostituiti e rimossi
+→ link strict verificati
+
+Fonti duplicate
+→ contenuti utili assorbiti nei registri o nelle validations
+→ copie ridondanti rimosse
+
+Modularizzazione
+→ 02-audit-documentazione.md: 4 moduli
+→ 03-audit-codice.md: 7 moduli
+→ 06-implementazioni-proposte.md: 7 moduli
+→ percorsi indice stabili
+→ owner ID preservati
 ```
 
+### Implementazioni concluse
 
-## Fase documentale post-audit
+- `IMPL-001` — link checker;
+- `IMPL-005` — coerenza Todo ↔ registri e scansione ricorsiva;
+- `IMPL-015` — writer authority esclusiva `match_history`;
+- `IMPL-028` — manifest e runner canonico di validazione;
+- `IMPL-032` — migrazione documentale per batch.
+
+Le decisioni più recenti sintetizzate includono `DEC-025` e `DEC-026`.
+
+## Risultati dell’ultimo controllo
 
 ```txt
-Batch 0
-→ registrazione delle decisioni
-→ inventario dei documenti indicizzati
-→ manifest vecchio percorso → nuovo percorso
-→ owner matrix
-→ link report
-→ sostituzioni e cancellazioni .mdx completate nel batch finale
+registry checker tests
+→ 18 PASS
 
-Batch 1 e 2
-→ fondazione, architettura, stato corrente e validations preparati
-→ fonti archive consolidate nei registri e copie ridondanti rimosse
+nested registry tests
+→ 2 PASS
 
-Controlli read-only
-→ link checker ricorsivo implementato
-→ registry consistency checker implementato
-→ finding strutturali normalizzati; registry checker verde
+registry consistency
+→ 240 owner ID
+→ 214 righe Todo
+→ 0 errori
+→ 0 warning
 
-Batch successivi
-→ file .md completi
-→ contenuti verificati sul codice corrente
-→ futuro escluso dalla documentazione canonica finché non implementato
-→ rimozione .mdx completata dopo verifica dei link e assenza di duplicati
+documentation links
+→ 73 file
+→ 425 link
+→ 0 errori
+→ 0 warning
+
+validation fast
+→ 6 PASS
+→ 0 failure
+→ 0 timeout
+
+git diff --check
+→ PASS
 ```
 
-IMPL-015 è completata: codice, test e documentazione sono riallineati. La task tecnica successiva deve essere selezionata separatamente.
+## Limiti ancora aperti
+
+- nessuna nuova task tecnica è stata ancora selezionata;
+- la prima serie di task esecutive non è conclusa;
+- vari test richiesti risultano ancora mancanti;
+- il collaudo manuale con due backend reali concorrenti non risulta eseguito;
+- `SOFA-001` richiede ancora una verifica live;
+- restano aperte le aree session authority, Betfair authority, storage/recovery, Evidence provenance, frontend session-scoped e fixture/harness.
+
+## Priorità da cui scegliere la prossima task
+
+1. session authority end-to-end, Start/Stop e polling session-scoped;
+2. autorità globale Betfair e local control plane;
+3. storage event-scoped, document contract e recovery verificata;
+4. provenance temporale, eligibility e Market Reactions;
+5. fixture, sandbox, frontend harness e result ledger;
+6. hardening diagnostico, retention e cleanup offline.
+
+L’ordine definitivo deve essere deciso prima di preparare il prompt esecutivo.
+
+## Regole di manutenzione
+
+- ogni ID owner vive in una sola scheda dettagliata;
+- la Todo contiene una sola riga sintetica per ogni ID owner;
+- gli indici non duplicano le schede;
+- una voce approvata non viene descritta come implementata;
+- una funzione futura non diventa documentazione canonica;
+- lo storico delle revisioni è affidato ai commit Git;
+- non conservare artefatti temporanei di migrazione dopo la verifica finale;
+- conservare checker, test e validations che servono al controllo corrente;
+- dopo modifiche ai registri eseguire registry checker, link checker, profilo `fast` e `git diff --check`.
+
+## Prossimo passo
 
 Prossimo passo: DA SELEZIONARE.

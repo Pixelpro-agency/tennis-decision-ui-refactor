@@ -2,11 +2,9 @@
 
 > **Registro principale:** [06-implementazioni-proposte.md](../06-implementazioni-proposte.md)
 > **Perimetro:** IMPL-016…018
-> **Righe originali:** 1129–1373
 > **Parte precedente:** [Utility e autorità di base](01-utility-e-autorita-base.md)
 > **Parte successiva:** [Storage, documenti canonici e recovery](03-storage-recovery.md)
 
-<!-- BEGIN ORIGINAL CONTENT -->
 ## 17. Implementazioni approvate dal Punto 3
 
 ### IMPL-016 — Betfair runtime command authority
@@ -251,5 +249,3 @@ TEST-017
 ```
 
 ---
-
-<!-- END ORIGINAL CONTENT -->

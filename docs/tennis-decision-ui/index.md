@@ -114,7 +114,7 @@ Una validazione storica dimostra ciò che è stato osservato nello specifico amb
 
 ## Materiale non canonico
 
-Le specifiche future non fanno parte della documentazione tecnica corrente. I requisiti utili sono conservati nei registri; [docs/archive](../archive/README.md) mantiene soltanto la mappa delle fonti storiche consolidate.
+Le specifiche future non fanno parte della documentazione tecnica corrente. I requisiti ancora utili sono conservati nei registri; lo storico delle fonti consolidate resta disponibile nei commit Git.
 
 ## Regola documentale corrente
 

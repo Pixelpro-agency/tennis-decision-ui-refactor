@@ -1,8 +1,7 @@
 > **Parte 1 di 7 — Rilievi iniziali e Punto 1**
 > Rilievi iniziali B3–B6, decisioni UI, priorità e secondo audit del codice — Punto 1 su entry point, launcher e autorità runtime.
-> [Indice](../03-audit-codice.md) · [Indice](../03-audit-codice.md) · [Parte 2](02-runtime-sessioni-betfair.md)
+> [Indice](../03-audit-codice.md) · [Parte 2](02-runtime-sessioni-betfair.md)
 
-<!-- AUDIT-CODE-ORIGINAL-START source-lines=1-1616 sha256=0e5bf4ddc380e1401eedfee0a9ad3b2a580f583d937de52b78d0cdc123b53857 -->
 # Tennis Decision UI — Audit del codice
 
 > Contiene i rilievi tecnici iniziali e la mappa di controllo settore per settore.
@@ -831,7 +830,7 @@ Stringhe presenti:
 
 ```txt
 âEUR”
-ModalitÃ 
+ModalitÃ
 ```
 
 `PreflightChecks.jsx` stampa direttamente `checks[key].message`.
@@ -1618,5 +1617,3 @@ collaudo manuale con due backend reali concorrenti
 RUNTIME-002 e gli altri finding della session authority restano invariati.
 
 ---
-
-<!-- AUDIT-CODE-ORIGINAL-END -->

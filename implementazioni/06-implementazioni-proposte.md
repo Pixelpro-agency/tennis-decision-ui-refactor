@@ -1,48 +1,41 @@
-# Tennis Decision UI — Registro delle implementazioni proposte
+# Tennis Decision UI — Implementazioni proposte
 
-> Indice modulare delle schede `IMPL-*`. Le schede owner complete sono conservate nei sette file tematici collegati sotto. Questo file non duplica le schede e non modifica priorità, stati, dipendenze o decisioni.
+Questo file è l’indice corrente delle schede `IMPL-*`. Le schede complete vivono nei moduli tematici.
 
-## Regole di lettura
+## Moduli
 
-- gli ID restano globali e non sono stati rinumerati;
-- ogni scheda owner vive una sola volta nei moduli;
-- estensioni e addendum restano accanto alla fase che li ha prodotti;
-- il contenuto storico è preservato integralmente, senza sintesi sostitutive;
-- gli stati indicano il checkpoint documentato e non autorizzano automaticamente una task;
-- il registry checker deve leggere ricorsivamente `implementazioni/**/*.md`.
-
-## Mappa dei moduli
-
-| Intervallo | Modulo | Contenuto |
+| Intervallo | Modulo | Perimetro |
 | --- | --- | --- |
-| `IMPL-001…015` | [Utility e autorità di base](implementazioni-proposte/01-utility-e-autorita-base.md) | Checker documentali, session authority, boundary pubblici, harness, persistence UI, toolkit offline, maintenance, fixture, benchmark, ottimizzazione e writer authority. |
-| `IMPL-016…018` | [Runtime e acquisizione Betfair](implementazioni-proposte/02-runtime-betfair.md) | Autorità globale dei comandi Betfair, control plane locale, envelope di acquisizione, provenance e futura attribuzione del volume. |
-| `IMPL-019…021` | [Storage, documenti canonici e recovery](implementazioni-proposte/03-storage-recovery.md) | Autorità per evento, contratto dei documenti canonici, recovery verificata, stato globale e relative estensioni. |
-| `IMPL-022…024` | [Evidence, provenance e confronti temporali](implementazioni-proposte/04-evidence-provenance.md) | Provenance temporale, eligibility e branch state delle Market Reactions, identità runner, comparabilità prezzo e calibrazione. |
-| `IMPL-025…027` | [Frontend, sessione live e polling](implementazioni-proposte/05-frontend-session-polling.md) | Controller della sessione frontend, polling session-scoped, view model Market Reactions, persistence UI e cleanup collegati. |
-| `IMPL-028…031` | [Validazione, fixture e test harness](implementazioni-proposte/06-validazione-e-fixture.md) | Runner canonico, catalogo fixture e sandbox, harness frontend, result ledger ed estensioni della test map. |
-| `IMPL-032 e checkpoint successivi` | [Migrazione documentale e normalizzazione dei registri](implementazioni-proposte/07-documentazione-e-normalizzazione.md) | Pipeline di migrazione documentale, checkpoint dei checker, baseline rilevata e normalizzazione degli owner duplicati. |
+| IMPL-001…015 | [Utility e autorità di base](implementazioni-proposte/01-utility-e-autorita-base.md) | Checker, session authority, boundary pubblici, harness, fixture, baseline e writer authority |
+| IMPL-016…018 | [Runtime e acquisizione Betfair](implementazioni-proposte/02-runtime-betfair.md) | Command authority, control plane ed envelope di acquisizione |
+| IMPL-019…021 | [Storage e recovery](implementazioni-proposte/03-storage-recovery.md) | Autorità per evento, document contract e recovery control plane |
+| IMPL-022…024 | [Evidence e provenance](implementazioni-proposte/04-evidence-provenance.md) | Provenance temporale, eligibility, runner identity e comparabilità |
+| IMPL-025…027 | [Frontend, sessione e polling](implementazioni-proposte/05-frontend-session-polling.md) | Live-session controller, polling session-scoped e Market Reactions UI |
+| IMPL-028…031 | [Validazione e fixture](implementazioni-proposte/06-validazione-e-fixture.md) | Runner canonico, fixture, sandbox, harness e result ledger |
+| IMPL-032 | [Documentazione e normalizzazione](implementazioni-proposte/07-documentazione-e-normalizzazione.md) | Migrazione documentale e coerenza dei registri |
 
-## Ordine consigliato
+## Stato sintetico
 
-```text
-01 — utility e autorità di base
-02 — runtime e acquisizione Betfair
-03 — storage e recovery
-04 — Evidence e provenance
-05 — frontend, sessione e polling
-06 — validazione e fixture
-07 — documentazione e normalizzazione
-```
+Completate:
 
-## Integrità della modularizzazione
+- IMPL-001;
+- IMPL-005;
+- IMPL-015;
+- IMPL-028;
+- IMPL-032.
 
-La sorgente precedente era `implementazioni/06-implementazioni-proposte.md` con:
+Future o condizionate:
 
-```text
-righe: 4088
-byte UTF-8: 83098
-blob Git: 1b0260925b550e28851b7ad16505bd60571702cc
-```
+- IMPL-010;
+- IMPL-014.
 
-Il contenuto compreso tra i marker `BEGIN ORIGINAL CONTENT` e `END ORIGINAL CONTENT` dei sette moduli ricompone esattamente la sorgente precedente. Il controllo è eseguibile con lo script temporaneo incluso nel pacchetto.
+Le altre implementazioni restano classificate nella Todo e nelle rispettive schede owner.
+
+## Regole
+
+- ogni scheda owner vive in un solo modulo;
+- gli ID non vengono rinumerati;
+- una classificazione o approvazione non equivale a implementazione;
+- nessuna task viene avviata automaticamente;
+- lo storico delle modifiche è affidato ai commit Git;
+- dopo ogni modifica eseguire registry checker, link checker, profilo `fast` e `git diff --check`.

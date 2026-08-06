@@ -2,11 +2,9 @@
 
 > **Registro principale:** [06-implementazioni-proposte.md](../06-implementazioni-proposte.md)
 > **Perimetro:** IMPL-022…024
-> **Righe originali:** 1778–2455
 > **Parte precedente:** [Storage, documenti canonici e recovery](03-storage-recovery.md)
 > **Parte successiva:** [Frontend, sessione live e polling](05-frontend-session-polling.md)
 
-<!-- BEGIN ORIGINAL CONTENT -->
 ## 19. Implementazioni approvate dal Punto 5
 
 ### IMPL-022 — Evidence temporal provenance and alignment policy
@@ -684,5 +682,3 @@ IMPL-018
 
 
 ---
-
-<!-- END ORIGINAL CONTENT -->

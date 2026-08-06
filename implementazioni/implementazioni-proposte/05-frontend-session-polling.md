@@ -2,11 +2,9 @@
 
 > **Registro principale:** [06-implementazioni-proposte.md](../06-implementazioni-proposte.md)
 > **Perimetro:** IMPL-025…027
-> **Righe originali:** 2456–3054
 > **Parte precedente:** [Evidence, provenance e confronti temporali](04-evidence-provenance.md)
 > **Parte successiva:** [Validazione, fixture e test harness](06-validazione-e-fixture.md)
 
-<!-- BEGIN ORIGINAL CONTENT -->
 ## 20. Implementazioni approvate dal Punto 6
 
 ### IMPL-025 — Frontend live-session controller
@@ -605,5 +603,3 @@ TEST-044…058
 
 
 ---
-
-<!-- END ORIGINAL CONTENT -->

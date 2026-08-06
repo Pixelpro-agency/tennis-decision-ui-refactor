@@ -2,7 +2,6 @@
 > Controllo finale post-audit, schede di migrazione, implementazione iniziale IMPL-028, chiusura archive e completamento IMPL-015.
 > [Indice](../03-audit-codice.md) · [Parte 6](06-validazione-e-test.md) · [Indice](../03-audit-codice.md)
 
-<!-- AUDIT-CODE-ORIGINAL-START source-lines=6279-6663 sha256=de9e2acb06d73ef478a29a3e7d0edcbc6b6ef4aacbdb0bce57fb48ccdbfc55a9 -->
 ## 23. Controllo finale post-audit e avvio della migrazione documentale
 
 **Baseline del codice verificato:** `275008a5cd6451f24c6895068639ee3055395986`
@@ -388,4 +387,3 @@ collaudo manuale con due backend reali concorrenti
 `RUNTIME-003`, `DOC-024` e `TEST-004` sono chiusi da IMPL-015. `RUNTIME-002` e gli altri finding della session authority restano aperti e non vengono assorbiti.
 
 Nessuna task successiva viene selezionata da questo riallineamento.
-<!-- AUDIT-CODE-ORIGINAL-END -->

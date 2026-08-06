@@ -2,7 +2,6 @@
 > Secondo audit — Punto 7: runner, manifest, fixture, sandbox, harness frontend, result ledger e TEST-060…075.
 > [Indice](../03-audit-codice.md) · [Parte 5](05-frontend-session-shell.md) · [Parte 7](07-post-audit-e-migrazione.md)
 
-<!-- AUDIT-CODE-ORIGINAL-START source-lines=5358-6278 sha256=b41438bf84c85c4b90fa2502ea86e70d298357404bcb4c83b3f99f3d4459b144 -->
 ## 22. Secondo audit del codice — Punto 7: Test e strutture mancanti
 
 **Baseline:** `275008a5cd6451f24c6895068639ee3055395986`
@@ -923,5 +922,3 @@ IMPL-005 esteso
 
 
 ---
-
-<!-- AUDIT-CODE-ORIGINAL-END -->

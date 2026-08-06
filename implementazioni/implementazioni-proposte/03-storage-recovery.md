@@ -2,11 +2,9 @@
 
 > **Registro principale:** [06-implementazioni-proposte.md](../06-implementazioni-proposte.md)
 > **Perimetro:** IMPL-019…021
-> **Righe originali:** 1374–1777
 > **Parte precedente:** [Runtime e acquisizione Betfair](02-runtime-betfair.md)
 > **Parte successiva:** [Evidence, provenance e confronti temporali](04-evidence-provenance.md)
 
-<!-- BEGIN ORIGINAL CONTENT -->
 ## 18. Implementazioni approvate dal Punto 4
 
 ### IMPL-019 — Event persistence authority
@@ -410,5 +408,3 @@ IMPL-015
 ```
 
 ---
-
-<!-- END ORIGINAL CONTENT -->

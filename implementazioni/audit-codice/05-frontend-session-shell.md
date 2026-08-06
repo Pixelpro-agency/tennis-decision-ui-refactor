@@ -2,7 +2,6 @@
 > Secondo audit — Punto 6: session controller, Start/Stop, polling, integrity UI, Source Identity, Market Reactions UI e stato statico.
 > [Indice](../03-audit-codice.md) · [Parte 4](04-evidence-market-reactions.md) · [Parte 6](06-validazione-e-test.md)
 
-<!-- AUDIT-CODE-ORIGINAL-START source-lines=4451-5357 sha256=e6b0366d543bd6588337822bd1b1b4a091b751b2e40f771469c6a495f38ff571 -->
 ## 21. Secondo audit del codice — Punto 6: Frontend
 
 **Baseline:** `9205b5a789a40203c48ba19f8e3397fd0cec9707`
@@ -909,5 +908,3 @@ TEST-044…058
 
 
 ---
-
-<!-- AUDIT-CODE-ORIGINAL-END -->

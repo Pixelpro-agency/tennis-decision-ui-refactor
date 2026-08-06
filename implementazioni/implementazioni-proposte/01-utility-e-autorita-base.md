@@ -1,10 +1,8 @@
 > **Registro principale:** [06-implementazioni-proposte.md](../06-implementazioni-proposte.md)
 > **Perimetro:** IMPL-001…015
-> **Righe originali:** 1–1128
 > **Parte precedente:** [indice](../06-implementazioni-proposte.md)
 > **Parte successiva:** [Runtime e acquisizione Betfair](02-runtime-betfair.md)
 
-<!-- BEGIN ORIGINAL CONTENT -->
 # Tennis Decision UI — Implementazioni utili da valutare
 
 > Queste voci non modificano il prodotto. Sono strumenti di controllo emersi dall’audit B1–B6 e diventano task soltanto dopo una decisione sul loro ordine.
@@ -1132,5 +1130,3 @@ collaudo live multi-processo non eseguito
 ```
 
 ---
-
-<!-- END ORIGINAL CONTENT -->

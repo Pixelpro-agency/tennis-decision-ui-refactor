@@ -2,7 +2,6 @@
 > Secondo audit — Punto 5: provenance temporale, alignment, eligibility, Significant Flow, comparabilità prezzi e semantica Market Reactions.
 > [Indice](../03-audit-codice.md) · [Parte 3](03-storage-recovery.md) · [Parte 5](05-frontend-session-shell.md)
 
-<!-- AUDIT-CODE-ORIGINAL-START source-lines=3474-4450 sha256=b4034093c0a3a2ebe2fdf2e4db4fb12ab4ace7b41abcb3301c389a9585733f02 -->
 ## 20. Secondo audit del codice — Punto 5: Evidence e Market Reactions
 
 **Baseline:** `2959fba5bc3e0480cc3ea03f4469361cbb629ae6`
@@ -979,5 +978,3 @@ TEST-031…043
 
 
 ---
-
-<!-- AUDIT-CODE-ORIGINAL-END -->

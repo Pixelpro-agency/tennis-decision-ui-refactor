@@ -2,7 +2,6 @@
 > Secondo audit — Punto 4: history condivisa, timeline, commit journal, recovery, authority event-scoped, contratti documento e writer raw.
 > [Indice](../03-audit-codice.md) · [Parte 2](02-runtime-sessioni-betfair.md) · [Parte 4](04-evidence-market-reactions.md)
 
-<!-- AUDIT-CODE-ORIGINAL-START source-lines=2668-3473 sha256=419e236a207a4e39e642da01e44a0ed8189ac839410c1ea6d91318d79193b4e2 -->
 ## 19. Secondo audit del codice — Punto 4: storage, journal e recovery
 
 **Baseline:** `d797d0ee9ec70d4b2f85f6aa51b91af8f71227a1`
@@ -808,5 +807,3 @@ IMPL-015 — backend writer authority
 ```
 
 ---
-
-<!-- AUDIT-CODE-ORIGINAL-END -->

@@ -2,7 +2,6 @@
 > Secondo audit — Punti 2 e 3: tracking, Start/Stop, generazioni, callback tardive, lifecycle Betfair, Graph, diagnostica, concorrenza e cleanup.
 > [Indice](../03-audit-codice.md) · [Parte 1](01-rilievi-iniziali.md) · [Parte 3](03-storage-recovery.md)
 
-<!-- AUDIT-CODE-ORIGINAL-START source-lines=1617-2667 sha256=5dc2aeca0f095ec5fa1c140cb6dddf6be949f64c87a88f271f972eab45692171 -->
 ## 17. Secondo audit del codice — Punto 2: tracking, Start/Stop, generazioni e callback tardive
 
 **Baseline:** `dda406c4a07ae4a1debfcab39db346e47c33c419`
@@ -1053,5 +1052,3 @@ IMPL-015 — writer authority
 ```
 
 ---
-
-<!-- AUDIT-CODE-ORIGINAL-END -->

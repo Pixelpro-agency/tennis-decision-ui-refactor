@@ -2,11 +2,9 @@
 
 > **Registro principale:** [06-implementazioni-proposte.md](../06-implementazioni-proposte.md)
 > **Perimetro:** IMPL-032 e checkpoint successivi
-> **Righe originali:** 3838–4088
 > **Parte precedente:** [Validazione, fixture e test harness](06-validazione-e-fixture.md)
 > **Parte successiva:** [indice](../06-implementazioni-proposte.md)
 
-<!-- BEGIN ORIGINAL CONTENT -->
 ## 22. Fase documentale post-audit
 
 ### IMPL-032 — Manifest e pipeline di migrazione documentale per batch
@@ -258,4 +256,3 @@ IMPL-015
 ```
 
 Nessuna task successiva viene selezionata da questo riallineamento.
-<!-- END ORIGINAL CONTENT -->
