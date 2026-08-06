@@ -114,7 +114,7 @@ Una validazione storica dimostra ciò che è stato osservato nello specifico amb
 
 ## Materiale non canonico
 
-Le specifiche future non fanno parte della documentazione tecnica corrente. I requisiti ancora utili sono conservati nei registri; lo storico delle fonti consolidate resta disponibile nei commit Git.
+Le specifiche future non fanno parte della documentazione tecnica corrente. I requisiti ancora utili sono conservati nei registri. `docs/archive/` conserva materiali storici, planning, brief o fonti future non canoniche che l’utente ha deciso di mantenere per uso successivo. Il contenuto archive non è un owner tecnico, non dimostra implementazione e non viene eliminato automaticamente dalle pulizie documentali.
 
 ## Regola documentale corrente
 
@@ -122,5 +122,5 @@ Le specifiche future non fanno parte della documentazione tecnica corrente. I re
 owner tecnico corrente in .md
 → link relativi verificati
 → validazioni storiche separate
-→ planning e brief non canonici archiviati
+→ planning, brief e fonti non canoniche conservati in docs/archive quando dichiarati utili
 ```

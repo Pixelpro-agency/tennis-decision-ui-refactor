@@ -20,11 +20,12 @@ Non sostituisce il codice, i test, i documenti tecnici canonici o i collaudi.
 Repository: Pixelpro-agency/tennis-decision-ui-refactor
 Branch canonico: main
 SHA codice verificato: aefc0ba5894d8fca60e5811088fede3ebbfde98a
-SHA checkpoint registri: aefc0ba5894d8fca60e5811088fede3ebbfde98a
+SHA checkpoint registri: 8f936d1a3686b775e967e375576f52f19da461a5
 Data del checkpoint: 2026-08-06
+Nota: 8f936d1 è un commit documentale; il codice applicativo verificato resta aefc0ba.
 ```
 
-Il branch locale e `origin/main` risultano allineati sul commit `aefc0ba`.
+Il branch locale e `origin/main` risultano allineati sul commit documentale `8f936d1`.
 
 ## Fonti correnti
 
@@ -48,8 +49,9 @@ Il branch locale e `origin/main` risultano allineati sul commit `aefc0ba`.
 
 - [Indice canonico](./docs/tennis-decision-ui/index.md)
 - [Validazioni correnti](./docs/validations/)
+- `docs/archive/` — materiali storici o futuri non canonici conservati intenzionalmente per uso successivo.
 
-La documentazione canonica descrive il comportamento reale. I registri contengono finding, decisioni, limiti, task approvate e lavoro futuro.
+La documentazione canonica descrive il comportamento reale. I registri contengono finding, decisioni, limiti, task approvate e lavoro futuro. `docs/archive/` non è un owner tecnico e il suo contenuto non attesta che una funzione sia implementata.
 
 ## Stato complessivo
 
@@ -118,8 +120,8 @@ registry consistency
 → 0 warning
 
 documentation links
-→ 73 file
-→ 425 link
+→ 72 file
+→ 428 link
 → 0 errori
 → 0 warning
 
@@ -160,7 +162,9 @@ L’ordine definitivo deve essere deciso prima di preparare il prompt esecutivo.
 - una voce approvata non viene descritta come implementata;
 - una funzione futura non diventa documentazione canonica;
 - lo storico delle revisioni è affidato ai commit Git;
-- non conservare artefatti temporanei di migrazione dopo la verifica finale;
+- i materiali non canonici dichiarati utili dall’utente possono essere conservati in `docs/archive/`;
+- `docs/archive/` non viene trattato come owner corrente né incluso nelle pulizie automatiche o generiche;
+- non conservare artefatti temporanei di migrazione fuori dagli spazi intenzionalmente preservati dopo la verifica finale;
 - conservare checker, test e validations che servono al controllo corrente;
 - dopo modifiche ai registri eseguire registry checker, link checker, profilo `fast` e `git diff --check`.
 

@@ -2,11 +2,12 @@
 
 ## Scopo
 
-Questa Todo è la vista sintetica unica della revisione di **Tennis Decision UI**.
+Questa Todo è la vista operativa unica della revisione di **Tennis Decision UI**.
 
 Serve a:
 
 - mostrare lo stato corrente del progetto;
+- conservare gli inventari e le checklist dell’audit;
 - distinguere lavoro completato, finding confermati, implementazioni approvate e attività mancanti;
 - collegare ogni ID alla relativa scheda owner;
 - indicare priorità, collaudi residui e prossimo passo;
@@ -20,11 +21,12 @@ Le motivazioni e le evidenze complete vivono nei moduli sotto `implementazioni/`
 Repository: Pixelpro-agency/tennis-decision-ui-refactor
 Branch canonico: main
 SHA codice verificato: aefc0ba5894d8fca60e5811088fede3ebbfde98a
-SHA checkpoint registri: aefc0ba5894d8fca60e5811088fede3ebbfde98a
+SHA checkpoint registri: 8f936d1a3686b775e967e375576f52f19da461a5
 Data del checkpoint: 2026-08-06
 ```
 
-- [x] Branch locale e `origin/main` allineati sul commit `aefc0ba`
+- [x] Branch locale e `origin/main` allineati sul commit documentale `8f936d1`
+- [x] Il commit 8f936d1 modifica soltanto documentazione e registri; la baseline del codice resta aefc0ba
 - [x] Documentazione e registri verificati dopo la modularizzazione
 - [x] Working tree pulita al checkpoint pubblicato
 
@@ -41,7 +43,7 @@ Lo stato testuale in grassetto è l’autorità sintetica. Una checkbox `[x]` no
 
 ---
 
-# BLOCCO A — Stato corrente e fonti
+# BLOCCO A — Stato corrente, fonti e inventario
 
 ## A1 — Fonti operative
 
@@ -51,8 +53,28 @@ Lo stato testuale in grassetto è l’autorità sintetica. Una checkbox `[x]` no
 - [x] [Decisioni dell’utente](./implementazioni/99-decisioni-utente.md)
 - [x] [Documentazione canonica](./docs/tennis-decision-ui/index.md)
 - [x] [Validazioni correnti](./docs/validations/)
+- [x] `docs/archive/` — materiali non canonici conservati intenzionalmente per uso successivo
 
-## A2 — Struttura dei registri
+## A2 — Inventario tecnico e copertura
+
+- [x] A1 — Repository, branch e SHA
+- [x] A2 — Entry point pubblico `avvio.py`
+- [x] A3 — Orchestrazione reale in `launcher/app.py`
+- [x] A4 — Router backend montati
+- [x] A5 — Recovery prima di `listen`
+- [x] A6 — Registry processi Python individuato
+- [x] A7 — Composizione frontend iniziale individuata
+- [ ] A8 — Inventario completo root
+- [ ] A9 — Inventario completo directory backend
+- [ ] A10 — Inventario completo directory frontend
+- [ ] A11 — Inventario completo package Python
+- [ ] A12 — Inventario script operativi
+- [ ] A13 — Inventario test
+- [x] A14 — Inventario documenti canonici — 40 documenti indicizzati verificati sullo SHA checkpoint
+- [-] A15 — Inventario legacy e file generati — materiali locali classificati; riferimenti canonici `chapters/` e `sections/` verificati assenti
+- [-] A16 — Matrice codice ↔ documentazione — owner matrix Batch 0 creata; completamento progressivo per i batch comportamentali
+
+## A3 — Struttura dei registri
 
 - [x] Audit documentazione suddiviso in 4 moduli
 - [x] Audit codice suddiviso in 7 moduli
@@ -62,28 +84,116 @@ Lo stato testuale in grassetto è l’autorità sintetica. Una checkbox `[x]` no
 - [x] Test dedicato alla discovery annidata presente
 - [x] Nessun secondo monolite canonico mantenuto
 
-## A3 — Regole documentali correnti
+## A4 — Regole documentali correnti
 
 - [x] Documenti tecnici in Markdown ordinario
 - [x] Nessun nuovo documento `.mdx`
 - [x] Nessun frontmatter obbligatorio
 - [x] Documentazione canonica limitata al comportamento reale
 - [x] Futuro, decisioni e implementazioni mancanti mantenuti nei registri
-- [x] Storico affidato ai commit Git
-- [x] Duplicati documentali e fonti assorbite rimossi
+- [x] Cronologia delle revisioni affidata ai commit Git
+- [x] Materiali storici o futuri non canonici dichiarati utili conservati in `docs/archive/`
+- [x] Contenuti archive esclusi dagli owner tecnici e dalla prova di implementazione
+- [x] Duplicati canonici e fonti assorbite rimossi soltanto quando non conservati intenzionalmente
 
 ---
 
-# BLOCCO B — Lavoro completato
+# BLOCCO B0 — Regole documentali permanenti
 
-## B1–B6 — Audit della documentazione
+- [x] Nuovi documenti tecnici soltanto in formato `.md`
+- [x] Non creare nuovi documenti `.mdx`
+- [x] Verificare il loader o generatore della documentazione — nessun loader MDX richiesto
+- [x] Formato metadata deciso — Markdown ordinario, nessun frontmatter predefinito
+- [x] Convertire eventuale sintassi MDX — metadata JavaScript rimossi
+- [x] Aggiornare link `.mdx` → `.md`
+- [x] Evitare duplicati canonici `.mdx` e `.md`
+- [x] Eliminare i vecchi `.mdx` soltanto dopo verifica completa
+- [x] Requisiti ancora validi collegati a rilievi e IMPL
+- [x] Storico, futuro e stato corrente separati
+- [x] La documentazione canonica descrive soltanto comportamento implementato e verificato nel codice corrente
+- [x] Decisioni approvate ma non implementate restano nei registri
+- [x] Funzionalità future non vengono presentate come stato corrente
+- [x] La migrazione procede per batch piccoli e revisionabili
+- [x] Nessuna cancellazione prima della sostituzione completa e della verifica dei link
+- [x] Ogni batch include file completi, controlli, limiti e rollback
+- [x] La cronologia delle revisioni resta nei commit Git; i requisiti utili restano nei registri o nelle validations
+- [x] `docs/archive/` conserva materiali non canonici dichiarati utili per lavoro futuro e non viene eliminato automaticamente
 
-- [x] B1 — ingresso, indice, repository map, boundaries e lifecycle
-- [x] B2 — API Match, Betfair, Evidence, Strategy, Preflight e Runtime Health
-- [x] B3 — moduli SofaScore, Betfair, Storage ed Evidence
-- [x] B4 — frontend, session shell, polling e package Python
-- [x] B5 — operations, validation, cleanup e roadmap
-- [x] B6 — owner, duplicazioni, link, test, legacy e coerenza registri
+---
+
+# BLOCCO B — Audit documentazione e lavoro completato
+
+> Le checklist B1–B6 descrivono il checkpoint dell’audit documentale. Gli stati owner correnti restano nei Blocchi E/F e nei registri analitici.
+
+## B1 — Ingresso e orientamento
+
+- [x] README root — verificato
+- [x] Indice canonico — verificato; al checkpoint B1 il percorso era `docs/tennis-decision-ui/index.mdx`
+- [x] Repository map — `DOC-002`, `DOC-006`
+- [x] System boundaries — `DOC-006`
+- [x] Data lifecycle — `DOC-006`
+- [x] Link e frontmatter — formato verificato; inventario globale e scansione strict completati
+
+## B2 — API
+
+- [x] API Match — `DOC-009`, `CODE-003`
+- [x] API Betfair — `DOC-010`, `DOC-011`
+- [x] API Evidence — `DOC-003`, `DOC-011`
+- [x] API Strategy — `DOC-012`, `CODE-001`, `CODE-004`
+- [x] API Preflight — `DOC-013`, `CODE-002`
+- [x] API Runtime Health — coerente con codice e test ispezionato
+
+## B3 — Moduli
+
+- [x] Tracking SofaScore — verificato; documento troppo esteso (`DOC-015`); race nuovo Start (`RUNTIME-002`)
+- [x] Local context e point-by-point — contratto coerente; assunzione ultimo game da validare (`SOFA-001`)
+- [x] Timeline e history — verificato; separare facade storage e journal (`DOC-015`, `DOC-016`)
+- [x] Commit journal e recovery — contratto sostanzialmente coerente
+- [x] Lifecycle Betfair — verificato; ridurre duplicazioni Runtime/Storage (`DOC-015`)
+- [x] Validità tecnica Betfair — verificata; correggere ordine key/classificazione (`DOC-014`)
+- [x] Match Evidence Snapshot — verificato; ridurre duplicazioni integrity/identity (`DOC-015`)
+- [x] Source Identity — verificato; comportamento principale coerente
+- [x] Qualità, flow e alignment — verificato; ownership coerente ma ripetitiva (`DOC-015`)
+- [x] Market Reactions — verificato; `selectionId` obbligatorio solo Field → Market (`EVIDENCE-001`, `DEC-010`)
+
+## B4 — Frontend e Python
+
+- [x] Session shell — ownership verificata; Start fallito lascia poller nascosti (`FRONTEND-003`)
+- [x] Polling e view model — race risposte tardive (`FRONTEND-001`) e integrity non propagata (`FRONTEND-002`, `DOC-018`)
+- [x] UI Betfair e Market Reactions — rendering principale coerente; stato persistence promesso ma non collegato (`FRONTEND-002`)
+- [x] Match Context UI — contratto coerente con mapping e view model
+- [x] Entry point e runtime Python — wrapper sottili e proxy dinamico launcher verificati
+- [x] Scraper SofaScore — CLI, cache e fallback browser coerenti; errori pubblici da irrobustire (`SECURITY-003`)
+- [x] Scraper Betfair — lifecycle principale coerente; path pubblico, cache key e task capture da correggere (`SECURITY-001`, `SECURITY-002`, `PYTHON-001`)
+- [x] Graph URL — parser, mapping, duplicati e skip coerenti con il codice
+
+## B5 — Operations e roadmap
+
+- [x] Runtime locale — contratto coerente; architettura e collaudi da separare dal runbook (`DOC-021`, `DOC-023`)
+- [x] Controllo tracking — procedura operativa coerente con Stop globale e scope processi
+- [x] Diagnostica Betfair — sequenza utile; correggere le garanzie di hardening pubblico (`DOC-019`, `SECURITY-001`, `SECURITY-003`)
+- [x] Validation e rollback — contenuti validi ma documento monolitico e duplicato (`DOC-021`)
+- [x] Retention e cleanup — allow-list corretta; path journal errato e verifica offline incompleta (`DOC-020`, `CLEANUP-002`)
+- [x] Validazione live Source Identity — checklist utile; separare procedura e osservazioni storiche (`DOC-023`)
+- [x] Validazione live Betfair — report storico valido con limiti espliciti; conservato nelle validations
+- [x] Current State — storico, duplicato e non aggiornato rispetto a B4 (`DOC-001`, `DOC-007`, `DOC-022`)
+- [x] Replay e backtesting — `FUTURA`, correttamente dichiarata non implementata
+- [x] Market Reactions Journal — `FUTURA`, correttamente dichiarata non implementata
+
+## B6 — Controlli trasversali
+
+- [x] Documenti owner — API, moduli, frontend, Python, operations e roadmap verificati
+- [x] Duplicazioni — classificate (`DOC-015`, `DOC-018`, `DOC-021`, `DOC-023`)
+- [x] Contraddizioni — classificate (`DOC-020`, `DOC-022`)
+- [x] Percorsi errati — journal e path pubblico registrati (`DOC-020`, `SECURITY-001`)
+- [x] Link dell’indice canonico — scan globale strict completata
+- [x] Test — gap classificati (`TEST-001`, `TEST-002`, `TEST-003`, `PYTHON-001`)
+- [x] Funzioni implementate non documentate/legacy — candidate registrate (`CLEANUP-001`)
+- [x] Funzioni future descritte come presenti — separate (`DOC-018`, `DOC-022`, `FRONTEND-002`)
+- [x] Cronologia da separare dalla documentazione corrente (`DOC-001`, `DOC-007`, `DOC-023`, `IMPL-004`)
+- [x] Materiale legacy — contenuti unici consolidati; copie duplicate rimosse; provenienza recuperabile dai commit Git
+- [x] Coerenza Todo ↔ registri — riallineata (`WORKFLOW-002`)
+- [x] Prefissi dei rilievi — aggiornati (`WORKFLOW-003`)
 
 ## Secondo audit del codice — Punti 1–7
 
@@ -117,7 +227,193 @@ Lo stato testuale in grassetto è l’autorità sintetica. Una checkbox `[x]` no
 
 ---
 
-# BLOCCO C — Ricontrollo task D1–D18
+# BLOCCO C — Audit codice per settori
+
+> Le checklist C1–C13 conservano gli stati osservati durante l’audit. Le voci aperte o parziali non vengono promosse senza una nuova verifica.
+
+## C1 — Root e launcher
+
+- [x] Wrapper root — sottili e compatibili
+- [x] Config launcher — porte preferite e percorsi verificati
+- [x] Lock — schema e acquisizione conservativa verificati
+- [x] Manifest — schema, identità e ownership verificati
+- [x] Riuso servizi — identity check e no ownership sui reused verificati
+- [-] Porte alternative — codice e test presenti; scenari reali ancora aperti
+- [x] CDP — discovery bounded e nessun fallback implicito verificati
+- [x] Ownership — owned/reused/external separati
+- [x] Shutdown — solo processi owned; CDP preservato
+- [-] Test launcher — file e runbook letti; suite non eseguita durante audit read-only
+
+## C2 — Server e runtime backend
+
+- [x] Bootstrap server
+- [x] Recovery iniziale
+- [x] Health — contratto e test HTTP verificati
+- [x] Shutdown backend
+- [ ] Registry Python
+- [ ] Runtime logger
+- [ ] Redazione dati
+- [-] Test runtime — `server.test.mjs` letto; suite non eseguita
+
+## C3 — Router Match
+
+- [x] Endpoint inventariati
+- [-] Tracking — contratto e test letti
+- [-] Untrack — contratto e test letti
+- [-] Stop globale — contratto e test letti
+- [-] Analisi — contratto e helper letti
+- [-] History — contratto integrity letto
+- [-] Timeline — contratto integrity letto
+- [-] Source Identity status — response builder letto
+- [-] Integrity — normalizzazione e `409` letti
+- [-] Test — file mirati letti, suite non eseguite
+
+## C4 — Router Betfair
+
+- [-] Latest — contratto, health e integrity letti
+- [-] JSON — contratto e integrity letti
+- [-] Odds — query e side effect letti
+- [-] Login window — validazione e lifecycle letti
+- [-] Log — contratto bounded letto
+- [-] CDP — uso read-only in latest verificato
+- [-] Runtime conflict — tracking e login verificati
+- [-] Integrity — `DOC-010`
+- [-] Test — file mirati presenti, suite non eseguite
+
+## C5 — Router Evidence
+
+- [x] Latest read-only
+- [x] Conferma gate-aware
+- [x] Fallback persistito
+- [x] Revoca
+- [x] Side effect — bootstrap possibile confermato
+- [-] Errori — mapping principale verificato
+- [-] Test — helper test letti, suite non eseguite
+- [x] Allineamento documentale analizzato — correzione canonica ancora da eseguire al checkpoint dell'audit
+
+## C6 — Strategy e Preflight
+
+- [x] Strategy legacy identificata — rimozione approvata; Market Reactions escluse (`CODE-001`, `DEC-008`)
+- [x] Consumer frontend Strategy — polling ogni 3 secondi al checkpoint dell'audit
+- [-] Market Evidence — presenza nel view model verificata
+- [x] Preflight CDP — contratto letto
+- [x] Preflight Sofa URL — contratto letto
+- [x] Preflight Betfair URL — `CODE-002`, `DOC-013`
+- [x] Preflight Graph URL — validatore e test letti
+- [-] Test — Strategy e Graph URL ispezionati; suite non eseguite
+
+## C7 — SofaScore
+
+- [ ] Scheduler
+- [ ] Update Sofa
+- [ ] Normalizzazione
+- [ ] Point-by-point
+- [ ] Local Context
+- [ ] History
+- [ ] Timeline
+- [ ] Gate
+- [ ] Stop e mismatch
+- [ ] Test
+
+## C8 — Betfair
+
+- [ ] Fetch
+- [ ] Scraper lifecycle
+- [ ] Processor
+- [ ] Timeline
+- [ ] Ladder
+- [ ] Graph health
+- [ ] Matched volume
+- [-] Cache — payload redatto; filename derivato dall’URL (`SECURITY-002`)
+- [ ] Runtime health
+- [ ] Login-only
+- [ ] Test
+
+## C9 — Storage e recovery
+
+- [ ] History storage
+- [ ] Timeline store
+- [ ] Commit ID
+- [ ] Journal store
+- [ ] Atomic write
+- [ ] Recovery bootstrap
+- [ ] Repair Sofa
+- [ ] Repair Betfair
+- [ ] Integrity
+- [ ] Failure mode
+- [ ] Test
+
+## C10 — Evidence e Source Identity
+
+- [ ] Match Evidence builder
+- [ ] Data quality
+- [ ] No-trade reasons
+- [ ] Name matching
+- [ ] Confirmation store
+- [ ] Effective identity
+- [ ] Market Reactions
+- [ ] Causality claim
+- [ ] Degradazione persistence incomplete
+- [ ] Test
+
+## C11 — Frontend
+
+- [x] App composition — ownership verificato; authority sessione frammentata (`IMPL-025`)
+- [-] Session state — current/confirmed presenti ma non equivalgono a sessione accettata (`FRONTEND-003`, `IMPL-025`)
+- [-] Preflight — risultati non input-bound e copy mojibake (`FRONTEND-011`, `FRONTEND-004`)
+- [-] Start tracking — anticipa sessione, non serializza comandi e non gestisce failure completa (`FRONTEND-003`, `FRONTEND-006`)
+- [-] Stop tracking — ferma solo Sofa e non espone cleanup parziale (`FRONTEND-007`, `RUNTIME-009`)
+- [-] Bootstrap dashboard — conserva view model precedente e resta vulnerabile a response tardive (`FRONTEND-001`, `FRONTEND-002`)
+- [-] Sofa polling — manca isolamento sessione e abort (`FRONTEND-001`, `FRONTEND-005`, `IMPL-026`)
+- [-] Betfair polling — manca isolamento, parte anche senza Betfair e scarta integrity (`FRONTEND-001`, `FRONTEND-002`, `IMPL-026`)
+- [-] Evidence polling — isolamento presente; da legare alla vista e ripulire authority legacy (`FRONTEND-007`, `CLEANUP-001`, `IMPL-026`)
+- [-] Source Identity UI — polling robusto; pending key non context-scoped (`FRONTEND-010`)
+- [x] Betfair health — transizioni, toast e audio verificati; enable/stop da collegare alla sessione
+- [-] View model — non riceve integrity e non azzera/etichetta dati stale (`FRONTEND-002`, `IMPL-009`)
+- [x] Money Flow — mapping `selectionId`, griglia e grafico neutro verificati
+- [x] Match Context — mapping e validazione verificati
+- [-] Market Reactions — availability/schema UI non coerenti (`FRONTEND-009`, `IMPL-027`)
+- [x] Strategy UI — rimozione approvata senza correzione (`CODE-001`, `DEC-008`)
+- [ ] Piccole correzioni/mojibake — task separata (`FRONTEND-004`)
+- [ ] Responsive completo — task separata dopo robustezza (`FRONTEND-012`, `DEC-017`)
+- [ ] Build — non eseguita durante audit read-only
+- [-] Lint — script presente ma configurazione assente (`CODE-005`)
+- [-] Test — lifecycle hook non coperto e nessun runner canonico (`TEST-044…059`, `TEST-003`)
+
+## C12 — Python e script
+
+- [x] SofaScore CLI — verificata
+- [x] SofaScore browser — headless/headed e fetch pagina verificati
+- [x] Betfair CLI — opzioni e validazione CDP verificate
+- [x] Persistent profile — ownership context verificata
+- [x] CDP mode — URL locale obbligatoria e context preservato
+- [x] Graph URL — parser e mapping verificati
+- [-] Network capture — path pubblico e task non attese (`SECURITY-001`, `PYTHON-001`)
+- [-] Diagnostic redaction — contenuti redatti; confini pubblici ancora incompleti (`SECURITY-001`, `SECURITY-003`)
+- [ ] Cache
+- [ ] Wrapper root
+- [ ] Cleanup runtime cache
+- [ ] PowerShell
+- [-] Test Python — file mirati letti; non eseguiti
+
+## C13 — Cleanup
+
+- [ ] File legacy
+- [-] Codice morto — candidati Evidence/Source Identity (`CLEANUP-001`)
+- [ ] File duplicati
+- [ ] Test obsoleti
+- [ ] Script non usati
+- [ ] Documenti non canonici
+- [ ] Import non usati
+- [-] Componenti non raggiungibili — `SourceIdentityControls` già classificato legacy; verifica finale aperta
+- [ ] Route non consumate
+- [-] Log o debug superati — messaggi mojibake e dettagli HTTP raw da correggere (`FRONTEND-004`, `SECURITY-003`)
+
+---
+
+# BLOCCO D — Ricontrollo task completate e priorità
+
+## Ricontrollo D1–D18
 
 - [x] D1 — Source Identity Task 1A — **CONFERMATA CON LIMITI**
 - [x] D2 — Source Identity frontend Task 1B — **CONFERMATA CON LIMITI**
@@ -126,17 +422,17 @@ Lo stato testuale in grassetto è l’autorità sintetica. Una checkbox `[x]` no
 - [x] D5 — Money Flow 2C — **CONFERMATA**
 - [x] D6 — Money Flow 2D — **CONFERMATA**
 - [x] D7 — Money Flow 2E — **CONFERMATA**
-- [x] D8 — Validazione live Betfair 2F — **CONFERMATA CON LIMITI**
-- [x] D9 — Runtime launcher Task 2 — **CONFERMATA CON LIMITI; NON RIAPRIRE SENZA DISCREPANZA**
+- [x] D8 — Validazione live Betfair 2F — **CONFERMATA CON LIMITI** (`TEST-001`, `IMPL-004`)
+- [x] D9 — Runtime launcher Task 2 — **CONFERMATA CON LIMITI; NON RIAPRIRE SENZA DISCREPANZA** (`RUNTIME-001`)
 - [x] D10 — Stop globale Task 3a — **CONFERMATA**
 - [x] D11 — Timeline store Task 4 — **CONFERMATA**
 - [x] D12 — Commit journal Task 6 — **CONFERMATA**
-- [x] D13 — Recovery — **CONFERMATA CON LIMITI**
-- [-] D14 — Persistence integrity — **DA RIAPRIRE SOLO FRONTEND/CROSS-LAYER**
+- [x] D13 — Recovery — **CONFERMATA CON LIMITI** (`IMPL-008`)
+- [-] D14 — Persistence integrity — **DA RIAPRIRE SOLO FRONTEND/CROSS-LAYER** (`FRONTEND-002`, `DOC-018`, `DOC-022`, `IMPL-009`)
 - [x] D15 — Evidence degradation — **CONFERMATA**
-- [x] D16 — Context locale V1 — **CONFERMATA CON LIMITI**
-- [-] D17 — Diagnostica Betfair — **DA RIAPRIRE SOLO HARDENING PUBBLICO/CAPTURE**
-- [x] D18 — Retention cache runtime — **CONFERMATA CON LIMITI**
+- [x] D16 — Context locale V1 — **CONFERMATA CON LIMITI** (`SOFA-001`)
+- [-] D17 — Diagnostica Betfair — **DA RIAPRIRE SOLO HARDENING PUBBLICO/CAPTURE** (`SECURITY-001…003`, `PYTHON-001`, `IMPL-007`)
+- [x] D18 — Retention cache runtime — **CONFERMATA CON LIMITI** (`CLEANUP-002`)
 
 ```txt
 CONFERMATA: 9
@@ -146,11 +442,7 @@ DA RIAPRIRE: 2
 
 Regola: riaprire soltanto il sotto-perimetro difettoso, senza annullare le parti già corrette.
 
----
-
-# BLOCCO D — Priorità operative
-
-## D1 — Priorità critica
+## Priorità critica
 
 - [ ] Session authority end-to-end (`IMPL-006`)
 - [ ] Betfair runtime command authority (`IMPL-016`)
@@ -163,7 +455,7 @@ Regola: riaprire soltanto il sotto-perimetro difettoso, senza annullare le parti
 - [ ] Polling runtime session-scoped (`IMPL-026`)
 - [ ] Frontend interaction test harness (`IMPL-030`)
 
-## D2 — Priorità alta
+## Priorità alta
 
 - [ ] Betfair acquisition envelope e provenance (`IMPL-018`)
 - [ ] Recovery control plane (`IMPL-021`)
@@ -174,7 +466,7 @@ Regola: riaprire soltanto il sotto-perimetro difettoso, senza annullare le parti
 - [ ] Hardening diagnostico e network capture
 - [ ] Retention e cleanup offline
 
-## D3 — Futuro o condizionato
+## Futuro o condizionato
 
 - [~] Toolkit strategie offline (`IMPL-010`)
 - [~] Ottimizzazione Betfair misurata (`IMPL-014`)
@@ -423,42 +715,33 @@ Nessuna di queste voci è stata selezionata automaticamente come prossima task.
 - [x] `IMPL-032` — Pipeline di migrazione documentale per batch — **COMPLETATA**
 
 ---
----
 
-# BLOCCO G — Workflow operativo
+# BLOCCO G — Workflow operativo permanente
 
-## Ruoli
-
-- [x] Chat Analisi — analisi, decisioni, priorità e prompt esecutivi
-- [x] Chat Esecutore — modifica controllata con massimo tre tentativi
-- [x] Desktop Esecutore — applicazione locale e raccolta output
-- [x] Desktop Collaudatore — verifica separata quando necessaria
-
-## Regole
-
-- [x] Contesto minimo sufficiente
-- [x] File modificabili e consultabili distinti
-- [x] Nessun dato sensibile nei report
-- [x] Massimo tre tentativi ragionati
-- [x] Report finale obbligatorio
+- [x] Ruoli permanenti: Chat Analisi, Chat Esecutore, Desktop Esecutore e Desktop Collaudatore
+- [x] Esecutore e collaudatore separati
+- [x] Massimo tre tentativi ragionati per prompt esecutivo
+- [x] Report finale obbligatorio con file, comandi, test, esiti e limiti
+- [x] `fileModificati.md` riservato ai flussi Desktop che lo richiedono
 - [x] Commit e push riservati all’utente
-- [x] Test e collaudi dichiarati soltanto con output verificabile
+- [x] Nessun PASS dichiarato senza output verificabile
+- [x] Nessun dato sensibile nei report
 
 ---
 
 # BLOCCO H — Modularizzazione e pulizia
 
-- [x] Soglia di modularizzazione raggiunta
-- [x] Audit documentazione diviso per fase
-- [x] Audit codice diviso per dominio
-- [x] Implementazioni proposte divise per area
-- [x] ID globali preservati
+- [x] Audit documentazione suddiviso in 4 moduli
+- [x] Audit codice suddiviso in 7 moduli
+- [x] Implementazioni proposte suddivise in 7 moduli
+- [x] ID globali mantenuti
 - [x] Link relativi verificati
 - [x] Registry checker ricorsivo verificato
-- [x] Nessun artefatto temporaneo di migrazione mantenuto
-- [x] Nessuna copia puramente storica mantenuta fuori da Git
-
-Dopo il completamento di una migrazione devono restare soltanto i file correnti e gli strumenti di controllo riutilizzabili.
+- [x] Nessuna seconda copia canonica monolitica
+- [x] Soglia di modularizzazione raggiunta
+- [x] Soglie guida conservate: oltre 1.500–2.000 righe, oltre 100 rilievi o rilettura troppo costosa
+- [x] Dopo una migrazione restano file correnti, strumenti di controllo riutilizzabili e materiali archive preservati intenzionalmente
+- [x] Le pulizie automatiche o generiche non cancellano `docs/archive/`
 
 ---
 
@@ -494,7 +777,7 @@ Per ogni task selezionata devono essere definiti:
 - [x] Documentazione canonica aggiornata
 - [x] Registri modularizzati
 - [x] Checker e link verificati
-- [x] Stato dei registri verificato sul commit pubblicato
+- [x] Stato dei registri verificato sul commit documentale `8f936d1`
 - [ ] Prima serie di nuove task esecutive completata
 - [ ] Test mancanti implementati
 - [ ] Collaudi live residui conclusi
@@ -503,10 +786,11 @@ Per ogni task selezionata devono essere definiti:
 ## Verifiche dell’ultimo checkpoint
 
 ```txt
+checkpoint registri: 8f936d1
 registry checker tests: 18 PASS
 nested registry tests: 2 PASS
 registry consistency: 240 owner ID, 214 righe Todo, 0 errori, 0 warning
-documentation links: 73 file, 425 link, 0 errori, 0 warning
+documentation links: 72 file, 428 link, 0 errori, 0 warning
 validation fast: 6 PASS, 0 failure, 0 timeout
 git diff --check: PASS
 ```
