@@ -2,65 +2,36 @@
 
 ## Scopo
 
-Questo modulo documenta il package Python che acquisisce dati Betfair.
+Lo scraper Betfair acquisisce mercato, runner e ladder attraverso un browser Playwright. Supporta un profilo persistente locale oppure una sessione Chrome già avviata e raggiungibile via CDP.
 
-```txt
-betfair_scraper.py
-→ scrapers.betfair.cli
-```
+Il processo Python scrive un solo payload JSON su `stdout`; log e diagnostica operativa usano `stderr` e il logger dedicato.
 
-Il package gestisce browser, sessione CDP, profilo persistente, quote, ladder e diagnostica.
+## Componenti
 
-Non decide polling, persistence canonica, Evidence o UI.
+| File                      | Responsabilità                                         |
+| ------------------------- | ------------------------------------------------------ |
+| `cli.py`                  | CLI, validazione iniziale, cache e timeout complessivo |
+| `scrape.py`               | Orchestrazione browser, API mercato e Graph URL        |
+| `browser_session.py`      | Apertura sessione, login euristico e stato evento      |
+| `market_api.py`           | Lettura del mercato principale                         |
+| `ladder.py`               | Estrazione ladder da Graph URL                         |
+| `cache.py`                | Cache breve dei soli risultati completi                |
+| `network_capture.py`      | Capture diagnostica bounded                            |
+| `diagnostic_redaction.py` | Redazione centralizzata                                |
 
-## Struttura
-
-```txt
-scrapers/betfair/
-├── cli.py
-├── scrape.py
-├── graph_url.py
-├── graph_url_test.py
-├── cdp_url.py
-├── browser_session.py
-├── market_api.py
-├── ladder.py
-├── network_capture.py
-├── diagnostic_redaction.py
-├── cache.py
-├── parsing.py
-└── config.py
-```
-
-| File                      | Responsabilità                                                            |
-| ------------------------- | ------------------------------------------------------------------------- |
-| `cli.py`                  | Argomenti, cache, login-only e JSON stdout per lo scraping                |
-| `scrape.py`               | Orchestrazione browser, mercato, ladder e diagnostica                     |
-| `graph_url.py`            | Parser puro URL dirette e validazione mapping ladder                      |
-| `graph_url_test.py`       | Test unitari puri del parser e del mapping                                |
-| `cdp_url.py`              | Validazione e normalizzazione dell'endpoint CDP locale                    |
-| `browser_session.py`      | CDP esistente o profilo persistente                                       |
-| `market_api.py`           | Dati mercato read-only                                                    |
-| `ladder.py`               | Lettura ladder da Graph URL                                               |
-| `network_capture.py`      | Capture diagnostica delle risposte browser                                |
-| `diagnostic_redaction.py` | Redazione pura di URL, header, payload JSON e testo diagnostico sensibile |
-| `cache.py`                | Cache breve del risultato                                                 |
-| `parsing.py`              | URL, event ID, normalizzazione e sanitizzazione                           |
-| `config.py`               | Percorsi, host, logging e risoluzione locale della configurazione Betfair |
+I dettagli di capture, dump e redazione sono nel documento [Diagnostica e network capture Betfair](./05-betfair-diagnostics-and-network-capture.md).
 
 ## Contratto CLI
 
-Comando base:
-
-```powershell
-python .\betfair_scraper.py <betfair-url>
+```text
+python betfair_scraper.py <url> [opzioni]
 ```
 
-Opzioni:
+Opzioni principali:
 
-```txt
+```text
 --mode persistent|cdp
---profile-dir <directory>
+--profile-dir <path>
 --cdp-url <url>
 --ladder-urls <url1,url2,...>
 --no-network-capture
@@ -68,314 +39,154 @@ Opzioni:
 --login-only
 ```
 
-| Opzione                | Effetto                                                |
-| ---------------------- | ------------------------------------------------------ |
-| `--mode persistent`    | Apre un browser con profilo persistente                |
-| `--mode cdp`           | Si collega a Chrome già avviato                        |
-| `--profile-dir`        | Usa il profilo indicato in modalità persistent         |
-| `--cdp-url`            | Usa l’endpoint CDP indicato                            |
-| `--ladder-urls`        | Legge ladder da Graph URL                              |
-| `--no-network-capture` | Disabilita capture diagnostica                         |
-| `--no-cache`           | Ignora la cache runtime                                |
-| `--login-only`         | Apre il flusso interattivo di login senza fetch finale |
+Una URL Betfair vuota o non valida fallisce prima dell’apertura del browser. In modalità CDP `--cdp-url` è obbligatoria e deve superare la validazione loopback condivisa; non esiste un fallback implicito alla porta 9222.
 
-In modalità `--login-only` non esiste un payload dati finale da trattare come risposta scraper.
+## Sessioni browser
 
-La chiave applicativa Betfair non deve essere definita come valore letterale nei file Python.
+In modalità `cdp` lo scraper si collega al browser esistente, riusa il primo contesto e non lo chiude. In modalità `persistent` apre e chiude un contesto proprietario usando il profilo richiesto o quello predefinito.
 
-`APP_KEY` resta il nome pubblico importato dallo scraper, ma viene risolto in questo ordine:
+Il browser persistent conserva soltanto i flag di compatibilità necessari. Non usa `--no-sandbox`, `--disable-setuid-sandbox` o `--ignore-certificate-errors`.
 
-```txt
-BETFAIR_APP_KEY dall’ambiente, se non vuota dopo strip()
-→ BETFAIR_APP_KEY nel file .env della root, se non vuota dopo strip()
-→ RuntimeError("BETFAIR_APP_KEY is required")
+`--login-only` apre una sessione interattiva separata dal tracking e resta attivo finché l’utente chiude le pagine. Lo stop del tracking non termina questa sessione; lo shutdown globale può terminarla se il processo è owned.
+
+## Stato finale dell’evento
+
+`event_status.hasFinished=true` è prodotto soltanto da marker strutturali dedicati:
+
+```text
+span.match-finished
+.tennis-header.finished
 ```
 
-Un valore ambiente vuoto o composto solo da spazi non blocca il fallback al file `.env`.
+Testo generico contenente “finito”, “finished” o “terminato” produce solo `weakFinishedHint=true`. Il suggerimento debole resta diagnostico e non autorizza l’arresto automatico del polling.
 
-Il parser locale del `.env` supporta commenti, righe vuote, `KEY=value`, spazi esterni, valori quotati e prefisso `export`.
+## Graph URL e classificazione degli errori
 
-Non carica né sovrascrive altre variabili `.env`.
+Le Graph URL vengono validate e associate a un runner API prima dell’apertura. Le failure usano reason distinte:
 
-## CLI CDP e modalità persistent
-
-```txt
---mode cdp
-→ --cdp-url obbligatoria
+```text
+auth_required
+security_challenge
+no_ladder_rows
+temporary_error
 ```
 
-Una URL vuota o non valida fallisce prima di Playwright, cache, login-only, fetch o browser session. Non esiste default implicito a `9222`.
+`auth_required` interrompe l’elaborazione delle Graph URL successive perché richiede un’azione dell’utente. Le altre classificazioni descrivono rispettivamente una challenge, una pagina valida senza righe e un errore tecnico ritentabile.
 
-```txt
---mode persistent
-→ cdpUrl non richiesta
-→ profileDir usata quando prevista
-```
+Il contratto completo di grammatica e mapping è in [Validazione Graph URL Betfair](./04-betfair-graph-url-validation.md).
 
-## Browser
+## Risultato pubblico
 
-### Modalità CDP
+Il risultato contiene sempre:
 
-```txt
-Chrome già avviato con endpoint CDP
-→ connect_over_cdp(...)
-→ riuso context esistente
-→ riuso o creazione pagina Betfair
-```
-
-L’autenticazione non è garantita dalla connessione CDP. Lo scraper la valuta soltanto con un’euristica sulla pagina e può continuare anche quando il login non sembra presente.
-
-Il contesto CDP non deve essere chiuso dallo scraper.
-
-### Modalità persistent
-
-```txt
-profilo locale
-→ launch_persistent_context(...)
-→ pagina Betfair
-→ scraping
-→ chiusura context al termine
-```
-
-## Login-only
-
-```txt
---login-only
-→ processo interattivo distinto dal tracking
-→ nessun payload dati finale
-→ resta attivo finché l'utente chiude le pagine/browser
-→ viene terminato anche dallo shutdown backend con scope=all
-```
-
-`POST /api/match/stop` usa `scope=tracking` e non termina il login-only.
-
-## Risultato
-
-Il risultato raw contiene almeno:
-
-```txt
+```text
 runners
 market_info
 ```
 
-Può includere anche:
+Può contenere `event_status`, `graph_diagnostics`, `network_capture`, `api_error` o `error`. Prima della stampa l’intero risultato passa attraverso la redazione ricorsiva.
 
-```txt
-network_capture
-graph_diagnostics
-event_status
-```
-
-I campi diagnostici restituiti dallo scraper vengono redatti prima dell’esposizione al backend Node.
-
-Sono inclusi almeno:
-
-```txt
-results.api_error
-results.error
-results.diagnostics
-graph_diagnostics.failures[].url
-graph_diagnostics.failures[].text
-```
-
-Le URL diagnostiche vengono redatte prima del troncamento. Anche i mapping diagnostici annidati, incluso `login_required`, passano dalla redazione ricorsiva.
-
-Questa redazione non cambia la semantica di:
-
-```txt
-auth_suspected
-temporary_error
-no_ladder_rows
-```
-
-Non modificare nomi o semantica dei campi senza aggiornare `betfairFetch.js`, processor, timeline e test collegati.
-
-Le Graph URL dirette vengono validate e associate al runner API prima dell’apertura della pagina ladder.
-
-Il dettaglio di grammatica, mapping, duplicati e reason diagnostici appartiene al documento dedicato.
+Il summary pubblico della network capture è allow-list e non espone directory di dump, profili o altri path locali.
 
 ## Cache
 
-Directory:
+La cache runtime vive in `backend/betfair_cache/`, ha TTL di 4 secondi e non è un dato canonico.
 
-```txt
-backend/betfair_cache/
+La chiave è un digest SHA-256 opaco della URL normalizzata, dell’identità runtime, delle dimensioni della richiesta e della versione di schema. Modalità o configurazioni incompatibili non condividono lo stesso file.
+
+La cache è abilitata solo quando:
+
+- non sono richieste Graph URL;
+- la network capture è disabilitata;
+- non sono attivi `--no-cache` o `--login-only`;
+- il risultato contiene runner e informazioni mercato non vuoti;
+- non sono presenti `error`, `api_error` o stato finale.
+
+Scrittura, lettura e risultato fresh applicano lo stesso contratto di redazione. Errori temporanei e risultati incompleti non vengono memorizzati e quindi non sopprimono i retry.
+
+## Timeout
+
+Il CLI Python applica un budget complessivo di 120 secondi, inclusi navigazione, Graph URL, drain della capture e cleanup. Il runner Node usa 135 secondi: il parent concede quindi al child il tempo di concludere e serializzare il risultato prima di richiederne la terminazione.
+
+## Riferimenti implementativi
+
+| Responsabilità          | File                                                                             |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| entry point compatibile | `betfair_scraper.py`                                                             |
+| CLI e runtime           | `scrapers/betfair/cli.py`, `scrapers/betfair/scrape.py`                          |
+| sessione CDP/Playwright | moduli Betfair sotto `scrapers/`                                                 |
+| URL Graph               | [owner Graph URL](./04-betfair-graph-url-validation.md)                          |
+| diagnostica opt-in      | [diagnostica e network capture](./05-betfair-diagnostics-and-network-capture.md) |
+| lifecycle Node          | `backend/src/sofa/betfair/`                                                      |
+
+### Sequenza del processo
+
+```text
+argomenti CLI
+→ validazione event/graph/CDP
+→ connessione alla sessione browser esistente
+→ discovery del mercato
+→ acquisizione Graph
+→ classificazione del campione
+→ output JSON pubblico su stdout
+→ diagnostica redatta separata
+→ cleanup risorse possedute
 ```
 
-TTL attuale:
+Lo scraper non possiede Chrome e non termina il browser. La sessione persistente resta esterna; il processo possiede soltanto le risorse create nella propria invocazione.
 
-```txt
-4 secondi
+### Canali di output
+
+| Canale          | Contenuto                                       |
+| --------------- | ----------------------------------------------- |
+| stdout          | un payload JSON pubblico consumabile dal parent |
+| stderr/log      | diagnostica bounded e redatta                   |
+| cache           | dati runtime secondo la policy documentata      |
+| network capture | solo opt-in, mai requisito ordinario            |
+
+Un errore pubblico usa code e messaggio bounded. URL completi con query, cookie, token, stack e path personali non attraversano stdout.
+
+### Risultato effettivo
+
+Il CLI non espone una enum unica di stati terminali. In modalità scraping stampa il dizionario redatto restituito da `scrape_betfair()`; la base del payload è:
+
+```json
+{
+  "runners": [],
+  "market_info": {}
+}
 ```
 
-Il CLI usa la cache salvo `--no-cache` e salvo `--login-only`.
+Il risultato può inoltre includere `event_status`, `graph_diagnostics`, `diagnostics`, `api_error` o `network_capture` secondo il percorso attraversato. Sul timeout globale il CLI produce letteralmente:
 
-Nel tracking live, `updateBetfair(...)` passa `networkCapture: false`. Il runner aggiunge quindi `--no-network-capture`; senza Graph URL non aggiunge `--no-cache`, quindi la cache Python può essere usata.
-
-Il runner aggiunge `--no-cache` quando è presente almeno una Graph URL oppure quando `networkCaptureInput` non è esattamente `false`. Questo secondo caso include input assente, `true` o non booleano.
-
-La cache Python non è un dato canonico.
-
-Le cache runtime Betfair vengono redatte sia in scrittura sia in lettura.
-
-```txt
-scrittura cache
-→ nessun nuovo file cache deve contenere marker sensibili
-
-lettura cache
-→ anche cache legacy già presenti vengono restituite redatte
+```json
+{
+  "runners": [],
+  "market_info": {},
+  "error": "scraper_timeout"
+}
 ```
 
-Restano invariati:
-
-```txt
-CACHE_TTL_SECONDS
-cache key
-directory cache
-formato JSON
-logica hit/miss
-```
-
-La lettura di cache legacy non riscrive né migra automaticamente il file esistente.
-
-## Network capture: comportamento attuale
-
-Nel CLI Python invocato direttamente, la capture è attiva salvo `--no-network-capture`.
-
-Nel tracking live, il backend passa esplicitamente `networkCapture: false`; il runner Node aggiunge quindi `--no-network-capture`.
-
-Quando la capture è attiva, può scrivere in:
-
-```txt
-backend/betfair_network_dump/
-```
-
-Il dump può contenere:
-
-* metadati della risposta, inclusi URL, status e header;
-* body JSON fino a 5 MiB;
-* body testuale fino a 256 KiB quando non è stato salvato come JSON.
-
-Body superiori a 5 MiB non vengono salvati.
-
-La capture è diagnostica. Non alimenta direttamente timeline, history, Evidence o UI.
-
-## Hardening diagnostico
-
-La diagnostica Betfair deve essere non distruttiva e redatta prima di essere scritta, propagata o registrata.
-
-La redazione copre:
-
-```txt
-URL e query parameter sensibili
-header sensibili case-insensitive
-payload JSON annidati
-JSON serializzato o non parseabile
-testo libero diagnostico
-token Bearer
-alias della chiave applicativa Betfair
-```
-
-I dati business non sensibili devono restare disponibili, inclusi:
-
-```txt
-marketId
-eventId
-selectionId
-nome runner
-quote
-volumi
-reason tecniche
-contatori diagnostici
-```
-
-Gli errori HTTP interni del client Betfair continuano a riportare lo status HTTP, ma non includono body remoti raw.
-
-Il logger Python scrive ancora su `stderr` e sul file log esistente, ma il messaggio viene redatto prima della scrittura.
-
-La network capture mantiene condizioni di attivazione, filtri, soglie e schema del summary, ma metadata, header, URL, errori, body JSON, body testuali e dati inseriti nel collector vengono salvati solo in forma redatta.
-
-Il percorso runtime ordinario con Chrome/CDP e Betfair è stato validato nel collaudo `9B`. Restano fuori da questa validazione le failure specifiche di rete, credenziali e browser; la redazione continua a essere verificata con marker fittizi, senza usare o condividere segreti, cookie, dump o payload reali.
-
-## Redazione diagnostica
-
-La redazione copre:
-
-```txt
-Authorization Basic
-Authorization Digest
-Proxy-Authorization
-Cookie multipli
-Set-Cookie e attributi
-chiavi sensibili JSON
-token Bearer
-path Windows con slash e backslash
-path UNC
-path POSIX
-valori numerici non finiti
-```
-
-```txt
-stdout
-→ JSON scraper
-
-stderr e file log
-→ diagnostica strutturata e redatta
-```
-
-Nessun messaggio diagnostico contamina stdout.
-
-## Stato live Task 2
-
-Validato nel collaudo `9B`:
-
-```txt
-mode=cdp reale
-login-only started
-login-only reused
-tracking Betfair
-ladder utilizzabile
-matched volume aggiornato
-shutdown del figlio owned
-CDP preservato
-```
-
-Non sono dichiarate validate tutte le possibili failure di rete, credenziali o browser.
+Un evento concluso è rappresentato da `event_status.hasFinished: true`; non esiste un code pubblico `market_finished` introdotto dal CLI. `login_required` è una struttura restituita dal parser della ladder e viene tradotta nella diagnostica del risultato, non è uno stato terminale generale inventato dal documento.
 
 ## Verifica
 
 ```powershell
-python -m unittest -v scrapers.betfair.config_test
-python -m unittest -v scrapers.betfair.diagnostic_redaction_test
-python -m unittest -v scrapers.betfair.cache_test
+python -m unittest -v `
+  scrapers.betfair.cache_test `
+  scrapers.betfair.cdp_url_test `
+  scrapers.betfair.graph_url_test `
+  scrapers.betfair.runtime_contract_test
 
-python -m py_compile `
-  scrapers/betfair/config.py `
-  scrapers/betfair/market_api.py `
-  scrapers/betfair/network_capture.py `
-  scrapers/betfair/diagnostic_redaction.py `
-  scrapers/betfair/scrape.py `
-  scrapers/betfair/cache.py
+node backend/src/sofa/betfair/scraperLifecycle.test.mjs
 ```
 
-Per modifiche di redazione diagnostica, i test devono usare marker fittizi e dump simulati. Non usare log, dump, cache, cookie o credenziali reali come input di test.
-
-Per modifiche Node ↔ Python:
-
-```txt
-verificare JSON stdout
-→ verificare modalità cdp
-→ verificare modalità persistent
-→ verificare ladder URL
-→ verificare --no-network-capture
-→ verificare --login-only
-→ verificare che Chrome CDP resti aperto
-```
+Il collaudo live resta necessario per verificare autenticazione reale, profilo persistent, collegamento CDP e compatibilità del browser nell’ambiente dell’utente.
 
 ## Documenti collegati
 
-* [Entry point e runtime Python](./01-entrypoints-and-runtime.md)
-* [Validazione Graph URL Betfair](./04-betfair-graph-url-validation.md)
-* [Lifecycle scraper Betfair](../betfair/01-scraper-lifecycle.md)
-* [API Betfair](../../api/02-betfair.md)
-* [Timeline e history](../storage/01-timelines-and-history.md)
+- [Entry point e runtime Python](./01-entrypoints-and-runtime.md)
+- [Validazione Graph URL Betfair](./04-betfair-graph-url-validation.md)
+- [Diagnostica e network capture Betfair](./05-betfair-diagnostics-and-network-capture.md)
+- [Lifecycle scraper Betfair](../betfair/01-scraper-lifecycle.md)
+- [API Betfair](../../api/02-betfair.md)

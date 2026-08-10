@@ -28,9 +28,14 @@ export function useBetfairLoginAction(input) {
         });
         try {
             return await openBetfairLoginWindow(loginRequest);
-        } catch (_error) {
-            frontendRuntimeLog('error', 'betfair_login_failed', { code: 'login_request_failed' });
-            return null;
+        } catch (error) {
+            const code = error?.code || 'login_request_failed';
+            frontendRuntimeLog('error', 'betfair_login_failed', { code });
+            return {
+                ok: false,
+                code,
+                error: 'Unable to open Betfair login.'
+            };
         }
     }, [
         betfairUrl,

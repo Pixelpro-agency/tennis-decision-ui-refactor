@@ -1,4 +1,5 @@
 const DEFAULT_OBSERVATION_WINDOWS_SEC = [60, 120, 180, 240];
+const DEFAULT_MAX_SOURCE_AGE_SEC = 240;
 
 export function parseTs(ts) {
     if (!ts) return null;
@@ -7,9 +8,16 @@ export function parseTs(ts) {
 }
 
 export function mergeConfig(userConfig) {
+    const windows = Array.isArray(userConfig?.observationWindowsSec)
+        ? [...new Set(userConfig.observationWindowsSec
+            .filter(value => Number.isFinite(value) && value > 0))].sort((a, b) => a - b)
+        : DEFAULT_OBSERVATION_WINDOWS_SEC;
     return {
-        observationWindowsSec: userConfig?.observationWindowsSec ?? DEFAULT_OBSERVATION_WINDOWS_SEC,
-        includeCurrentGameContext: userConfig?.includeCurrentGameContext !== false
+        observationWindowsSec: windows.length > 0 ? windows : DEFAULT_OBSERVATION_WINDOWS_SEC,
+        includeCurrentGameContext: userConfig?.includeCurrentGameContext !== false,
+        maxSourceAgeSec: Number.isFinite(userConfig?.maxSourceAgeSec) && userConfig.maxSourceAgeSec > 0
+            ? userConfig.maxSourceAgeSec
+            : DEFAULT_MAX_SOURCE_AGE_SEC
     };
 }
 

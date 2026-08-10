@@ -1,4 +1,5 @@
 import React from 'react';
+import { buildMarketSourceView, formatMarkerTypes, isBranchAvailable, shouldShowCausalityDisclaimer } from './marketReactionViewModel.js';
 
 function formatTs(ts) {
     if (!ts) return '—';
@@ -89,6 +90,7 @@ function ObservationWindowItem({ window: win }) {
 
 export default function MarketLedObservationCard({ evidence }) {
     const src = evidence?.sourceMarketEvent;
+    const srcView = buildMarketSourceView(src);
     const summary = evidence?.summary;
     const windows = evidence?.observationWindows ?? [];
 
@@ -100,9 +102,9 @@ export default function MarketLedObservationCard({ evidence }) {
                         <h3 className="text-base font-bold text-white">Exchange → Field</h3>
                         <p className="text-xs text-[var(--muted)] mt-0.5">Post-flow field observation</p>
                     </div>
-                    <AvailabilityBadge available={!!evidence} />
+                    <AvailabilityBadge available={isBranchAvailable(evidence)} />
                 </div>
-                {evidence?.causalityClaimed === false && (
+                {shouldShowCausalityDisclaimer(evidence) && (
                     <p className="mt-2 text-xs text-amber-400 font-medium">Causality not established</p>
                 )}
             </div>
@@ -118,13 +120,15 @@ export default function MarketLedObservationCard({ evidence }) {
                         ) : (
                             <div className="space-y-0.5">
                                 <Row label="Timestamp" value={formatTs(src.timestamp)} />
-                                {src.runnerName && <Row label="Runner" value={src.runnerName} />}
+                                {srcView?.runner && <Row label="Runner" value={srcView.runner} />}
                                 {src.selectionId && <Row label="Selection ID" value={src.selectionId} />}
-                                {(src.amount !== null && src.amount !== undefined) && (
-                                    <Row label="Flow amount" value={formatAmount(src.amount)} />
+                                {(srcView?.amount !== null && srcView?.amount !== undefined) && (
+                                    <Row label="Flow amount" value={formatAmount(srcView.amount)} />
                                 )}
-                                {src.tier && <Row label="Tier" value={src.tier} />}
-                                {src.flowClassification && <Row label="Flow classification" value={src.flowClassification} />}
+                                {srcView?.absoluteTier && <Row label="Absolute tier" value={srcView.absoluteTier} />}
+                                {srcView?.relativeTier && <Row label="Relative tier" value={srcView.relativeTier} />}
+                                {srcView?.direction && <Row label="Direction" value={srcView.direction} />}
+                                <Row label="Flow ambiguous" value={String(srcView?.flowAmbiguous === true)} />
                             </div>
                         )}
                     </section>
@@ -143,10 +147,18 @@ export default function MarketLedObservationCard({ evidence }) {
                                     <Row label="Flow ambiguous" value={String(summary.flowAmbiguous)} />
                                 )}
                                 {summary.sofaEventsObserved !== undefined && (
-                                    <Row label="Sofa events observed" value={formatNum(summary.sofaEventsObserved, 0)} />
+                                    <Row label="Sofa events observed" value={formatMarkerTypes(summary.sofaEventsObserved)} />
                                 )}
                             </div>
                         </section>
+                    )}
+
+                    {Array.isArray(summary?.reasons) && summary.reasons.length > 0 && (
+                        <ul className="space-y-1">
+                            {summary.reasons.slice(0, 5).map((reason, index) => (
+                                <li key={index} className="text-xs text-[var(--muted)]">{reason}</li>
+                            ))}
+                        </ul>
                     )}
 
                     {windows.length > 0 && (

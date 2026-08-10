@@ -40,7 +40,8 @@ console.log('\n=== primitives.test.mjs ===\n');
     assert('T03-parse-valid', parseTs('2026-06-19T12:09:30.000Z')?.toISOString() === '2026-06-19T12:09:30.000Z');
     assert('T03-parse-invalid', parseTs('invalid') === null);
     assert('T03-age', ageSec('2026-06-19T12:09:30.000Z', now) === 30);
-    assert('T03-age-future-clamped', ageSec('2026-06-19T12:10:30.000Z', now) === 0);
+    assert('T03-age-future-rejected', ageSec('2026-06-19T12:10:30.000Z', now) === null);
+    assert('T03-age-small-skew', ageSec('2026-06-19T12:10:04.000Z', now) === 0);
 }
 
 {

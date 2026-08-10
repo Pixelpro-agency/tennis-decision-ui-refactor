@@ -50,6 +50,8 @@ export function buildMarketReactionEvidence({
 
     const fieldLedMarketResponseObserved =
         fieldLedReaction.summary.marketResponseObserved === true;
+    const fieldLedMarketResponseReliable =
+        fieldLedReaction.summary.marketResponseReliable === true;
 
     const fieldLedDataQuality =
         fieldLedReaction.summary.dataQuality ?? 'unknown';
@@ -87,6 +89,7 @@ export function buildMarketReactionEvidence({
             marketLedAvailable,
             fieldLedAvailable,
             fieldLedMarketResponseObserved,
+            fieldLedMarketResponseReliable,
             fieldLedDataQuality,
             flowAmbiguous,
             dataQuality,

@@ -1,4 +1,5 @@
 import { detectPointMarkers } from '../sofaEventMarkers.js';
+import { ageSec } from '../matchEvidence/time.js';
 
 const SOFA_LOOKBACK_MAX = 60;
 
@@ -10,12 +11,6 @@ function parseTs(ts) {
     if (!ts) return null;
     const d = new Date(ts);
     return isNaN(d.getTime()) ? null : d;
-}
-
-function ageSec(ts, now) {
-    const d = parseTs(ts);
-    if (!d) return null;
-    return Math.max(0, (now.getTime() - d.getTime()) / 1000);
 }
 
 function markerStateKey(markerType, tick) {

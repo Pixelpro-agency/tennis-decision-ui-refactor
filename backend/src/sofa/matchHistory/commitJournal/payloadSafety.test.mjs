@@ -375,4 +375,19 @@ import {
     );
 }
 
+for (const [label, secretValue] of [
+    ['bearer-string', 'Bearer abcdefghijklmnopqrstuvwxyz123456'],
+    ['jwt-string', 'abcdefghijk.abcdefghijkl.abcdefghijk'],
+    ['private-key-string', '-----BEGIN PRIVATE KEY----- secret']
+]) {
+    const { fake, store } = createFixture();
+    const result = store.createPendingCommit(makeRecord({
+        commitId: `commit-${label}`,
+        eventId: `event-${label}`,
+        source: 'sofa',
+        historyPayload: { diagnostics: { note: secretValue } }
+    }));
+    assert(`T59-${label}-is-rejected`, result.ok === false && result.reason === 'invalid_record' && countFiles(fake, name => name.endsWith('.json')) === 0);
+}
+
 finish('commitJournal/safety');

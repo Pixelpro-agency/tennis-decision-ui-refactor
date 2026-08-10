@@ -2,6 +2,8 @@
 
 Questo file è l’indice corrente del registro `DOC-*` e `WORKFLOW-*` relativo all’audit documentale.
 
+Il facade copre i moduli storici B1–B6 e gli owner `DOC-001…023` e `WORKFLOW-001…003`. Gli stessi prefissi possono continuare in registri tecnici successivi: il prefisso non determina da solo la directory owner. La Todo resta la vista sintetica globale.
+
 ## Moduli
 
 | Modulo | Perimetro |

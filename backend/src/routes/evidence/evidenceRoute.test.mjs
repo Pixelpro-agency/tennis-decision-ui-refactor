@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import evidenceRouter from '../evidence.js';
+import evidenceRouter, { buildEvidenceBuildFailureResponse } from '../evidence.js';
 import { startSourceIdentityGate, clearAllSourceIdentityGates, observeSofaSourceIdentitySample, observeBetfairSourceIdentitySample } from '../../sofa/sourceIdentityGate.js';
 
 function createFakeConfirmationDependencies() {
@@ -94,6 +94,18 @@ const confirmationPath = '/:eventId/source-identity/confirm';
 
 console.log('\n=== evidenceRoute.test.mjs ===\n');
 
+runTest('latest build failure response is bounded', () => {
+    const response = buildEvidenceBuildFailureResponse('safe-event');
+    assert.equal(response.httpStatus, 500);
+    assert.deepEqual(response.body, {
+        ok: false,
+        eventId: 'safe-event',
+        code: 'evidence_build_failed',
+        error: 'Failed to build match evidence snapshot'
+    });
+    assert.equal(JSON.stringify(response.body).includes('details'), false);
+});
+
 runTest('returns the existing invalid-event-id response for latest', () => {
     assert.deepEqual(
         callRouteHandler('get', latestPath, {
@@ -155,6 +167,7 @@ runTest('POST confirm returns 422 when gate is in collecting phase', () => {
             body: {
                 ok: false,
                 eventId: 'event-route-test-1',
+                code: 'confirmation_context_incomplete',
                 error: 'Source identity confirmation is invalid'
             }
         }
@@ -195,6 +208,7 @@ runTest('POST confirm returns 409 when gate is in mismatch phase', () => {
             body: {
                 ok: false,
                 eventId: 'event-route-test-2',
+                code: 'automatic_identity_not_pending',
                 error: 'Source identity confirmation is invalid'
             }
         }

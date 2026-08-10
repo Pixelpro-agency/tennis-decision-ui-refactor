@@ -36,6 +36,8 @@ todo-list-tennis-decision-ui.md
 
 La Todo mostra lo stato sintetico. Questo documento conserva motivazioni, evidenze, rischi, dipendenze e criteri di chiusura.
 
+Il processo è ora in steady state Markdown. Coesistenza MDX, conversione di massa e cleanup della migrazione sono fasi storiche concluse; restano operative la separazione storico/corrente, la verifica semantica, i link strict e la coerenza dei registri.
+
 ---
 
 ## 2. Baseline del repository
@@ -83,6 +85,18 @@ Regole:
 - un dubbio non deve essere promosso a errore senza evidenza;
 - una proposta utile non deve essere confusa con un requisito approvato;
 - le decisioni strutturali o di prodotto appartengono all’utente.
+
+La gerarchia non comprime dimensioni indipendenti in un solo stato. Per ogni claim rilevante registrare separatamente:
+
+```txt
+workflow lifecycle      → planned / approved / in execution / completed
+implementation state   → absent / partial / implemented
+offline verification   → not executed / passed / failed / blocked
+live verification      → not applicable / not executed / live_observed
+provenance              → baseline, data, ambiente e artifact; oppure non registrato
+```
+
+Una task può quindi essere implementata ma non verificata live, oppure avere evidenza storica positiva senza essere confermata sulla working tree corrente.
 
 ---
 
@@ -134,9 +148,18 @@ Gli ID non devono essere rinumerati. Se un rilievo viene scartato, il suo ID res
 
 ---
 
-## 6. Scheda standard di ogni rilievo
+## 6. Schema minimo dei record
 
-Ogni voce dettagliata deve contenere:
+Le schede storiche conservano la propria forma. Per nuovi record si applica un minimo realistico per tipo:
+
+| Tipo | Campi minimi |
+| --- | --- |
+| `DOC-*`, `WORKFLOW-*`, `CODE-*` e altri finding | ID, titolo, stato, priorità, evidenza, azione, verifica e criterio di chiusura |
+| `IMPL-*` | ID, stato, obiettivo, dipendenze, perimetro, test e criterio di chiusura |
+| `TEST-*` | ID, stato, contratto verificato, comando/harness, risultato o limite |
+| `DEC-*` | ID, stato, decisione, conseguenze e riferimenti superseded |
+
+I campi estesi seguenti restano consigliati quando utili, ma non sono imposti retroattivamente a ogni scheda storica:
 
 ```txt
 ID
@@ -236,7 +259,7 @@ tutti i nuovi documenti tecnici devono usare estensione .md
 non creare nuovi documenti .mdx
 ```
 
-La futura riscrittura della documentazione deve quindi:
+La migrazione è conclusa. Per nuovi documenti o modifiche correnti:
 
 - produrre file Markdown con estensione `.md`;
 - sostituire le funzionalità specifiche MDX con sintassi Markdown compatibile;
@@ -245,16 +268,14 @@ La futura riscrittura della documentazione deve quindi:
 - definire una forma equivalente per metadata, ordine, titolo e navigazione;
 - aggiornare tutti i link interni da `.mdx` a `.md`;
 - evitare che la vecchia versione `.mdx` e la nuova `.md` restino entrambe canoniche;
-- mantenere temporaneamente il vecchio file soltanto durante la verifica della sostituzione;
-- eliminare il vecchio `.mdx` solo dopo avere verificato contenuto, link e compatibilità.
+- non reintrodurre una copia `.mdx` parallela;
+- trattare le istruzioni di coesistenza e conversione di massa come procedura storica, non come flusso ordinario.
 
-Questa è una decisione di formato già approvata, ma la modalità tecnica di migrazione deve essere verificata sul repository prima della conversione di massa.
+La decisione di formato è applicata; ogni nuova migrazione eccezionale richiede un perimetro separato.
 
 ### 7.5 Trattamento delle fonti storiche
 
-`docs/archive/README.md` conserva soltanto una mappa di provenienza. Backlog,
-prompt e planning separati non restano nel repository dopo che i requisiti
-unici sono stati assorbiti nei registri o nelle validations.
+La mappa di provenienza è stata assorbita nel closeout della migrazione e nei registri. `docs/archive/README.md` e la directory archive non sono presenti nello stato corrente; una futura archive richiede una decisione nuova (`DEC-027`).
 
 Regola:
 
@@ -401,6 +422,17 @@ ID DA DECIDERE
 ```
 
 Il controllo automatico è implementato da `IMPL-005` e deve essere eseguito prima di ogni pacchetto di checkpoint. Un esito non verde blocca la chiusura del checkpoint finché i finding non sono classificati o corretti.
+
+Contratto effettivo del checker corrente:
+
+- discovery ricorsiva di `implementazioni/**/*.md`;
+- confronto fra owner card e righe sintetiche dei blocchi E e F della Todo;
+- esclusione delle decisioni `DEC-*` dalla parity dei finding;
+- vocabolario di stati riconosciuto e compatibilità sostanziale degli stati;
+- controlli sui metadata sintetici implementati, inclusi SHA/range, Punto e prossimo passo dove previsti;
+- duplicati owner e prefissi non dichiarati.
+
+Il checker non prova la correttezza semantica del codice, non valida ogni campo dello schema esteso e non sostituisce link checker, test o audit manuale.
 
 ### 7.8 Owner canonico, note e addendum
 

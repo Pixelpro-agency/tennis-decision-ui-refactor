@@ -12,6 +12,7 @@ import { runtimeLog } from '../../../runtime/runtimeLogger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const DEFAULT_MAX_STDOUT_BYTES = 4 * 1024 * 1024;
 
 function createRuntimeError(code, message = code) {
     const error = new Error(message);
@@ -74,7 +75,7 @@ export function buildBetfairScraperArgs(url, runtimeIdentity, options = {}) {
     if (!networkCapture) {
         args.push('--no-network-capture');
     }
-    if (ladderUrls.length || networkCaptureInput !== false) {
+    if (options.noCache === true || ladderUrls.length || networkCaptureInput !== false) {
         args.push('--no-cache');
     }
     return args;
@@ -87,7 +88,8 @@ export function createScraperRunner({
         terminateExecution: terminatePythonExecution,
         terminateRoles: terminatePythonRoles
     },
-    timeoutMs = 90000,
+    timeoutMs = 135000,
+    maxStdoutBytes = DEFAULT_MAX_STDOUT_BYTES,
     setTimeoutFn = setTimeout,
     clearTimeoutFn = clearTimeout
 } = {}) {
@@ -117,18 +119,32 @@ export function createScraperRunner({
         processBetfairResults
     }) {
         const runtimeIdentity = buildScraperRuntimeIdentity(options);
+        const trackingSessionId = options.trackingSessionId ?? null;
         const active = activeScrapers.get(key);
         if (active) {
             if (sameScraperRuntimeIdentity(
                 active.runtimeIdentity,
                 runtimeIdentity
-            )) {
+            ) && active.trackingSessionId === trackingSessionId) {
                 logDebug('betfair_scraper_reused', {
                     eventId: sofaEventId,
                     mode: runtimeIdentity.mode,
                     state: 'active'
                 });
                 return active.promise;
+            }
+            if (sameScraperRuntimeIdentity(
+                active.runtimeIdentity,
+                runtimeIdentity
+            )) {
+                logDebug('betfair_session_conflict', {
+                    eventId: sofaEventId,
+                    mode: runtimeIdentity.mode,
+                    reason: 'scraper_session_conflict'
+                });
+                return Promise.reject(createRuntimeError(
+                    'scraper_session_conflict'
+                ));
             }
             logDebug('betfair_runtime_conflict', {
                 eventId: sofaEventId,
@@ -212,6 +228,7 @@ export function createScraperRunner({
                 });
             spawned = true;
             let stdoutData = '';
+            let stdoutBytes = 0;
             let finished = false;
             let timedOut = false;
 
@@ -261,6 +278,23 @@ export function createScraperRunner({
             }
 
             proc.stdout.on('data', data => {
+                if (finished) return;
+                stdoutBytes += Buffer.byteLength(data);
+                if (stdoutBytes > maxStdoutBytes) {
+                    logDebug('betfair_output_too_large', {
+                        eventId: sofaEventId,
+                        mode: runtimeIdentity.mode,
+                        reason: 'scraper_output_too_large'
+                    });
+                    forceSettle('scraper_output_too_large');
+                    void Promise.resolve(
+                        processRegistry.terminateExecution(
+                            handle.executionId,
+                            handle.ownerToken
+                        )
+                    ).catch(() => {});
+                    return;
+                }
                 stdoutData += data.toString();
             });
             proc.stderr.on('data', () => {});
@@ -318,6 +352,7 @@ export function createScraperRunner({
         activeScrapers.set(key, {
             promise,
             runtimeIdentity,
+            trackingSessionId,
             executionToken,
             terminate: code => forceSettle(code)
         });

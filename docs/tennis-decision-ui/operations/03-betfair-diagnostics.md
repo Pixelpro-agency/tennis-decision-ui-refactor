@@ -73,7 +73,7 @@ errore Source Identity
 | `integrity.status = partial_persistence`                                                | Commit canonico incompleto noto; non è health, freshness o runtime scraper                        |
 | `integrity.status = recovery_failed`                                                    | Recovery bootstrap fallita; serve validazione controllata                                         |
 | yellow/DEGRADED                                                                         | Errore tecnico runtime attivo; nessun alert login strutturato                                     |
-| yellow/STALE                                                                            | Tick canonico o ladder usabile oltre 45 secondi, senza segnale auth strutturato                   |
+| yellow/STALE                                                                            | Una o più cause non-auth: age stale, ladder assente, CDP fallito, mercato invalido o Graph stale/bad/unavailable |
 | Tick recente + ladder stale                                                             | Dati mercato recenti, ladder degradata; non equivale a mercato fermo                              |
 | red/ALERT                                                                               | Autenticazione Graph sospetta nel tick corrente o in un tick canonico recente; alert login attivo |
 | `error`, `api_error`, runner mancanti o vuoti, `total_matched` assente, invalido o zero | Campione tecnico scartato; polling da ritentare                                                   |
@@ -83,6 +83,10 @@ errore Source Identity
 | Pagina non aggiornata                                                                   | Connessione Vite persa                                                                            |
 
 Il solo stato `red/ALERT` non dimostra che il tick corrente sia una transizione `status-only`. La conferma richiede `latest.diagnostics.statusOnlyGraphLogin === true`; in sua assenza, il rosso indica comunque un segnale auth strutturato corrente o recente.
+
+La label `STALE` non identifica da sola la causa. Leggere sempre `health.message`, `health.reasons`, `health.checks` e `health.metrics`. In particolare, `consecutiveNoLadderTicks`, `cdpOk`, `marketOk` e `graphHealthStatus` possono produrre yellow anche con age inferiore alla soglia.
+
+L'alert auth considera gli ultimi tre tick canonici. Un tick sano non cancella immediatamente un segnale `graphLoginRequired` ancora compreso nella finestra; servono abbastanza nuovi tick canonici senza segnale auth da espellerlo. L'assenza di nuovi tick non costituisce recovery.
 
 Soglia freshness:
 
@@ -226,6 +230,16 @@ shutdown_complete
 
 `GET /api/betfair/log` usa lettura bounded, redazione, `Cache-Control: no-store` e path fisso non controllabile dalla richiesta.
 
+I piani diagnostici restano distinti:
+
+| Piano | Contenuto | Limite |
+| --- | --- | --- |
+| runtime Node | lifecycle, spawn, tracking, cleanup e recovery | process-local; non è il log Python |
+| `/api/betfair/log` | tail globale del log Python Betfair | una riga recente non prova la sessione corrente |
+| network capture | artifact opzionali redatti del traffico osservato | non è timeline, health o log della sessione |
+
+La correlazione affidabile richiede identificatori bounded approvati, come event/session identity quando presenti nello stesso evento strutturato. Timestamp, URL o vicinanza temporale da soli non autorizzano ad attribuire una riga globale alla sessione corrente.
+
 ## Sequenza diagnostica
 
 ### 1. Verificare backend e CDP
@@ -240,7 +254,7 @@ Leggere `backend.baseUrl` e `cdp.url` dal manifest runtime, quindi costruire:
 Usare lo stesso `<cdp-url>` in preflight, login e tracking.
 
 ```powershell
-Invoke-RestMethod "<backend-url>/api/test/health"
+Invoke-RestMethod "<backend-url>/api/health"
 
 Invoke-RestMethod `
   -Method Post `
@@ -606,23 +620,15 @@ Non è archiviato un payload `/latest` post-fix e non esiste un test automatico 
 
 ## Network capture diagnostica
 
-La network capture non fa parte del percorso normale di tracking live né del fetch esplicito.
+La network capture non fa parte del percorso normale di tracking live. La precedente route diagnostica mutante `/api/betfair/odds` è stata rimossa; non esiste più un endpoint HTTP che abiliti la capture. Un'eventuale diagnostica futura deve avere un contratto separato, locale, validato e bounded.
 
-Rimane disabilitata finché non viene richiesta espressamente:
+Matrice corrente:
 
-```txt
-GET /api/betfair/odds?url=<url-encoded>&networkCapture=true
-```
-
-La forma abilitante è soltanto:
-
-```txt
-networkCapture=true
-```
-
-Query assente, `networkCapture=false` o qualunque altro valore mantengono la capture disabilitata.
-
-Usarla soltanto per isolare un problema specifico del fetch.
+| Entrypoint | Capture predefinita | Override |
+| --- | --- | --- |
+| tracking Node | disabilitata | nessun endpoint read-only la abilita |
+| route HTTP `/odds` | non applicabile: route rimossa | nessuno |
+| CLI Python standalone | abilitata | `--no-network-capture` la disabilita |
 
 Quando la capture è attiva, i dump mantengono condizioni di attivazione, filtri, soglie e schema del summary, ma devono salvare solo contenuti redatti.
 
@@ -812,6 +818,19 @@ nessun delta valido
 ```
 
 La ladder è diagnostica: non è un requisito per mostrare `matchedVolume` quando il point è coerente e valido.
+
+## Matrice di verifica
+
+| Contratto | Verifica automatica | Live necessario |
+| --- | --- | --- |
+| cause yellow e redazione health | `betfairHealth.test.mjs`, test modulari `betfairHealth/` | no |
+| finestra auth ultimi tre tick | codice corrente; coverage completa 1/2/3 ancora aperta | no |
+| finished authoritative e weak hint | `scrapers.betfair.runtime_contract_test`, lifecycle Node | no |
+| separazione log Node/Python/capture | contratti route/log e test redazione | solo per attribuzione a una sessione reale |
+| capture Node vs CLI | runtime contract e test capture Python | dump reale soltanto in procedura controllata |
+| route `/odds` rimossa | test/router API Betfair | no |
+| integrity invalid/recovery failed | suite journal e recovery | no |
+| logout e ritorno a Connected | artifact storico Betfair | sì; non equivale a rerun corrente |
 
 ## Documenti collegati
 

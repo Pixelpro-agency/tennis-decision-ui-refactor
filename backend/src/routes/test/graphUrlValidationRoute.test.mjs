@@ -60,19 +60,19 @@ runTest('returns the missing-input response through the route handler', () => {
 runTest('returns the extracted graph result through the route handler', () => {
     assert.deepEqual(
         callGraphUrlsHandler({
-            graphUrls: 'https://graphs.betfair.com/1.23456789/101,https://graphs.betfair.com/1.23456789/202'
+            graphUrls: 'https://graphs.betfair.it/1.23456789/101/0,https://graphs.betfair.it/1.23456789/202/0'
         }),
         {
             ok: true,
             graphs: [
                 {
-                    url: 'https://graphs.betfair.com/1.23456789/101',
+                    url: 'https://graphs.betfair.it/1.23456789/101/0',
                     marketId: '1.23456789',
                     selectionId: '101',
                     valid: true
                 },
                 {
-                    url: 'https://graphs.betfair.com/1.23456789/202',
+                    url: 'https://graphs.betfair.it/1.23456789/202/0',
                     marketId: '1.23456789',
                     selectionId: '202',
                     valid: true

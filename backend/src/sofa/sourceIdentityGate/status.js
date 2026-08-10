@@ -18,6 +18,7 @@ export function buildGateStatus(eventId, session) {
     const statusObj = {
         ok: true,
         eventId: session.eventId,
+        trackingSessionId: session.trackingSessionId,
         active: session.phase !== 'stopped' && session.phase !== 'mismatch',
         phase: session.phase,
         persistence,

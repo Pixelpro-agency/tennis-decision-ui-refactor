@@ -50,9 +50,9 @@ Il recupero documentale è stato pubblicato nel commit `2ebe7e8`.
 
 - [Indice canonico](./docs/tennis-decision-ui/index.md)
 - [Validazioni correnti](./docs/validations/)
-- `docs/archive/` — materiali storici o futuri non canonici conservati intenzionalmente per uso successivo.
+- `docs/archive/` — non presente nello stato corrente: le fonti utili sono state consolidate e le copie rimosse secondo `DEC-026` e il relativo closeout.
 
-La documentazione canonica descrive il comportamento reale. I registri contengono finding, decisioni, limiti, task approvate e lavoro futuro. `docs/archive/` non è un owner tecnico e il suo contenuto non attesta che una funzione sia implementata.
+La documentazione canonica descrive il comportamento reale. I registri contengono finding, decisioni, limiti, task approvate e lavoro futuro. L'assenza corrente di `docs/archive/` non elimina la provenance: la mappa fonte → destinazione è conservata nel closeout della migrazione e nei registri che hanno assorbito il contenuto.
 
 ## Stato complessivo
 
@@ -98,12 +98,13 @@ Modularizzazione
 ### Implementazioni concluse
 
 - `IMPL-001` — link checker;
+- `IMPL-004` — archivio separato delle validazioni storiche in `docs/validations/`;
 - `IMPL-005` — coerenza Todo ↔ registri e scansione ricorsiva;
 - `IMPL-015` — writer authority esclusiva `match_history`;
 - `IMPL-028` — manifest e runner canonico di validazione;
 - `IMPL-032` — migrazione documentale per batch.
 
-Le decisioni più recenti sintetizzate includono `DEC-025` e `DEC-026`.
+Le decisioni più recenti sintetizzate includono `DEC-025`, `DEC-026` e il chiarimento `DEC-027`.
 
 ## Risultati dell’ultimo controllo
 
@@ -163,8 +164,8 @@ L’ordine definitivo deve essere deciso prima di preparare il prompt esecutivo.
 - una voce approvata non viene descritta come implementata;
 - una funzione futura non diventa documentazione canonica;
 - lo storico delle revisioni è affidato ai commit Git;
-- i materiali non canonici dichiarati utili dall’utente possono essere conservati in `docs/archive/`;
-- `docs/archive/` non viene trattato come owner corrente né incluso nelle pulizie automatiche o generiche;
+- una futura area archive richiede una nuova decisione esplicita; non viene ricreata per inerzia;
+- i materiali non canonici utili devono avere owner o destinazione dichiarati e non diventano prova di implementazione;
 - non conservare artefatti temporanei di migrazione fuori dagli spazi intenzionalmente preservati dopo la verifica finale;
 - conservare checker, test e validations che servono al controllo corrente;
 - dopo modifiche ai registri eseguire registry checker, link checker, profilo `fast` e `git diff --check`.

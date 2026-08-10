@@ -54,7 +54,7 @@ await runTest('runtime fetch rejection records attempt and safe error while poll
     assert.equal(info.betfairFinished, false);
     assert.equal(info.betfairRuntime.lastScrapeAttemptAt, '2026-07-01T12:00:00.000Z');
     assert.equal(info.betfairRuntime.lastTechnicalErrorAt, '2026-07-01T12:00:01.000Z');
-    assert.equal(info.betfairRuntime.lastTechnicalErrorReason, 'fetch_error: DNS lookup failed');
+    assert.equal(info.betfairRuntime.lastTechnicalErrorReason, 'fetch_error: fetch_failed');
     assert.equal(info.betfairRuntime.lastSuccessfulScrapeAt, '2026-07-01T11:59:00.000Z');
 });
 
@@ -165,7 +165,7 @@ await runTest('only boolean true is accepted as persistence success', async () =
         { betfairUrl: 'some-url', betfairFinished: false },
         {
             ...defaultDeps,
-            observeBetfairSourceIdentitySample: () => ({ action: 'no-gate' }),
+            observeBetfairSourceIdentitySample: () => ({ action: 'persist-current' }),
             persistBetfairTrackingSample: () => ({
                 ok: 'true',
                 status: 'complete'

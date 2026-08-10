@@ -2,252 +2,225 @@
 
 ## Scopo
 
-Questo documento descrive come i dati correnti attraversano bootstrap, acquisizione, normalizzazione, Source Identity, persistenza, lettura ed Evidence.
+Questa pagina descrive il percorso end-to-end dei dati: bootstrap, acquisizione, classificazione, Source Identity, persistenza, letture ed Evidence. Mantiene gli invarianti comuni e rinvia agli owner specialistici per algoritmi, payload e recovery.
 
-Non definisce strategie, segnali operativi, previsioni o causalità fra eventi di campo e mercato.
+Non definisce strategie, previsioni o causalità tra campo e mercato.
 
 ## Flusso corrente
 
 ```txt
-bootstrap backend
-  ↓
-creazione e acquisizione writer authority
-  ↓
-recovery dei commit pending
-  ↓
-listener readiness e registrazione shutdown
-  ↓
-acquisizione SofaScore e Betfair separata
-  ↓
-normalizzazione e classificazione tecnica
-  ↓
-Source Identity Gate quando Betfair è presente
-  ├─ collecting / pending → buffering
-  ├─ recording → persistenza autorizzata
-  ├─ mismatch → persistenza bloccata e stop
-  └─ not-applicable → persistenza SofaScore senza Betfair
-  ↓
-commit journalizzato per fonte
-  ↓
-history aggregata + timeline sorgente
-  ↓
-integrity read-only
-  ↓
-API latest / Evidence
-  ↓
-frontend
+writer authority
+→ recovery dei commit pending
+→ listener ready
+→ registrazione shutdown handler
+→ backend operativo
+→ acquisizione SofaScore e Betfair indipendente
+→ classificazione tecnica e normalizzazione
+→ Source Identity Gate quando applicabile
+→ commit journalizzato per fonte
+→ history e timeline canoniche
+→ integrity e letture
+→ Evidence
+→ frontend
 ```
 
-Prima della recovery e della prima scrittura canonica deve già esistere un owner esclusivo della storage identity. `startServer()` acquisisce la writer authority backend-owned; un secondo backend sulla stessa repository/storage identity viene bloccato prima di recovery, listener, tracking e scritture canoniche.
+Esiste un piccolo intervallo tra listener readiness e registrazione degli handler di shutdown. Il backend viene considerato operativo soltanto dopo entrambe; il codice non ha ancora eliminato strutturalmente questo intervallo.
 
-## Acquisizione
+La writer authority viene acquisita prima di recovery e listener. Un secondo backend sulla stessa storage identity viene bloccato prima di tracking e scritture.
 
-| Fonte     | Percorso                                   | Dati prodotti                                                       |
-| --------- | ------------------------------------------ | ------------------------------------------------------------------- |
-| SofaScore | `scraper.py` → `scrapers/sofa/`            | Evento, punteggio, statistiche e point-by-point disponibili         |
-| Betfair   | `betfair_scraper.py` → `scrapers/betfair/` | Mercato, runner, quote, ladder, volumi, health e diagnostica sicura |
+## Stage, owner ed evidenza
 
-SofaScore e Betfair hanno polling e failure mode indipendenti. Un problema Betfair non deve impedire la raccolta SofaScore.
+| Stage                  | Owner principale                            | Evidenza automatica                                      |
+| ---------------------- | ------------------------------------------- | -------------------------------------------------------- |
+| Bootstrap e recovery   | `server.js`, writer authority, recovery     | `server.test.mjs`, test writer authority/recovery        |
+| Acquisizione SofaScore | scraper Sofa e tracker update               | test scraper/config e tracker Sofa                       |
+| Acquisizione Betfair   | scraper Betfair e `trackerUpdate.js`        | test scraper runner, classifier e runtime health         |
+| Source Identity        | `sourceIdentityGate.js` e sottocartella     | test gate, conferma e rollback bootstrap                 |
+| Persistenza            | `matchHistory.js`, timeline store e journal | test timeline, commit, recovery e integrity              |
+| Letture                | response builder delle route                | test route e payload owner                               |
+| Evidence               | `matchEvidence/`                            | test composer, qualità, epoch e confirmation store       |
+| Polling frontend       | hook frontend                               | test polling, stale response e session state disponibili |
+| Shutdown terminale     | server e tracker drain                      | test shutdown, barrier e writer authority                |
 
-Cache, dump di rete, log e profili browser non sono fonti canoniche e non devono sostituire un dato mancante.
+## Acquisizione e timestamp
 
-## Normalizzazione SofaScore
+SofaScore e Betfair hanno polling e failure mode indipendenti. Un errore Betfair non deve fermare la raccolta SofaScore.
 
-Il backend combina gli endpoint SofaScore disponibili e costruisce uno snapshot coerente.
+Cache, dump di rete, log e profili browser non sono fonti canoniche.
+
+### SofaScore
 
 ```txt
-payload evento + statistiche + point-by-point
+evento + statistiche + point-by-point
 → normalizeSnapshot
 → localContext descrittivo
 → campione SofaScore
 ```
 
-Valori mancanti o non supportati restano `null` o indisponibili. Non vengono inventati fallback numerici.
+Valori assenti restano `null` o indisponibili; non vengono inventati fallback numerici.
 
-## Classificazione Betfair
-
-Il percorso Betfair distingue:
-
-```txt
-errore tecnico
-≠ mercato concluso
-≠ campione canonico persistibile
-```
-
-Flusso:
+### Betfair
 
 ```txt
 output scraper
 → classificazione tecnica
-→ normalizzazione runner e mercato
-→ Source Identity Gate
-→ commit canonico
-→ conferma dello stato runtime
+→ normalizzazione mercato e runner
+→ osservazione Source Identity
+→ eventuale commit canonico
 ```
 
-Un errore tecnico ordinario non marca il mercato come concluso. Un campione non utilizzabile può partecipare esclusivamente al repair di un journal già pendente tramite `repairOnly`; non crea un nuovo tick, una nuova riga history o un nuovo baseline di mercato.
+`lastSuccessfulScrapeAt` viene aggiornato quando l'acquisizione produce un risultato utilizzabile o segnala mercato concluso. Nel percorso utilizzabile può precedere l'esito della persistenza: è quindi un timestamp di acquisizione/runtime, non una prova di commit canonico.
 
-Lo stato runtime Betfair viene confermato soltanto dopo un commit canonico riuscito o recuperato.
+Distinzioni obbligatorie:
+
+| Concetto                 | Significato                                           |
+| ------------------------ | ----------------------------------------------------- |
+| Scrape success           | Acquisizione Betfair tecnicamente riuscita            |
+| Commit success           | Scrittura logica completata o recuperata              |
+| Canonical tick           | Tick accettato dalle regole timeline                  |
+| `lastSuccessfulScrapeAt` | Ultimo successo di acquisizione, non commit timestamp |
+
+Il payload non possiede ancora una provenance temporale completa che distingua stabilmente `acquiredAt`, `recordedAt` e skew tra fonti. Questo è il target approvato `IMPL-018`, non lo stato corrente.
 
 ## Source Identity Gate
 
-Quando la sessione include Betfair, il gate conserva l'ultimo campione valido per fonte e decide se le nuove scritture sono autorizzate.
+| Fase             | Effetto                                                              |
+| ---------------- | -------------------------------------------------------------------- |
+| `collecting`     | Attende campioni confrontabili; nessun nuovo commit cross-source     |
+| `pending`        | Identità plausibile non risolta; buffering                           |
+| `recording`      | Bootstrap bufferizzato riuscito e persistenza successiva autorizzata |
+| `mismatch`       | Nuove scritture causali bloccate e tracking coordinato fermato       |
+| `not-applicable` | Percorso SofaScore senza Betfair                                     |
 
-| Fase             | Effetto corrente                                                          |
-| ---------------- | ------------------------------------------------------------------------- |
-| `collecting`     | Attesa di campioni validi confrontabili; nessuna nuova scrittura canonica |
-| `pending`        | Identità plausibile ma non risolta; nessuna nuova scrittura canonica      |
-| `recording`      | Bootstrap dei campioni bufferizzati e persistenza successiva              |
-| `mismatch`       | Campione causale bloccato, stop del tracking coordinato                   |
-| `not-applicable` | SofaScore può essere persistito senza Betfair                             |
+Un campione Betfair tecnicamente inutilizzabile non aggiorna candidate o phase.
 
-Un payload Betfair tecnicamente inutilizzabile non aggiorna candidate o fase del gate.
+### Conferma manuale e bootstrap
 
-Il bootstrap cross-source avviene nell'ordine SofaScore → Betfair, ma non è una transazione filesystem unica. Se il primo commit riesce e il secondo fallisce, il primo non viene rollbackato.
+La conferma manuale valida viene applicata prima al bootstrap dei campioni bufferizzati. Soltanto dopo un esito positivo di `onOpenRecording` viene scritta nel confirmation store. Se il bootstrap fallisce, restituisce un esito non positivo o la stessa buffer generation è già stata tentata, il gate ripristina Source Identity e phase `pending` senza creare una confirmation persistita e restituisce:
 
-Il gate corrente e i tracker sono correlati principalmente tramite `eventId`. Non esiste ancora un identificatore di sessione propagato a callback, scraper, conferme e poller; questo limite non va confuso con la writer authority di processo già implementata.
+```txt
+bootstrap_persistence_failed
+oppure
+persistence_failed
+```
+
+Se l’upsert della confirmation fallisce dopo il bootstrap, il gate torna `pending` e non dichiara successo. La scrittura nel confirmation store e i commit cross-source non formano comunque una singola transazione filesystem: un bootstrap canonico già completato non viene annullato riscrivendo a ritroso history o timeline.
+
+### Authority e limite di sessione
+
+Lo Start crea e restituisce una `trackingSessionId`. Tracker, aggiornamenti SofaScore e Betfair, scraper lifecycle, Source Identity Gate, conferma manuale e bootstrap frontend verificano questa identity o la sessione corrente prima di applicare risultati. `bufferGeneration` continua a proteggere i tentativi interni del gate, ma non sostituisce la session authority.
+
+Il confine non è ancora completamente end-to-end: timeline, history e diverse letture persistite restano indicizzate per `eventId` e non dimostrano da sole di appartenere allo Start corrente. Il residuo di `IMPL-006` riguarda la provenance persistita e gli altri consumer ancora eventId-based; non va descritto come assenza totale di `trackingSessionId`.
 
 ## Persistenza canonica
 
-Percorso locale:
-
 ```txt
 backend/match_history/
+├─ dati canonici per evento
+├─ .pending_commits/
+└─ .writer_authority/
 ```
 
-Artefatti principali:
+| Artefatto            | Ruolo                                            |
+| -------------------- | ------------------------------------------------ |
+| Timeline SofaScore   | Tick canonici di campo                           |
+| Timeline Betfair     | Tick canonici di mercato e diagnostica associata |
+| History aggregata    | Vista business compatta                          |
+| `.pending_commits/`  | Journal sidecar globale dei commit incompleti    |
+| `.writer_authority/` | Ownership esclusiva della storage identity       |
 
-| Artefatto            | Ruolo                                                    |
-| -------------------- | -------------------------------------------------------- |
-| Timeline SofaScore   | Sequenza dei tick canonici di campo                      |
-| Timeline Betfair     | Sequenza dei tick canonici di mercato                    |
-| History aggregata    | Vista compatta combinata del match                       |
-| `.pending_commits/`  | Sidecar tecnico dei commit logici incompleti             |
-| `.writer_authority/` | Sidecar tecnico dell'ownership esclusiva della storage identity |
+Il journal viene creato prima delle scritture, registra i documenti completati e rende recuperabile un commit incompleto. `partial_persistence` e `recovery_failed` descrivono la persistenza, non health Betfair, mismatch o freshness.
 
-Il commit journal crea un record pending prima delle scritture, marca i documenti completati e permette recovery deterministica al bootstrap del backend.
+Un campione tecnico non utilizzabile può essere passato a `repairOnly`: può completare fisicamente i file già descritti da un journal pendente, ma non crea un nuovo tick, una nuova riga sample-derived o un nuovo commit ID.
 
-La directory `.writer_authority/` non contiene dati canonici e non sostituisce journal, history o timeline. Il relativo record è posseduto dal bootstrap backend, non dai singoli writer business.
+## Status-only Graph
 
-Gli stati pubblici correnti sono:
-
-```txt
-no_known_partial
-partial_persistence
-recovery_failed
-```
-
-`partial_persistence` e `recovery_failed` descrivono la persistenza. Non sono health Betfair, Source Identity mismatch, freshness stale o errore frontend.
-
-### Limiti correnti della persistenza
-
-Il sistema possiede atomic write per singolo file, commit journal, recovery e writer authority backend-owned prima della recovery e del listener. Restano però limiti registrati:
-
-- history condivisa fra fonti senza un'autorità event-scoped completa;
-- record journal senza revision, head e digest verificabili;
-- validazione `eventId` ancora permissiva;
-- nessuna singola transazione cross-source;
-- riscrittura del documento completo per ogni commit.
-
-Questi limiti sono stato corrente, non descrizioni di soluzioni future.
-
-## Operazioni tracker e shutdown
-
-Le Promise tracker capaci di raggiungere la persistenza vengono registrate process-local in `activeTrackerOperations`. Il registro comprende almeno:
-
-```txt
-update SofaScore iniziale
-update SofaScore dello scheduler
-update Betfair dello scheduler
-```
-
-La rimozione di un match da `trackedMatches` o la cancellazione dello scheduler non equivalgono al completamento di un'operazione già avviata.
-
-Durante lo shutdown:
-
-```txt
-server.close richiesto
-→ terminal tracker barrier attivata
-→ nessuna nuova operazione ammessa
-→ tracker e scheduler fermati
-→ tracker drain avviato
-→ processi Python terminati
-→ update Node già avviati attesi fino a registro vuoto
-→ listener chiuso
-→ release writer authority
-→ exit
-```
-
-La writer authority viene rilasciata soltanto quando il drain è verificato con esito positivo e il listener è chiuso. Se il drain fallisce, restituisce un risultato invalido o non è verificabile, il comportamento è fail-closed: l'authority resta registrata e il processo termina. Il backend successivo può recuperarla soltanto dopo avere verificato positivamente la morte dell'owner.
-
-Il force timeout non dichiara completato il drain e non rilascia anticipatamente l'authority.
-
-## Eccezione status-only Graph
-
-Un campione regressivo resta normalmente escluso. Esiste un'eccezione stretta quando il logout Graph è rilevato esplicitamente e non sono disponibili nuove ladder Graph.
+Quando un campione regressivo segnala esplicitamente logout Graph, non contiene nuove ladder valide ed esiste un tick algoritmico precedente, il sistema costruisce uno snapshot status-only:
 
 ```txt
 ultimo tick canonico
-+ graphLoginRequired=true
-+ nessuna ladder Graph valida
-→ tick Betfair status-only
++ graphLoginRequired
++ zero ladder Graph valide
+→ nuovo tick timeline Betfair status-only
 ```
 
-Il tick conserva mercato e runner dell'ultimo stato canonico e aggiorna soltanto lo stato tecnico necessario a mostrare `auth_suspected`. Non adotta quote, volumi, ladder o Money Flow regressivi e non aggiorna il baseline canonico.
+Il nuovo tick:
 
-## Letture
+- riceve nuovi `seq` e `commitId` tramite il normale percorso timeline;
+- clona mercato, runner, quote e ladder dal precedente tick algoritmico;
+- non aggiorna il runtime `marketState`;
+- non aggiunge una nuova riga business Betfair alla history;
+- forza ladder summary non utilizzabile;
+- sostituisce Money Flow con `confidence: suppressed` e `reason: graph_login_required`;
+- aggiorna la diagnostica necessaria a mostrare `auth_suspected`;
+- può diventare il successivo last algorithmic tick usato dalla timeline.
 
-Le API di lettura consumano dati già persistiti.
+Non è quindi corretto descriverlo come “nessuna scrittura”: è una nuova osservazione canonica di stato tecnico senza adozione dei dati regressivi.
+
+## Stop live e shutdown terminale
+
+Lo Stop live:
+
+- rimuove il tracking logico e gli scheduler;
+- termina i processi Python nello scope tracking;
+- non garantisce da solo il drain completo delle Promise già presenti in `activeTrackerOperations`.
+
+Una Promise Node già avviata può continuare fisicamente dopo Stop, perché lo Stop ordinario non esegue il drain terminale. Gli update verificano però la sessione corrente in più checkpoint e rifiutano l’applicazione quando la `trackingSessionId` è diventata stale. Quiescenza fisica e rifiuto logico delle callback obsolete restano proprietà distinte.
+
+Lo shutdown terminale applica invece una barrier globale:
 
 ```txt
-timeline/history
-→ response builder
-→ payload HTTP
+blocca nuove operazioni
+→ ferma tracker e scheduler
+→ avvia tracker drain
+→ termina figli Python
+→ attende activeTrackerOperations vuoto
+→ verifica listener chiuso
+→ rilascia writer authority
 ```
 
-Possono aggiungere `integrity` in modo read-only. Non devono eseguire recovery o scrivere journal.
+Drain fallito, risultato invalido o force timeout non autorizzano il release anticipato. I dettagli procedurali appartengono a [Runtime locale](../operations/01-local-runtime.md) e [Commit journal e recovery](../modules/storage/02-commit-journal-and-recovery.md).
 
-Eccezioni limitate:
+## Classi di lettura
 
-- `GET /api/betfair/:eventId/latest` può leggere runtime Betfair in memoria per calcolare health;
-- `GET /api/match/:eventId/source-identity-status` legge lo stato del gate in memoria.
+| Classe            | Esempi                                  | Vincolo                                                   |
+| ----------------- | --------------------------------------- | --------------------------------------------------------- |
+| Persistita        | timeline, history, Evidence             | Nessuna recovery o scrittura                              |
+| In memoria        | Source Identity status, runtime Betfair | Nessuna nuova authority                                   |
+| Probe diagnostico | status CDP da Betfair latest            | Solo target loopback validato, timeout e risposta bounded |
 
-Entrambe restano letture e non autorizzano scritture.
+`GET /api/betfair/:eventId/latest` può unire timeline persistita, runtime in memoria e probe CDP controllato. Un input CDP remoto o invalido non produce fetch.
 
-## Match Evidence Snapshot
+Read-only significa assenza di mutazioni canoniche, non necessariamente assenza assoluta di network I/O diagnostico.
 
-Evidence combina timeline, Source Identity applicabile e integrity.
+## Evidence
 
-Può esporre:
+Evidence combina timeline, integrity e Source Identity applicabile. Può esporre qualità, health, allineamento, flow, ladder, no-trade reasons e Market Reactions descrittive.
 
-- dati SofaScore e Betfair;
-- health e qualità;
-- allineamento temporale;
-- flow e ladder;
-- no-trade reasons;
-- Market Reactions descrittive.
+Quando l'identità non è allineata o la persistenza è incompleta, i confronti cross-source vengono sospesi o degradati. Evidence non ricostruisce il passato dal gate live, non modifica timeline e non prova causalità.
 
-Quando Source Identity non è allineata o la persistenza cross-source è incompleta, i confronti cross-source vengono sospesi o degradati.
+## Poller frontend
 
-Evidence non legge il gate live per ricostruire il passato, non modifica timeline e non prova causalità.
+I poller principali condividono ora protezioni di lifecycle, pur mantenendo stati e read model distinti:
 
-## Frontend
+| Poller                     | Protezione corrente                            |
+| -------------------------- | ---------------------------------------------- |
+| Match e Betfair principali | Generation hook-local, richiesta abortibile e scarto delle risposte stale |
+| Market Reactions           | Generation hook-local, `AbortController` e scarto delle risposte stale     |
+| Source Identity status     | Generation hook-local, `AbortController` e guard della richiesta corrente  |
 
-Il frontend consuma API Match, Betfair, Evidence e status Source Identity.
+Lo Stop imposta la sessione frontend come inattiva, azzera la `trackingSessionId` corrente e ferma esplicitamente il polling SofaScore; i consumer condizionati da `sessionActive` vengono disabilitati e le richieste attive sono invalidate o abortite dai rispettivi hook. La distinzione residua riguarda la provenance dei dati persistiti e `last-known`, non l’assenza delle protezioni generation/abort.
 
-Il codice corrente ha poller distinti e stato sessione distribuito. Non esistono ancora AbortController e generation guard uniformi per tutte le richieste, né uno stop frontend coordinato di tutti i poller. Le risposte tardive restano quindi un limite corrente.
+## Dati esclusi dal flusso canonico
 
-## Dati che non entrano nel flusso canonico
+Non sostituiscono timeline o history:
 
-Non usare come sostituti delle timeline:
-
-- dump browser o network capture;
-- cache runtime;
-- log testuali;
+- dump browser e network capture;
+- cache runtime e log;
 - snapshot latest isolati;
 - dati simulati presentati come live;
-- input URL come prova dell'identità;
-- valori numerici inventati.
+- URL come prova dell'identità;
+- numeri inventati per colmare dati assenti.
 
 ## Documenti collegati
 

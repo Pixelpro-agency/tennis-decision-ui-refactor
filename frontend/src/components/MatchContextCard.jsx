@@ -1,3 +1,4 @@
+import React from 'react';
 import { buildMatchContextViewModel } from './matchContextViewModel.js';
 
 function Thermometer({ title, homeName, awayName, homePct, awayPct }) {
@@ -71,7 +72,7 @@ export default function MatchContextCard({ localContext, players }) {
                     Contesto punti
                 </h2>
                 <p className="mt-2 text-xs text-[var(--muted)]">
-                    Calcolato localmente dai dati disponibili
+                    Contesto descrittivo calcolato sui dati SofaScore disponibili
                 </p>
             </div>
 

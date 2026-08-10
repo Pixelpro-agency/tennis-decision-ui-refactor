@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     GRID_SIZE,
     alignToGrid,
     getDisplayMatchedVolume,
-    toNumber
+    getMatchedVolumeObservation,
+    getMoneyFlowAxisMax
 } from '../../utils/betfairMoneyFlow.js';
 
 function formatTime(timestamp) {
@@ -56,16 +57,11 @@ export default function MoneyFlowChart({
     }, [runnerHistory, sharedGrid]);
 
     const displayVolumes = slots.map(getDisplayMatchedVolume);
-    const calculatedMax = Math.max(
-        100,
-        toNumber(sharedMaxVal),
-        ...displayVolumes
-    );
-    const axisMax = Math.ceil(calculatedMax / 100) * 100;
+    const axisMax = getMoneyFlowAxisMax(sharedMaxVal, displayVolumes);
     const hovered = hoveredIndex === null
         ? null
         : slots[hoveredIndex];
-    const hoveredVolume = getDisplayMatchedVolume(hovered);
+    const hoveredObservation = getMatchedVolumeObservation(hovered);
 
     const axisLeft = 42;
     const plotWidth = 308;
@@ -82,9 +78,9 @@ export default function MoneyFlowChart({
                     Volume abbinato nel tempo
                 </span>
 
-                {hovered && (
+                {hoveredObservation.available && (
                     <span className="font-mono text-slate-300">
-                        VOLUME ABBINATO: {hoveredVolume.toFixed(0)} EUR
+                        VOLUME ABBINATO: {hoveredObservation.value.toFixed(0)} EUR
                     </span>
                 )}
             </div>
@@ -175,7 +171,7 @@ export default function MoneyFlowChart({
                         const barWidth = Math.max(4, stepWidth - 3);
                         const matchedVolume = displayVolumes[index];
                         const barHeight = matchedVolume > 0
-                            ? (matchedVolume / calculatedMax) * maxBarHeight
+                            ? (matchedVolume / axisMax) * maxBarHeight
                             : 0;
 
                         return (

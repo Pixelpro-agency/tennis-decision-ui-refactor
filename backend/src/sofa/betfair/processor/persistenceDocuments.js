@@ -60,6 +60,7 @@ export function prepareBetfairPersistenceDocuments({
         historyTarget,
         timelineDocument,
         timelineMetadata,
-        timelineTarget
+        timelineTarget,
+        committedState: historyPreparation.committedState
     };
 }

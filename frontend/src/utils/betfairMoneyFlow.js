@@ -34,6 +34,32 @@ export function getDisplayMatchedVolume(point) {
         : 0;
 }
 
+export function getMatchedVolumeObservation(point) {
+    if (
+        !point ||
+        point.emptySlot ||
+        point.invalidVolume ||
+        point.anomaly ||
+        point.validForDisplay === false
+    ) {
+        return { available: false, value: null };
+    }
+
+    const value = Number(point.matchedVolume);
+    return Number.isFinite(value) && value >= 0
+        ? { available: true, value }
+        : { available: false, value: null };
+}
+
+export function getMoneyFlowAxisMax(sharedMaxVal, displayVolumes = []) {
+    const maximum = Math.max(
+        100,
+        toNumber(sharedMaxVal),
+        ...(Array.isArray(displayVolumes) ? displayVolumes.map(value => toNumber(value)) : [])
+    );
+    return Math.ceil(maximum / 100) * 100;
+}
+
 export function buildSharedGrid(pointSeriesList) {
     const seen = new Set();
     const allTimestamps = [];

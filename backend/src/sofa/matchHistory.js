@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import {
     loadTimeline,
+    loadTimelineResult,
     getTimelineFile,
     writeTimelineDocument
 } from './timelineStore.js';
@@ -65,6 +66,7 @@ const addSofaUpdateWithState = createSofaUpdateHandler({
     resolveHistoryFile: resolveHistoryFileWithStorage,
     writeHistoryDocument: writeHistoryDocumentWithStorage,
     loadTimeline,
+    loadTimelineResult,
     getTimelineFile,
     writeTimelineDocument,
     journalStore,
@@ -108,7 +110,10 @@ export function getBetfairCommitDependencies() {
         writeHistoryDocument: writeHistoryDocumentWithStorage,
         getTimelineFile,
         writeTimelineDocument,
-        journalStore
+        journalStore,
+        commitBetfairState(eventId, state) {
+            latestBetfairState.set(eventId, state);
+        }
     };
 }
 

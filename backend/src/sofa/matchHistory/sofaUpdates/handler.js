@@ -25,6 +25,7 @@ export function createSofaUpdateHandler({
     resolveHistoryFile,
     writeHistoryDocument,
     loadTimeline,
+    loadTimelineResult,
     getTimelineFile,
     writeTimelineDocument,
     journalStore,
@@ -48,8 +49,6 @@ export function createSofaUpdateHandler({
                 status: 'failed'
             });
         }
-
-        latestSofaState.set(eventId, sofaData);
 
         if (!journalStore ||
             typeof journalStore.findPendingCommit !== 'function' ||
@@ -100,7 +99,22 @@ export function createSofaUpdateHandler({
         const latestBetfair = latestBetfairState.get(eventId) || null;
         const lastRow = historyObj.history[historyObj.history.length - 1];
 
-        if (shouldSkipSofaHistoryRow(lastRow, sofaData, latestBetfair)) {
+        const timelineRead = typeof loadTimelineResult === 'function'
+            ? loadTimelineResult('sofa', eventId)
+            : { status: 'found', timeline: loadTimeline('sofa', eventId) };
+        if (timelineRead.status === 'failed') {
+            return persistenceFailure({ eventId, commitId: null, documentName: 'timeline', status: 'failed' });
+        }
+        const existingTimeline = timelineRead.status === 'found' ? timelineRead.timeline : null;
+        const historyUnchanged = shouldSkipSofaHistoryRow(lastRow, sofaData, latestBetfair);
+        const timelineSnapshot = timelineData?.snapshot || sofaData;
+        const localContext = timelineData?.localContext ?? null;
+        const lastTimelineData = existingTimeline?.timeline?.at(-1)?.data;
+        const timelineUnchanged = lastTimelineData &&
+            JSON.stringify(lastTimelineData.snapshot) === JSON.stringify(timelineSnapshot) &&
+            JSON.stringify(lastTimelineData.localContext ?? null) === JSON.stringify(localContext);
+
+        if (historyUnchanged && timelineUnchanged) {
             return unchangedResult(eventId);
         }
 
@@ -110,10 +124,9 @@ export function createSofaUpdateHandler({
             return journalFailure({ eventId });
         }
 
-        appendHistoryRow(historyObj, sofaData, latestBetfair, now, commitId);
-
-        const timelineSnapshot = timelineData?.snapshot || sofaData;
-        const localContext = timelineData?.localContext ?? null;
+        if (!historyUnchanged) {
+            appendHistoryRow(historyObj, sofaData, latestBetfair, now, commitId);
+        }
         const timelineMetadata = {
             eventId,
             date: date || historyObj.metadata.date,
@@ -121,7 +134,6 @@ export function createSofaUpdateHandler({
             players: historyObj.metadata.players,
             sofaUrl: sofaData?.url || historyObj.metadata.sofaUrl || ''
         };
-        const existingTimeline = loadTimeline('sofa', eventId);
         const timelineObj = prepareTimelineDocument({
             eventId,
             snapshot: timelineSnapshot,
@@ -178,7 +190,11 @@ export function createSofaUpdateHandler({
             return journalFailure({ eventId, commitId });
         }
 
-        return resumePendingCommit(created);
+        const result = resumePendingCommit(created);
+        if (result?.ok === true && result.status === 'complete') {
+            latestSofaState.set(eventId, sofaData);
+        }
+        return result;
     }
 
     return addSofaUpdate;

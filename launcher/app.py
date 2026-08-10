@@ -204,7 +204,7 @@ def main():
             f"state={lock_result.get('state')} "
             f"reason={lock_result.get('reason')}",
         )
-        return
+        return 2
 
     try:
         log(
@@ -224,7 +224,7 @@ def main():
                 ownership="reused",
             )
             open_browser(frontend_url)
-            return
+            return 0
 
         installed_handlers = _install_signal_handlers(controller)
 
@@ -247,7 +247,7 @@ def main():
             preserve_failure_state = True
             write_manifest(manifest)
             log("Launcher", "backend action=failed — aborting")
-            return
+            return 3
 
         backend_port = int(backend_url.rstrip("/").rsplit(":", 1)[-1])
         if controller.requested:
@@ -262,7 +262,7 @@ def main():
             preserve_failure_state = True
             write_manifest(manifest)
             log("Launcher", "frontend action=failed — aborting")
-            return
+            return 4
 
         manifest_set_session_status(manifest, "ready", "services_ready")
         write_manifest(manifest)
@@ -362,3 +362,5 @@ def main():
         )
 
         _restore_signal_handlers(installed_handlers)
+
+    return 0 if not preserve_failure_state else 1

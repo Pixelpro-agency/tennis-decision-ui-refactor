@@ -10,7 +10,11 @@ export function getValidBetfairTicks(timeline) {
             entry &&
             entry.data &&
             entry.data.source === 'betfair' &&
-            typeof entry.data.seq === 'number'
+            Number.isFinite(entry.data.seq) &&
+            Array.isArray(entry.data.runners) &&
+            entry.data.runners.every(runner =>
+                runner && typeof runner === 'object' && !Array.isArray(runner)
+            )
     );
 }
 

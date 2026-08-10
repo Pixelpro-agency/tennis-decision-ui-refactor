@@ -10,11 +10,14 @@ function isSourceIdentityBuffering(sourceIdentityGateStatus) {
 function resolveSofaStatus({
     backendData,
     sofaServerStatus,
-    sourceIdentityGateStatus
+    sourceIdentityGateStatus,
+    sofaReadStatus
 }) {
-    if (backendData) {
+    if (backendData && sofaReadStatus === 'current') {
         return 'connected';
     }
+
+    if (sofaReadStatus === 'degraded') return 'degraded';
 
     if (sofaServerStatus === 'waiting') {
         return 'waiting';
@@ -31,8 +34,10 @@ export function buildDashboardConnections({
     backendData,
     sofaLastUpdate,
     sofaServerStatus,
+    sofaReadStatus,
     sourceIdentityGateStatus,
     betfairData,
+    betfairReadStatus,
     betfairLastUpdate,
     betfairHealth,
     betfairHealthTransition,
@@ -42,7 +47,8 @@ export function buildDashboardConnections({
     const sofaStatus = resolveSofaStatus({
         backendData,
         sofaServerStatus,
-        sourceIdentityGateStatus
+        sourceIdentityGateStatus,
+        sofaReadStatus
     });
 
     return {
@@ -55,7 +61,10 @@ export function buildDashboardConnections({
             ok: false
         },
         betfair: {
-            ok: Boolean(betfairData),
+            status: betfairReadStatus === 'current'
+                ? 'connected'
+                : betfairReadStatus || 'disconnected',
+            ok: Boolean(betfairData) && betfairReadStatus === 'current',
             lastUpdate: betfairLastUpdate,
             health: betfairHealth,
             transition: betfairHealthTransition,

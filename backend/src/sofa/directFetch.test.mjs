@@ -305,6 +305,33 @@ assert.equal(serializedSafeLogs.includes('secret.example'), false, 'G33 no targe
 assert.equal(serializedSafeLogs.includes('hidden'), false, 'G33 no token');
 assert.ok(safeLogRecords.some(record => record.event === 'sofa_batch_started'));
 assert.ok(safeLogRecords.some(record => record.event === 'sofa_batch_completed'));
+
+const overflowHandle = createHandle(501);
+const overflowTerminations = [];
+const overflowRuntime = createDirectFetchRuntime({
+    captureGeneration: () => 0,
+    isGenerationCurrent: () => true,
+    spawnPython: () => overflowHandle,
+    terminateExecution(executionId, ownerToken) {
+        overflowTerminations.push({ executionId, ownerToken });
+        return Promise.resolve({ ok: true });
+    },
+    maxStdoutBytes: 8,
+    timeoutMs: 10000,
+    log: () => {}
+});
+const overflowPromise = overflowRuntime.batchFetch(['url-overflow']);
+await flush();
+overflowHandle.proc.stdout.emit('data', Buffer.from('123456789'));
+const overflowResult = await overflowPromise;
+assert.equal(
+    overflowResult['url-overflow'].error.message,
+    'scraper_output_too_large'
+);
+assert.equal(overflowTerminations.length, 1);
+overflowHandle.proc.stdout.emit('data', Buffer.from('ignored'));
+overflowHandle.proc.exitCode = 0;
+overflowHandle.proc.emit('close', 0);
 console.log(
     'L22-L26, R9-R12 and G33-G34 directFetch tests passed'
 );

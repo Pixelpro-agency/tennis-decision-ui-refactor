@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 function extractEventIdFromUrl(url) {
     if (!url) return '';
-    const match = url.match(/#id[=:](\d+)/i) || url.match(/\/event\/(\d+)/) || url.match(/\/match\/[^\/]+\/([^\/]+)\/(\d+)/) || url.match(/\/match\/([^\/]+)\/(\d+)$/);
+    const match = url.match(/#id[=:](\d+)/i) || url.match(/\/event\/(\d+)/) || url.match(/\/match\/[^/]+\/[^/]+\/(\d+)/) || url.match(/\/match\/[^/]+\/(\d+)$/);
     if (match) return match[match.length - 1];
     const digitMatch = url.match(/[^\d](\d{7,9})(?:[^\d]|$)/);
     if (digitMatch) return digitMatch[1];
@@ -23,156 +23,196 @@ export function normalizeSofaTimelinePayload(payload) {
 }
 
 export function classifySofaTimelineHttpStatus(status, err = null) {
-    if (status === 404) {
-        return {
-            serverStatus: 'waiting',
-            expected: true
-        };
-    }
-
+    if (status === 404) return { serverStatus: 'waiting', expected: true };
     if (status === 409 && err?.persistenceIntegrity) {
-        const integrityStatus = err?.integrity?.status;
-
         return {
-            serverStatus: integrityStatus === 'recovery_failed'
+            serverStatus: err?.integrity?.status === 'recovery_failed'
                 ? 'recovery_failed'
                 : 'partial_persistence',
             expected: true
         };
     }
+    return { serverStatus: 'error', expected: false };
+}
 
-    return {
-        serverStatus: 'error',
-        expected: false
-    };
+export async function readSofaTimeline(eventId, { signal } = {}) {
+    if (!eventId) {
+        const error = new Error('Event ID missing');
+        error.status = 400;
+        throw error;
+    }
+
+    const response = await fetch(`/api/match/${eventId}/json`, { signal });
+    if (response.status === 409) {
+        const body = await response.json().catch(() => ({}));
+        if (body?.error === 'persistence_integrity') {
+            const error = new Error('persistence_integrity');
+            error.status = 409;
+            error.persistenceIntegrity = true;
+            error.integrity = body?.integrity || null;
+            throw error;
+        }
+    }
+    if (!response.ok) {
+        const error = new Error(`SofaScore JSON not found (${response.status})`);
+        error.status = response.status;
+        throw error;
+    }
+    return normalizeSofaTimelinePayload(await response.json());
 }
 
 export function useMatchPolling(url, pollingInterval = 3000, explicitEventId = '') {
     const [data, setData] = useState(null);
+    const [lastKnownData, setLastKnownData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [isPolling, setIsPolling] = useState(false);
-    const [lastUpdate, setLastUpdate] = useState(null);
+    const [sourceUpdatedAt, setSourceUpdatedAt] = useState(null);
+    const [fetchedAt, setFetchedAt] = useState(null);
     const [serverStatus, setServerStatus] = useState('unknown');
+    const [readStatus, setReadStatus] = useState('inactive');
     const [integrity, setIntegrity] = useState(null);
 
-    const pollTimeout = useRef(null);
-    const shouldPoll = useRef(false);
-
+    const pollTimeoutRef = useRef(null);
+    const shouldPollRef = useRef(false);
+    const pollGenerationRef = useRef(0);
+    const requestIdRef = useRef(0);
+    const activeRequestRef = useRef(null);
     const eventId = explicitEventId || extractEventIdFromUrl(url);
 
-    const fetchJsonTimeline = useCallback(async () => {
-        if (!eventId) {
-            const err = new Error('Event ID missing');
-            err.status = 400;
-            throw err;
+    const clearTimer = useCallback(() => {
+        if (pollTimeoutRef.current) {
+            clearTimeout(pollTimeoutRef.current);
+            pollTimeoutRef.current = null;
+        }
+    }, []);
+
+    const abortActiveRequest = useCallback(() => {
+        activeRequestRef.current?.controller.abort();
+        activeRequestRef.current = null;
+    }, []);
+
+    const fetchOnce = useCallback(async ({ generation, isAuto = false }) => {
+        if (!eventId || generation !== pollGenerationRef.current) return null;
+        if (activeRequestRef.current?.generation === generation) {
+            return activeRequestRef.current.promise;
         }
 
-        const res = await fetch(`/api/match/${eventId}/json`);
-
-        if (res.status === 409) {
-            const body = await res.json().catch(() => ({}));
-
-            if (body?.error === 'persistence_integrity') {
-                const err = new Error('persistence_integrity');
-                err.status = 409;
-                err.persistenceIntegrity = true;
-                err.integrity = body?.integrity || null;
-                throw err;
-            }
-
-            const err = new Error(`SofaScore JSON not found (${res.status})`);
-            err.status = res.status;
-            throw err;
-        }
-
-        if (!res.ok) {
-            const err = new Error(`SofaScore JSON not found (${res.status})`);
-            err.status = res.status;
-            throw err;
-        }
-
-        return normalizeSofaTimelinePayload(await res.json());
-    }, [eventId]);
-
-    const fetchData = useCallback(async (isAuto = false) => {
-        if (!eventId) return;
-
+        const requestId = ++requestIdRef.current;
+        const controller = new AbortController();
         if (!isAuto) setLoading(true);
 
-        try {
-            const result = await fetchJsonTimeline();
-            setData(result);
-            setLastUpdate(new Date());
-            setError(null);
-            setIntegrity(result?.integrity || null);
-            setServerStatus('ok');
-        } catch (err) {
-            const classification = classifySofaTimelineHttpStatus(err?.status, err);
-
-            if (classification.expected) {
+        const promise = (async () => {
+            try {
+                const result = await readSofaTimeline(eventId, { signal: controller.signal });
+                if (generation !== pollGenerationRef.current) return null;
+                setData(result);
+                setLastKnownData(result);
+                setSourceUpdatedAt(result?.timeline?.timestamp ? new Date(result.timeline.timestamp) : null);
+                setFetchedAt(new Date());
+                setError(null);
+                setIntegrity(result?.integrity || null);
+                setServerStatus('ok');
+                setReadStatus('current');
+                return result;
+            } catch (requestError) {
+                if (requestError?.name === 'AbortError' || generation !== pollGenerationRef.current) return null;
+                const classification = classifySofaTimelineHttpStatus(requestError?.status, requestError);
                 setData(null);
                 setServerStatus(classification.serverStatus);
-                setError(null);
-                setIntegrity(err?.persistenceIntegrity ? err?.integrity || null : null);
-            } else {
-                console.error('SofaScore JSON polling error:', err);
-                setServerStatus(classification.serverStatus);
-
-                if (!isAuto) {
-                    setError(err.message);
-                }
+                setReadStatus(classification.serverStatus === 'waiting' ? 'waiting' : classification.expected ? 'degraded' : 'error');
+                setIntegrity(requestError?.persistenceIntegrity ? requestError?.integrity || null : null);
+                setError(classification.expected ? null : 'Unable to load match data.');
+                return null;
+            } finally {
+                if (activeRequestRef.current?.requestId === requestId) activeRequestRef.current = null;
+                if (!isAuto && generation === pollGenerationRef.current) setLoading(false);
             }
-        } finally {
-            if (!isAuto) setLoading(false);
-        }
-    }, [eventId, fetchJsonTimeline]);
+        })();
 
-    const loadMatch = useCallback(() => {
-        setData(null);
-        setError(null);
-        setLastUpdate(null);
-        setServerStatus('unknown');
-        setIntegrity(null);
-        shouldPoll.current = true;
-        setIsPolling(true);
-        fetchData(false);
-    }, [fetchData]);
+        activeRequestRef.current = { generation, requestId, controller, promise };
+        return promise;
+    }, [eventId]);
+
+    const scheduleNext = useCallback((generation) => {
+        clearTimer();
+        if (!shouldPollRef.current || generation !== pollGenerationRef.current) return;
+        pollTimeoutRef.current = setTimeout(async () => {
+            await fetchOnce({ generation, isAuto: true });
+            if (shouldPollRef.current && generation === pollGenerationRef.current) scheduleNext(generation);
+        }, pollingInterval);
+    }, [clearTimer, fetchOnce, pollingInterval]);
 
     useEffect(() => {
-        const loop = async () => {
-            if (shouldPoll.current) {
-                await fetchData(true);
-            }
-            pollTimeout.current = setTimeout(loop, pollingInterval);
-        };
+        pollGenerationRef.current += 1;
+        const generation = pollGenerationRef.current;
+        clearTimer();
+        abortActiveRequest();
+        setData(null);
+        setLastKnownData(null);
+        setError(null);
+        setSourceUpdatedAt(null);
+        setFetchedAt(null);
+        setIntegrity(null);
 
-        pollTimeout.current = setTimeout(loop, pollingInterval);
+        if (!eventId) {
+            shouldPollRef.current = false;
+            setIsPolling(false);
+            setLoading(false);
+            setServerStatus('unknown');
+            setReadStatus('inactive');
+            return undefined;
+        }
+
+        shouldPollRef.current = true;
+        setIsPolling(true);
+        setReadStatus('waiting');
+        void fetchOnce({ generation });
+        scheduleNext(generation);
 
         return () => {
-            if (pollTimeout.current) clearTimeout(pollTimeout.current);
+            shouldPollRef.current = false;
+            pollGenerationRef.current += 1;
+            clearTimer();
+            abortActiveRequest();
         };
-    }, [fetchData, pollingInterval]);
+    }, [abortActiveRequest, clearTimer, eventId, fetchOnce, scheduleNext]);
 
-    const stopPolling = () => {
-        shouldPoll.current = false;
+    const loadMatch = useCallback(() => {
+        if (!eventId) return;
+        void fetchOnce({ generation: pollGenerationRef.current });
+    }, [eventId, fetchOnce]);
+
+    const stopPolling = useCallback(() => {
+        shouldPollRef.current = false;
+        pollGenerationRef.current += 1;
+        clearTimer();
+        abortActiveRequest();
         setIsPolling(false);
-    };
+    }, [abortActiveRequest, clearTimer]);
 
-    const resumePolling = () => {
+    const resumePolling = useCallback(() => {
+        if (!eventId || shouldPollRef.current) return;
+        pollGenerationRef.current += 1;
+        const generation = pollGenerationRef.current;
+        shouldPollRef.current = true;
         setError(null);
-        shouldPoll.current = true;
         setIsPolling(true);
-        fetchData(true);
-    };
+        void fetchOnce({ generation, isAuto: true });
+        scheduleNext(generation);
+    }, [eventId, fetchOnce, scheduleNext]);
 
     return {
         data,
+        lastKnownData,
         loading,
         error,
-        lastUpdate,
+        lastUpdate: sourceUpdatedAt,
+        sourceUpdatedAt,
+        fetchedAt,
         isPolling,
         serverStatus,
+        readStatus,
         integrity,
         loadMatch,
         stopPolling,

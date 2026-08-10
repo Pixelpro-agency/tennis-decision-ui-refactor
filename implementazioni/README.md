@@ -13,8 +13,8 @@ Questa cartella contiene il registro analitico operativo della revisione. Non so
 
 - [00-metodo-e-stati.md](./00-metodo-e-stati.md) — fonti, stati, classificazioni e regole;
 - [01-piano-generale-audit.md](./01-piano-generale-audit.md) — ordine e perimetro delle analisi;
-- [02-audit-documentazione.md](./02-audit-documentazione.md) — rilievi e checklist documentali;
-- [03-audit-codice.md](./03-audit-codice.md) — indice dell’audit del codice suddiviso per dominio;
+- [02-audit-documentazione.md](./02-audit-documentazione.md) — facade di 4 moduli documentali: rilievi/API, moduli/frontend/Python, operations/roadmap e processo storico;
+- [03-audit-codice.md](./03-audit-codice.md) — facade di 7 moduli tecnici:
   - [01-rilievi-iniziali.md](./audit-codice/01-rilievi-iniziali.md) — rilievi iniziali e Punto 1;
   - [02-runtime-sessioni-betfair.md](./audit-codice/02-runtime-sessioni-betfair.md) — Punti 2–3, runtime e Betfair;
   - [03-storage-recovery.md](./audit-codice/03-storage-recovery.md) — Punto 4, storage e recovery;
@@ -23,8 +23,8 @@ Questa cartella contiene il registro analitico operativo della revisione. Non so
   - [06-validazione-e-test.md](./audit-codice/06-validazione-e-test.md) — Punto 7, test e validazione;
   - [07-post-audit-e-migrazione.md](./audit-codice/07-post-audit-e-migrazione.md) — chiusura post-audit e migrazione;
 - [04-task-completate.md](./04-task-completate.md) — verifica delle task dichiarate concluse;
-- [05-audit-docs-planning.md](./05-audit-docs-planning.md) — trattamento differito di `docs/planning`;
-- [06-implementazioni-proposte.md](./06-implementazioni-proposte.md) — implementazioni da valutare;
+- [05-audit-docs-planning.md](./05-audit-docs-planning.md) — closeout storico del cleanup; consuma policy archive e owner IMPL correnti senza possederli;
+- [06-implementazioni-proposte.md](./06-implementazioni-proposte.md) — facade di 7 moduli IMPL: utility/authority, runtime Betfair, storage, Evidence, frontend, validazione e documentazione;
 - [99-decisioni-utente.md](./99-decisioni-utente.md) — decisioni strutturali.
 
 ## Regole

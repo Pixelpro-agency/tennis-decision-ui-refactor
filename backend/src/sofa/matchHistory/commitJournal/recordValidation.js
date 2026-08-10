@@ -19,6 +19,17 @@ export function validateDocument(document) {
         typeof document.completed === 'boolean';
 }
 
+export function validateRepairPayload(record, documentName) {
+    const descriptor = record?.documents?.[documentName];
+    const document = descriptor?.payload?.document;
+    const metadata = document?.metadata;
+    const rows = documentName === 'history' ? document?.history : document?.timeline;
+    if (!isPlainObject(document) || !isPlainObject(metadata) || !Array.isArray(rows)) return 'invalid_payload_shape';
+    if (metadata.eventId != null && metadata.eventId !== record.eventId) return 'payload_event_mismatch';
+    if (documentName === 'timeline' && metadata.source != null && metadata.source !== record.source) return 'payload_source_mismatch';
+    return null;
+}
+
 export function validateIncomingRecord(record) {
     if (!isPlainObject(record) || !isSafeJsonValue(record)) {
         return 'invalid_record';

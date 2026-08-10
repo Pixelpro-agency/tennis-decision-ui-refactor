@@ -535,3 +535,15 @@ prossimo blocco
 ```
 
 ---
+## Autorità temporale e riconciliazione corrente
+
+B5 e B6 sono checkpoint storici. Lo stato post-migrazione è:
+
+```txt
+DOC-020, DOC-023 → risolti
+DOC-021 → root storicamente valida; owner corrente superseding DOC-031
+DOC-022 → aperto, parzialmente migliorato
+WORKFLOW-002, WORKFLOW-003 → completati
+```
+
+Per lo stato corrente consultare gli owner di `IMPL-001`, `IMPL-005` e `TEST-003`, il README canonico `docs/tennis-decision-ui/index.md`, i registri delle roadmap future rimosse dal canonico e l'overlay relativo alla sezione 15.5. Gli esiti B5/B6 e i path `.mdx` restano evidenza del checkpoint, non istruzioni correnti.

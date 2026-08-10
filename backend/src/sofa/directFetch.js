@@ -12,6 +12,7 @@ import { createFileLogWriter, createRuntimeLogger, runtimeErrorCode } from '../r
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LOG_FILE = path.join(__dirname, '..', '..', 'sofa_debug.log');
 const DEFAULT_TIMEOUT_MS = 120000;
+const DEFAULT_MAX_STDOUT_BYTES = 2 * 1024 * 1024;
 
 const writeSofaLogLine = createFileLogWriter({ filePath: LOG_FILE });
 const sofaFileLogger = createRuntimeLogger({
@@ -37,6 +38,7 @@ export function createDirectFetchRuntime({
     spawnPython = spawnOwnedPython,
     terminateExecution = terminatePythonExecution,
     timeoutMs = DEFAULT_TIMEOUT_MS,
+    maxStdoutBytes = DEFAULT_MAX_STDOUT_BYTES,
     setTimeoutFn = setTimeout,
     clearTimeoutFn = clearTimeout,
     log = logDebug
@@ -106,6 +108,8 @@ export function createDirectFetchRuntime({
 
             const proc = handle.proc;
             let stdout = '';
+            let stdoutBytes = 0;
+            let stdoutOverflow = false;
             let resultSettled = false;
             let timedOut = false;
             let timer = null;
@@ -162,6 +166,26 @@ export function createDirectFetchRuntime({
             };
 
             proc.stdout.on('data', data => {
+                if (stdoutOverflow || resultSettled) return;
+                stdoutBytes += Buffer.byteLength(data);
+                if (stdoutBytes > maxStdoutBytes) {
+                    stdoutOverflow = true;
+                    stdout = '';
+                    log('sofa_output_overflow', {
+                        reason: 'scraper_output_too_large',
+                        maxBytes: maxStdoutBytes
+                    });
+                    settleResult(buildErrorResults(
+                        targets,
+                        500,
+                        'scraper_output_too_large'
+                    ));
+                    void Promise.resolve(terminateExecution(
+                        handle.executionId,
+                        handle.ownerToken
+                    )).catch(() => {});
+                    return;
+                }
                 stdout += data.toString();
             });
             proc.stderr.on('data', () => {});

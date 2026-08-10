@@ -12,6 +12,7 @@ import {
     persistenceFailure,
     matchesJournalTarget
 } from './commitResult.js';
+import { validateRepairPayload } from '../commitJournal/recordValidation.js';
 
 export function repairSofaCommitFromJournal(record, dependencies = {}, options = {}) {
     const successStatus = options.successStatus || 'recovered';
@@ -58,6 +59,10 @@ export function repairSofaCommitFromJournal(record, dependencies = {}, options =
                 failedDocument: 'history',
                 documents
             });
+        }
+        const payloadReason = validateRepairPayload(record, 'history');
+        if (payloadReason) {
+            return createCommitResult({ eventId, commitId, ok: false, status: 'failed', reason: payloadReason, failedDocument: 'journal', documents });
         }
 
         const writeResult = repairWriteHistory(
@@ -118,6 +123,10 @@ export function repairSofaCommitFromJournal(record, dependencies = {}, options =
                 failedDocument: 'timeline',
                 documents
             });
+        }
+        const payloadReason = validateRepairPayload(record, 'timeline');
+        if (payloadReason) {
+            return createCommitResult({ eventId, commitId, ok: false, status: 'failed', reason: payloadReason, failedDocument: 'journal', documents });
         }
 
         const writeResult = repairWriteTimeline(

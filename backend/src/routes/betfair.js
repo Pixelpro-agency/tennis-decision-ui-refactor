@@ -7,10 +7,10 @@ import {
     buildLatestBetfairPayload,
     buildBetfairJsonResponse
 } from './betfair/latestPayload.js';
-import { buildBetfairOddsResponse } from './betfair/oddsResponse.js';
 import { getMatchPersistenceIntegrity } from '../sofa/matchHistory.js';
 import { classifyCdpBaseUrl } from '../utils/cdpUrl.js';
 import { readBoundedRuntimeLog } from '../runtime/runtimeLogger.js';
+import { classifyBetfairUrl } from '../utils/betfairUrl.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LOG_FILE = path.join(__dirname, '..', '..', 'betfair_scraper.log');
@@ -51,25 +51,8 @@ export function handleBetfairLogRequest(_req, res, dependencies = {}) {
 router.get('/log', (req, res) => handleBetfairLogRequest(req, res));
 
 export function normalizeBetfairLoginTarget(value) {
-    if (value === undefined || value === null) return '';
-    if (typeof value !== 'string') return null;
-    const normalized = value.trim();
-    if (!normalized) return '';
-    try {
-        const parsed = new URL(normalized);
-        const hostname = parsed.hostname.toLowerCase();
-        const allowedHost = hostname === 'betfair.it' ||
-            hostname.endsWith('.betfair.it');
-        if (
-            !['http:', 'https:'].includes(parsed.protocol) ||
-            !allowedHost ||
-            parsed.username ||
-            parsed.password
-        ) return null;
-        return normalized;
-    } catch (_error) {
-        return null;
-    }
+    const result = classifyBetfairUrl(value, { allowEmpty: true });
+    return result.ok ? result.value : null;
 }
 
 export async function buildBetfairLoginWindowResponse(
@@ -182,17 +165,6 @@ export async function buildBetfairLoginWindowResponse(
 router.post('/login-window', async (req, res) => {
     const result = await buildBetfairLoginWindowResponse(req.body || {});
     return res.status(result.httpStatus).json(result.body);
-});
-
-router.get('/odds', async (req, res) => {
-    const result = await buildBetfairOddsResponse(req.query);
-    if (result.contentType) {
-        res.setHeader('content-type', result.contentType);
-    }
-    if (result.jsonBody) {
-        return res.status(result.httpStatus).json(result.jsonBody);
-    }
-    return res.status(result.httpStatus).send(result.serializedBody);
 });
 
 export default router;

@@ -1,4 +1,5 @@
-import { computePriceMove, findRunner, getMarketTotal, isReliableEntry, isReliableLadderSource, roundN } from './runnerFlow/primitives.js';
+import { computePriceMove, findRunner, getMarketTotal, isReliableEntry, roundN } from './runnerFlow/primitives.js';
+import { hasReliableLadder, isConfirmedMoneyFlow, isTradableBook } from '../matchEvidence/qualityPredicates.js';
 
 export function buildRunnerFlowEvidence(currentRunner, currentEntry, lookbackEntries, betfairRecent, graphHealthStatus) {
     const unavailable = {
@@ -31,7 +32,7 @@ export function buildRunnerFlowEvidence(currentRunner, currentEntry, lookbackEnt
 
     const currentReliable =
         graphHealthStatus === 'ok' &&
-        isReliableLadderSource(currentRunner.ladderSource);
+        hasReliableLadder(currentRunner);
 
     if (!currentReliable) {
         const reasons = [];
@@ -51,6 +52,7 @@ export function buildRunnerFlowEvidence(currentRunner, currentEntry, lookbackEnt
     const rawMf = currentRunner.moneyFlow && typeof currentRunner.moneyFlow === 'object'
         ? currentRunner.moneyFlow
         : null;
+    const flowReliable = rawMf === null || isConfirmedMoneyFlow(rawMf);
 
     const moneyFlowBack = rawMf && typeof rawMf.back === 'number' ? rawMf.back : null;
     const moneyFlowLay = rawMf && typeof rawMf.lay === 'number' ? rawMf.lay : null;
@@ -96,7 +98,7 @@ export function buildRunnerFlowEvidence(currentRunner, currentEntry, lookbackEnt
     const unclassifiedVolume = roundN(rawUnclassified, 2);
     const mfConfidence = rawMf?.confidence || null;
     const mfReason = rawMf?.reason || null;
-    const isSuppressed = mfConfidence === 'suppressed';
+    const isSuppressed = !isConfirmedMoneyFlow(rawMf);
     const suppressedVolume = (isSuppressed || (rawTrend === 'neutral' && effectiveDelta > 0))
         ? roundN(Math.max(unclassifiedVolume, effectiveDelta > classifiedVolume ? effectiveDelta - classifiedVolume : 0), 2)
         : roundN(unclassifiedVolume, 2);
@@ -108,7 +110,7 @@ export function buildRunnerFlowEvidence(currentRunner, currentEntry, lookbackEnt
     if (!hasVolume) {
         return {
             ...unavailable,
-            available: true, reliable: true, rawTrend: 'unknown',
+            available: true, reliable: flowReliable, rawTrend: 'unknown',
             classifiedVolume: 0, unclassifiedVolume: 0, suppressedVolume: 0,
             volumeDetected: false, directionAttributed: false, directionReliable: false,
             suppressedReason: null,
@@ -119,7 +121,7 @@ export function buildRunnerFlowEvidence(currentRunner, currentEntry, lookbackEnt
     if (backAmt === 0 && layAmt === 0 && (runnerMatchedDelta === null || runnerMatchedDelta === 0)) {
         return {
             ...unavailable,
-            available: true, reliable: true,
+            available: true, reliable: flowReliable,
             runnerMatchedDelta: runnerMatchedDelta ?? 0,
             marketMatchedDelta,
             tradedVolumeDelta,
@@ -139,7 +141,7 @@ export function buildRunnerFlowEvidence(currentRunner, currentEntry, lookbackEnt
         const interp = isSuppressed ? 'suppressed_matched_volume' : 'unclassified_matched_volume';
         ambiguityReasons.push(`Matched volume detected (${effectiveDelta.toFixed(0)}) but back/lay not attributed; reason: ${suppressedReason || 'unknown'}`);
         return {
-            available: true, reliable: true,
+            available: true, reliable: flowReliable,
             runnerMatchedDelta,
             marketMatchedDelta,
             tradedVolumeDelta,
@@ -207,9 +209,7 @@ export function buildRunnerFlowEvidence(currentRunner, currentEntry, lookbackEnt
         directionConfidence = 'medium';
     }
 
-    const bb = typeof currentRunner.bestBack === 'number' ? currentRunner.bestBack : null;
-    const bl = typeof currentRunner.bestLay === 'number' ? currentRunner.bestLay : null;
-    const bookTradable = bb !== null && bl !== null && bl > bb;
+    const bookTradable = isTradableBook(currentRunner);
     if (!bookTradable && (interpretation === 'volume_with_price_shortening' || interpretation === 'volume_with_price_drifting')) {
         ambiguityReasons.push('Large volume detected but book spread is poor or not tradable');
         directionConfidence = 'low';
@@ -223,7 +223,7 @@ export function buildRunnerFlowEvidence(currentRunner, currentEntry, lookbackEnt
 
     return {
         available: true,
-        reliable: true,
+        reliable: flowReliable,
         runnerMatchedDelta,
         marketMatchedDelta,
         tradedVolumeDelta,

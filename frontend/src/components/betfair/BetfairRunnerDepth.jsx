@@ -1,8 +1,10 @@
+import React from 'react';
 import { Activity } from 'lucide-react';
 import { toNumber } from '../../utils/betfairMoneyFlow.js';
 import MoneyFlowChart from './MoneyFlowChart.jsx';
 
-function formatPrice(value) {
+export function formatObservedPrice(value) {
+    if (value === null || value === undefined || value === '') return '—';
     const numberValue = Number(value);
     
     return Number.isFinite(numberValue)
@@ -10,12 +12,10 @@ function formatPrice(value) {
     : '—';
 }
 
-function formatAmount(value) {
-    const numberValue = toNumber(value);
-    
-    return numberValue > 0
-    ? numberValue.toFixed(0)
-    : '';
+export function formatObservedAmount(value, { empty = '—' } = {}) {
+    if (value === null || value === undefined || value === '') return empty;
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue.toFixed(0) : empty;
 }
 
 export default function BetfairRunnerDepth({
@@ -55,10 +55,6 @@ const getLayHighlight = (price) => {
     return index === -1 ? null : index;
 };
 
-const totalMatched = toNumber(
-    runner.totalMatchedOnSelection ?? runner.matchedTotal
-);
-
 return (
     <div className="flex flex-col min-h-[650px]">
     <div className="flex justify-between items-end mb-5">
@@ -76,14 +72,11 @@ return (
     </span>
     
     <strong className="font-mono text-sky-300">
-    {formatPrice(runner.bestBack)}
+    {formatObservedPrice(runner.bestBack)}
     </strong>
     
     <span className="mt-1 block text-[10px] text-slate-400">
-    {toNumber(runner.bestBackSize).toLocaleString('it-IT', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2
-    })} €
+    {formatObservedAmount(runner.bestBackSize)} €
     </span>
     </div>
     
@@ -93,14 +86,11 @@ return (
     </span>
     
     <strong className="font-mono text-rose-300">
-    {formatPrice(runner.bestLay)}
+    {formatObservedPrice(runner.bestLay)}
     </strong>
     
     <span className="mt-1 block text-[10px] text-slate-400">
-    {toNumber(runner.bestLaySize).toLocaleString('it-IT', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2
-    })} €
+    {formatObservedAmount(runner.bestLaySize)} €
     </span>
     </div>
     </div>
@@ -183,7 +173,7 @@ return (
             <td
             className={`w-[18%] py-2 px-3 border-r border-white/5 ${priceColor}`}
             >
-            {formatPrice(row.price)}
+            {formatObservedPrice(row.price)}
             </td>
             
             <td className="py-1 px-4 relative min-w-[120px]">
@@ -201,7 +191,7 @@ return (
                 : '0'
             }}
             >
-            {formatAmount(backValue)}
+            {formatObservedAmount(row.back, { empty: '' })}
             </div>
             </div>
             
@@ -220,7 +210,7 @@ return (
                 : '0'
             }}
             >
-            {formatAmount(layValue)}
+            {formatObservedAmount(row.lay, { empty: '' })}
             </div>
             </div>
             </div>
@@ -235,7 +225,7 @@ return (
             />
             
             <span className="relative z-10 text-slate-300 font-bold">
-            {formatAmount(totalRowMatched)}
+            {formatObservedAmount(row.traded)}
             </span>
             </td>
             </tr>
@@ -258,7 +248,7 @@ return (
     <div className="flex items-center gap-2 text-slate-500 bg-white/5 px-2 py-1 rounded">
     <Activity className="w-3.5 h-3.5" />
     <span className="font-bold">
-    TOTAL MATCHED: {totalMatched.toFixed(0)} EUR
+    TOTAL MATCHED: {formatObservedAmount(runner.totalMatchedOnSelection ?? runner.matchedTotal)} EUR
     </span>
     </div>
                     </div>

@@ -40,6 +40,12 @@ runTest('returns null for a non-string event id', () => {
     assert.equal(normalizeEvidenceEventId(16305613), null);
 });
 
+for (const unsafeEventId of ['../secret', 'event/path', 'event\\path', 'event\ncontrol', 'x'.repeat(129)]) {
+    runTest(`rejects unsafe event id ${JSON.stringify(unsafeEventId)}`, () => {
+        assert.equal(normalizeEvidenceEventId(unsafeEventId), null);
+    });
+}
+
 runTest('builds the existing invalid-event-id response', () => {
     assert.deepEqual(buildInvalidEvidenceEventIdResponse(), {
         httpStatus: 400,
@@ -61,6 +67,7 @@ runTest('maps incomplete confirmation context to HTTP 422', () => {
             body: {
                 ok: false,
                 eventId: '16305613',
+                code: 'confirmation_context_incomplete',
                 error: 'Source identity confirmation is invalid'
             }
         }
@@ -78,13 +85,14 @@ runTest('maps non-pending automatic identity to HTTP 409', () => {
             body: {
                 ok: false,
                 eventId: '16305613',
+                code: 'automatic_identity_not_pending',
                 error: 'Source identity confirmation is invalid'
             }
         }
     );
 });
 
-runTest('maps all other validation codes to HTTP 400', () => {
+runTest('maps unknown validation codes to bounded HTTP 400', () => {
     assert.deepEqual(
         buildManualConfirmationValidationResponse(
             '16305613',
@@ -95,17 +103,31 @@ runTest('maps all other validation codes to HTTP 400', () => {
             body: {
                 ok: false,
                 eventId: '16305613',
+                code: 'confirmation_invalid',
                 error: 'Source identity confirmation is invalid'
             }
         }
     );
 });
 
-runTest('buildGateManualConfirmationResponse returns null if no active gate exists', () => {
+runTest('maps persistence and bootstrap failures to bounded HTTP 500', () => {
+    for (const [internalCode, publicCode] of [
+        ['persistence_failed', 'confirmation_persistence_failed'],
+        ['bootstrap_persistence_failed', 'confirmation_bootstrap_failed'],
+        ['bootstrap_rollback_failed', 'confirmation_rollback_failed']
+    ]) {
+        const response = buildManualConfirmationValidationResponse('16305613', internalCode);
+        assert.equal(response.httpStatus, 500);
+        assert.equal(response.body.code, publicCode);
+    }
+});
+
+runTest('buildGateManualConfirmationResponse fails closed if no active gate exists', () => {
     const res = buildGateManualConfirmationResponse('12345', {}, {
         getSourceIdentityGateStatus: () => ({ ok: false })
     });
-    assert.equal(res, null);
+    assert.equal(res.httpStatus, 409);
+    assert.equal(res.body.code, 'confirmation_session_changed');
 });
 
 runTest('buildGateManualConfirmationResponse returns 422 for collecting phase', () => {

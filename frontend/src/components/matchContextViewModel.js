@@ -14,6 +14,15 @@ const isFiniteNumber = value =>
 const isPercentage = value =>
     isFiniteNumber(value) && value >= 0 && value <= 100;
 
+const approximatelyEqual = (left, right, tolerance = 0.2) =>
+    Math.abs(left - right) <= tolerance;
+
+function hasSupportedContract(localContext) {
+    return localContext?.version === 1 &&
+        localContext.source === 'project-calculated' &&
+        localContext.purpose === 'descriptive-match-context';
+}
+
 function playerNames(players) {
     return {
         homeName: typeof players?.home?.name === 'string' && players.home.name.trim()
@@ -26,13 +35,26 @@ function playerNames(players) {
 }
 
 function validPointShare(pointShare) {
-    return pointShare?.available === true &&
+    if (!(pointShare?.available === true &&
         isFiniteNumber(pointShare.homePoints) &&
         pointShare.homePoints >= 0 &&
         isFiniteNumber(pointShare.awayPoints) &&
         pointShare.awayPoints >= 0 &&
+        isFiniteNumber(pointShare.totalPoints) &&
+        pointShare.totalPoints > 0 &&
         isPercentage(pointShare.homePct) &&
-        isPercentage(pointShare.awayPct);
+        isPercentage(pointShare.awayPct))) {
+        return false;
+    }
+
+    const pointsTotal = pointShare.homePoints + pointShare.awayPoints;
+    const expectedHomePct = (pointShare.homePoints / pointsTotal) * 100;
+    const expectedAwayPct = 100 - expectedHomePct;
+
+    return approximatelyEqual(pointsTotal, pointShare.totalPoints, 0.000001) &&
+        approximatelyEqual(pointShare.homePct + pointShare.awayPct, 100) &&
+        approximatelyEqual(pointShare.homePct, expectedHomePct) &&
+        approximatelyEqual(pointShare.awayPct, expectedAwayPct);
 }
 
 const oneDecimal = value => value.toFixed(1).replace('.', ',');
@@ -72,10 +94,13 @@ export function getRecentUnavailableMessage(reason) {
 
 export function buildMatchContextViewModel(localContext, players) {
     const names = playerNames(players);
-    const matchPointShare = localContext?.match?.pointShare;
-    const recent = localContext?.recent;
+    const supportedContext = hasSupportedContract(localContext)
+        ? localContext
+        : null;
+    const matchPointShare = supportedContext?.match?.pointShare;
+    const recent = supportedContext?.recent;
     const recentPointShare = recent?.pointShare;
-    const comparison = localContext?.comparison;
+    const comparison = supportedContext?.comparison;
 
     const match = validPointShare(matchPointShare)
         ? { title: 'Punti nel match', ...shareView(matchPointShare, names)}
@@ -86,8 +111,12 @@ export function buildMatchContextViewModel(localContext, players) {
         };
 
     const hasVerifiedRecentWindow = (
+        recent?.window?.kind === 'completed-games' &&
+        recent.window.requestedGames === 3 &&
         recent?.window?.includedGames === 3 &&
-        recent.window.excludedCurrentGame === true
+        recent.window.excludedCurrentGame === true &&
+        Array.isArray(recent.window.games) &&
+        recent.window.games.length === 3
     );
 
     const recentView = (
@@ -105,9 +134,27 @@ export function buildMatchContextViewModel(localContext, players) {
             message: getRecentUnavailableMessage(recent?.reason)
         };
 
-    const comparisonView = comparison?.available === true &&
+    const expectedHomeDelta = recentPointShare?.homePct - matchPointShare?.homePct;
+    const expectedAwayDelta = recentPointShare?.awayPct - matchPointShare?.awayPct;
+    const comparisonIsCoherent = match.available === true &&
+        recentView.available === true &&
+        comparison?.available === true &&
         isFiniteNumber(comparison.homeDeltaPctPoints) &&
-        isFiniteNumber(comparison.awayDeltaPctPoints)
+        isFiniteNumber(comparison.awayDeltaPctPoints) &&
+        approximatelyEqual(
+            comparison.homeDeltaPctPoints,
+            expectedHomeDelta
+        ) &&
+        approximatelyEqual(
+            comparison.awayDeltaPctPoints,
+            expectedAwayDelta
+        ) &&
+        approximatelyEqual(
+            comparison.homeDeltaPctPoints + comparison.awayDeltaPctPoints,
+            0
+        );
+
+    const comparisonView = comparisonIsCoherent
         ? {
             available: true,
             title: 'Differenza osservata rispetto al match',

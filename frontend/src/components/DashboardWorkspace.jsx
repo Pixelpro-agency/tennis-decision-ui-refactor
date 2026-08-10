@@ -10,7 +10,9 @@ const DashboardWorkspace = ({
     backendData,
     sofaLastUpdate,
     sofaServerStatus,
+    sofaReadStatus,
     betfairData,
+    betfairReadStatus,
     betfairLastUpdate,
     betfairHealth,
     betfairHealthTransition,
@@ -21,6 +23,7 @@ const DashboardWorkspace = ({
     sourceIdentityGateStatus,
     hasBetfairUrl,
     trackingStopped,
+    persistenceViewState,
     onOpenSourceIdentityConfirmation,
     sourceIdentityToast,
     onDismissSourceIdentityToast,
@@ -32,8 +35,10 @@ const DashboardWorkspace = ({
         backendData,
         sofaLastUpdate,
         sofaServerStatus,
+        sofaReadStatus,
         sourceIdentityGateStatus,
         betfairData,
+        betfairReadStatus,
         betfairLastUpdate,
         betfairHealth,
         betfairHealthTransition,
@@ -80,6 +85,15 @@ const DashboardWorkspace = ({
                     data={topBarData}
                     connections={connections}
                 />
+
+                {['degraded', 'error'].includes(persistenceViewState?.status) && (
+                    <div
+                        className="mx-4 mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-200"
+                        role="status"
+                    >
+                        {persistenceViewState.label}
+                    </div>
+                )}
 
                 {dashboardData && (
                     <MatchOverviewBar data={dashboardData.matchOverviewBar} />

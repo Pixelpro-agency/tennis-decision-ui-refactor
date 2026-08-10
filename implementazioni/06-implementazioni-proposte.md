@@ -19,6 +19,7 @@ Questo file è l’indice corrente delle schede `IMPL-*`. Le schede complete viv
 Completate:
 
 - IMPL-001;
+- IMPL-004;
 - IMPL-005;
 - IMPL-015;
 - IMPL-028;

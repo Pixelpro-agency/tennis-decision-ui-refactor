@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { mapBackendDataToDashboard } from '../types/dashboard';
+import { mapBackendDataToDashboard } from '../types/dashboard.js';
 
 function normalizeMoneyFlowHistory(value) {
     return Array.isArray(value?.series)
@@ -15,9 +15,11 @@ export function useDashboardViewModel({
     betfairData,
     betfairMoneyFlowHistory,
     confirmedUrl,
-    loadMatch
+    loadMatch,
+    matchReadStatus
 }) {
     const [dashboardData, setDashboardData] = useState(null);
+    const [lastKnownDashboardData, setLastKnownDashboardData] = useState(null);
     const [betfairHistory, setBetfairHistory] = useState({ series: [] });
 
     useEffect(() => {
@@ -34,8 +36,11 @@ export function useDashboardViewModel({
                 betfair: betfairData
             });
             setDashboardData(mapped);
+            setLastKnownDashboardData(mapped);
+        } else {
+            setDashboardData(null);
         }
-    }, [backendData, isSofaPolling, sofaLastUpdate, serverStatus, confirmedUrl, betfairData]);
+    }, [backendData, isSofaPolling, sofaLastUpdate, serverStatus, confirmedUrl, betfairData, matchReadStatus]);
 
     useEffect(() => {
         if (confirmedUrl) {
@@ -45,6 +50,8 @@ export function useDashboardViewModel({
 
     return {
         dashboardData,
+        lastKnownDashboardData,
+        readStatus: matchReadStatus,
         betfairHistory
     };
 }

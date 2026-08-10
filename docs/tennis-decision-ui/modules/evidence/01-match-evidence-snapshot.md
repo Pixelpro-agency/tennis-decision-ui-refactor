@@ -43,7 +43,9 @@ timeline SofaScore + timeline Betfair opzionale
 → risposta API Evidence
 ```
 
-L’epoch Betfair attivo è la porzione finale contigua della timeline con la stessa firma di mercato. I tick di epoch storici non partecipano a lookback, market evidence o Market Reactions del contesto corrente.
+L'epoch Betfair attivo è la porzione finale contigua della timeline con la stessa firma di mercato. I tick di epoch storici non partecipano a lookback, market evidence o Market Reactions del contesto corrente.
+
+Il boundary costruisce viste canoniche prima della composizione. Sofa accetta solo entry `source=sofa`; Betfair richiede `source=betfair`, `seq` finito e un array di runner composto da oggetti non-array. Wrong-source, legacy, `seq` non finiti e runner malformed non rendono una timeline `found` e non raggiungono Source Identity o data quality.
 
 La lettura di `integrity` usa adapter read-only esposti dal livello storage/API e non importa direttamente payload journalizzati, target locali o path filesystem.
 
@@ -76,6 +78,8 @@ noTradeReasons
 | `noTradeReasons`         | Blocchi espliciti da qualità dati, mercato, allineamento, identità o persistenza |
 
 `marketReactionEvidence.summary.causalityClaimed` resta sempre `false`.
+
+`metadata.updatedAt` è il momento in cui lo snapshot viene costruito. Non misura la freshness di SofaScore o Betfair: quella appartiene a `dataQuality` e ai timestamp delle fonti. Non esiste al momento un campo additivo `computedAt`.
 
 ## Persistence integrity nello snapshot
 
@@ -321,7 +325,9 @@ noTradeReasons
 
 Questo è un comportamento dello snapshot da timeline persistite. Non implica che il gate live sia `not-applicable`, `collecting` o `pending`.
 
-Se manca anche una timeline SofaScore leggibile, il loader non può produrre uno snapshot Evidence completo.
+Il composer supporta anche il caso Betfair-only: se Betfair contiene almeno una entry e SofaScore manca, costruisce uno snapshot degradato con Source Identity `pending` e senza uso cross-source. Solo quando entrambe le timeline non hanno entry restituisce `missing:true`.
+
+I flag `sources.sofaTimelineFound` e `sources.betfairTimelineFound` significano «documento caricato con almeno una entry», non semplice esistenza del file. Il loader corrente non espone ancora una read-result semantics che distingua file assente, errore di discovery/lettura, JSON invalido e shape invalida; Evidence non tenta recovery automatica.
 
 Se la mancanza di una timeline è accompagnata da `partial_persistence` o `recovery_failed`, Evidence deve mantenere l’assenza osservabile tramite `integrity` e `persistenceComplete:false`, senza tentare recovery.
 
@@ -342,6 +348,10 @@ La costruzione dello snapshot non deve:
 
 Può leggere una conferma Source Identity già persistita e applicarla soltanto quando è compatibile con l’event ID e l’epoch corrente.
 
+La lettura del confirmation store è fail-closed. `sources.confirmationStoreStatus` espone `ok`, `unavailable` o `not_applicable`; il campo bounded `confirmationStoreReason` distingue `not_found`, `invalid_json`, `invalid_shape`, `invalid_record`, `read_failed` e `lookup_failed`, senza path, stack o payload.
+
+Nel gate live la conferma viene persistita soltanto dopo un bootstrap riuscito. Un bootstrap fallito lascia fase `pending` e non crea una confirmation durevole; un fallimento della scrittura della confirmation non porta la sessione in `recording`. Lo snapshot continua comunque a rappresentare l'identità effective delle timeline, non la fase corrente del gate live.
+
 Può leggere `integrity` già calcolata dagli adapter read-only, ma non deve usare `integrity` per riparare dati o cambiare lo stato runtime di SofaScore, Betfair, scraper o tracker.
 
 ## Invarianti interpretativi
@@ -358,16 +368,28 @@ Può leggere `integrity` già calcolata dagli adapter read-only, ma non deve usa
 * `persistenceComplete:false` non è equivalente a Source Identity mismatch.
 * `partial_persistence` e `recovery_failed` non sono health Betfair, Graph health, freshness o runtime scraper.
 
+## Ownership dei dettagli
+
+Questo documento possiede input, ordine di composizione, output, gating cross-source, confine read-only e limiti del composer. Algoritmo e fingerprint Source Identity, Graph/Money Flow, Market Reactions e journal/recovery appartengono ai rispettivi owner collegati e qui sono richiamati soltanto per descrivere come influenzano lo snapshot.
+
+Il domain snapshot è distinto dall'envelope HTTP. La route Evidence restituisce errori pubblici statici e bounded (`evidence_build_failed` per la costruzione) e non propaga message, stack, path, URL o dettagli filesystem ricevuti dalle eccezioni interne.
+
 ## Verifica
 
 Dalla cartella `backend/src`:
 
 ```txt
-node sofa/matchEvidence/latestMatchEvidence.test.mjs
-node sofa/matchEvidence/evidenceBuilder.test.mjs
+node sofa/matchEvidence/latestMatchEvidence/loadingAndEpochs.test.mjs
+node sofa/matchEvidence/latestMatchEvidence/manualConfirmation.test.mjs
+node sofa/matchEvidence/latestMatchEvidence/persistenceIntegrity.test.mjs
+node sofa/matchEvidence/evidenceBuilder/sourceAvailability.test.mjs
+node sofa/matchEvidence/evidenceBuilder/sourceIdentityGate.test.mjs
+node sofa/matchEvidence/evidenceBuilder/persistenceIntegrity.test.mjs
 node sofa/matchEvidence/noTradeReasons.test.mjs
 node sofa/matchEvidence/dataQuality.test.mjs
 node sofa/matchEvidence/sofaEvidence.test.mjs
+node routes/evidence/evidenceRoute.test.mjs
+node routes/evidence/evidenceResponses.test.mjs
 ```
 
 La suite deve verificare almeno:
@@ -384,6 +406,11 @@ Source Identity pending o mismatch
 snapshot Sofa-only
 → Evidence disponibile
 → nessuna attribuzione di mercato
+
+snapshot Betfair-only
+→ Evidence degradato disponibile
+→ Source Identity pending
+→ nessun uso cross-source
 
 integrity no_known_partial
 → persistenceComplete true

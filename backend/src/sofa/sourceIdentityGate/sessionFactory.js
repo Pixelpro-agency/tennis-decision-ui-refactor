@@ -1,6 +1,7 @@
 export function createGateSession(eventId, options = {}) {
     return {
         eventId,
+        trackingSessionId: options.trackingSessionId ?? null,
         hasBetfairUrl: !!options.hasBetfairUrl,
         onOpenRecording: options.onOpenRecording || (() => {}),
         onMismatch: options.onMismatch || (() => {}),

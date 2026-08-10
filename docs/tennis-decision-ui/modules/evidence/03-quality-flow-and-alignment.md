@@ -2,137 +2,96 @@
 
 ## Scopo
 
-Questo modulo definisce come Evidence valuta utilizzabilità, qualità tecnica e relazione temporale dei dati.
+Questo modulo documenta come Evidence descrive disponibilità, freschezza, affidabilità tecnica e relazione temporale dei dati. Non genera segnali operativi e non deduce causalità fra campo e mercato.
 
-Non genera segnali operativi e non stabilisce causalità fra campo e mercato.
+La presenza di un dato non implica che sia fresco, affidabile o autorizzato per un confronto cross-source:
 
-Consuma lo stato di persistenza in modo read-only per distinguere dati canonicalmente utilizzabili da dati presenti ma non utilizzabili in modo cross-source perché la persistenza canonica è incompleta o non recuperabile.
+```txt
+available ≠ fresh ≠ reliable ≠ cross-source allowed 
+temporal proximity ≠ causality
+```
 
-Non esegue recovery, non scrive journal, non modifica history o timeline e non avvia scraper.
+Il layer è read-only: non esegue scraping, recovery o scritture su history, timeline e journal.
 
 ## Implementazione
 
 ```txt
 backend/src/sofa/matchEvidence/dataQuality.js
 backend/src/sofa/matchEvidence/alignment.js
+backend/src/sofa/matchEvidence/alignmentExtension.js
 backend/src/sofa/matchEvidence/noTradeReasons.js
+backend/src/sofa/matchEvidence/evidenceBuilder.js
 backend/src/sofa/marketFlowEvidence.js
+backend/src/sofa/marketFlowEvidence/
 backend/src/sofa/sofaEventMarkers.js
 backend/src/sofa/temporalAlignmentEvidence.js
+backend/src/sofa/temporalAlignment/
 ```
 
-Responsabilità principali:
+| Area                  | Responsabilità corrente                                       |
+| --------------------- | ------------------------------------------------------------- |
+| `dataQuality.js`      | Recency, Graph health, ladder, Money Flow, book e persistenza |
+| `alignment.js`        | Età indipendente dei tick e qualità di freshness aggregata    |
+| `marketFlowEvidence/` | Flow descrittivo, confronto prezzi e riepilogo runner         |
+| `sofaEventMarkers.js` | Marker descrittivi del contesto SofaScore                     |
+| `temporalAlignment/`  | Relazione temporale diagnostica sul lookback                  |
+| `noTradeReasons.js`   | Motivi che impediscono l’uso operativo                        |
 
-| Modulo                         | Responsabilità                                                  |
-| ------------------------------ | --------------------------------------------------------------- |
-| `dataQuality.js`               | Freschezza, health tecnica, tradabilità e `persistenceComplete` |
-| `alignment.js`                 | Allineamento temporale fra marker SofaScore e dati mercato      |
-| `noTradeReasons.js`            | Reason operative, inclusa la persistenza incompleta             |
-| `marketFlowEvidence.js`        | Money flow descrittivo e classificazione volumi                 |
-| `sofaEventMarkers.js`          | Marker descrittivi del contesto SofaScore                       |
-| `temporalAlignmentEvidence.js` | Prossimità temporale senza causalità dichiarata                 |
+## Freshness e `alignmentQuality`
 
-## Qualità e tradabilità
+`buildAlignment()` separa l'età delle fonti dal gap pairwise. I campi canonici sono `freshnessQuality`, `maxSourceAgeSec`, `crossSourceGapSec` e `pairwiseAvailable`.
 
-La qualità distingue disponibilità, freschezza, affidabilità e completezza della persistenza canonica.
-
-Fattori rilevanti:
-
-* tick SofaScore recente;
-* tick Betfair recente;
-* health Graph e ladder;
-* disponibilità book;
-* spread;
-* timestamp validi;
-* volume coerente;
-* Source Identity effective, che autorizza l’attribuzione e i confronti cross-source senza modificare la qualità tecnica del tick;
-* `persistenceComplete`, che autorizza l’uso canonico cross-source solo quando non esiste persistenza incompleta nota.
-
-Un dato presente ma stale, incoerente, non tradabile o non canonicalmente completo non deve essere trasformato in evidenza affidabile.
-
-Le condizioni che bloccano l’operatività vengono sintetizzate in `noTradeReasons`. Le ulteriori limitazioni diagnostiche — ad esempio Graph health, flow invalidato o placeholder di integrazioni future — restano in `dataQuality.reasons`.
-
-## Persistence integrity e qualità cross-source
-
-Evidence riceve `integrity` come stato read-only della persistenza canonica.
-
-Gli stati pubblici sono:
+In particolare:
 
 ```txt
-no_known_partial
-partial_persistence
-recovery_failed
+maxSourceAgeSec = max(sofaAgeSec, betfairAgeSec)
+crossSourceGapSec = abs(sofaTimestamp - betfairTimestamp)
 ```
 
-`dataQuality` deriva `persistenceComplete` con queste regole:
+Se una fonte manca, `pairwiseAvailable` è false e la quality non viene promossa a `medium`. `alignmentQuality` e `maxTickGapSec` restano alias compatibili dei campi di freshness durante la transizione.
+
+La policy comune tollera uno skew futuro massimo di 5 secondi. Oltre la tolleranza `ageSec()` restituisce `null`, la fonte non è recente e Data Quality aggiunge una reason bounded specifica per SofaScore o Betfair.
+
+## Data Quality
+
+`buildDataQuality()` espone:
 
 ```txt
-integrity.status = no_known_partial
-→ persistenceComplete:true
-
-integrity.status = partial_persistence
-integrity.status = recovery_failed
-→ persistenceComplete:false
-```
-
-Quando `persistenceComplete:false`, Evidence aggiunge la reason standard:
-
-```txt
-Persistence incomplete: canonical cross-source evidence unavailable
-```
-
-La reason viene aggiunta una sola volta e può coesistere con reason Source Identity `pending` o `mismatch`, senza duplicati.
-
-La persistence integrity non modifica:
-
-```txt
-betfairRecent
+sofaLive
 sofaRecent
-freshness
-staleness
-latestTimestamp
-tick freshness tecnica
-Graph health
-ladder reliability
-Money Flow calcolabile
+betfairRecent
+graphHealth
+ladderReliable
+moneyFlowReliable
+marketTradable
+persistenceComplete
+reasons
 ```
 
-Un tick Betfair fresco resta tecnicamente fresco anche se la persistenza è incompleta.
-
-La persistenza incompleta è un blocco di usabilità canonica cross-source, non un errore tecnico del tick, non un mismatch Source Identity e non una prova di causalità assente o presente.
-
-Quando la persistenza è incompleta o non recuperabile, il livello qualità può degradare l’uso cross-source ma non cancella dati già letti, non ripara journal e non ricostruisce timeline.
-
-## Market flow
-
-Il flow descrive dati disponibili sui runner:
+`ladderReliable` richiede almeno un runner con:
 
 ```txt
-book
-ladder
-last traded price
-matched volume
-runner delta
-market delta
-back
-lay
-unclassified volume
-suppressed volume
+tick Betfair recente
+Graph health ok
+ladderSource affidabile
+ladder array non vuota
 ```
 
-Il volume classificato come `back` o `lay` è utilizzabile solo se supera le verifiche di coerenza.
-
-Volume ambiguo, anomalo o non attribuibile deve restare:
+`marketTradable` richiede nello stesso runner:
 
 ```txt
-unclassified
-suppressed
-invalid
+bestBack > 0
+bestLay > 0
+bestLay > bestBack
 ```
 
-Non deve diventare pressione direzionale certa.
+Money Flow è candidata reliable soltanto con `confidence: "confirmed"`, valori finiti e delta non negativi. Gli output `suppressed` restano diagnostici e non diventano reliable in base alla singola reason. Il predicate è condiviso e non mantiene una blacklist consumer separata dal producer.
 
-Priorità per il prezzo comparabile:
+## Flow dei runner
+
+Il flow descrive book, prezzo, matched volume, delta, volume classificato, volume non classificato e volume soppresso. Il volume ambiguo o anomalo non deve diventare pressione direzionale certa.
+
+Priorità del prezzo comparabile:
 
 ```txt
 lastTradedPrice
@@ -141,19 +100,15 @@ lastTradedPrice
 → bestLay
 ```
 
-Il lookback considera fino a dieci tick precedenti del solo epoch Betfair attivo. L’affidabilità delle entry usate nel confronto è verificata dai moduli di flow e non modifica dati persistiti.
+Il lookback usa fino a dieci tick precedenti del solo epoch Betfair attivo.
 
-Se `persistenceComplete:false`, il flow può restare diagnosticamente calcolabile sul tick letto, ma non deve essere promosso a evidenza canonica cross-source né usato per attribuire reazioni di mercato al contesto SofaScore.
+La reliability locale di `runnerFlow` usa lo stesso predicate della quality: origine affidabile e ladder non vuota, sia per il tick corrente sia per le entry di lookback. Un Money Flow suppressed può restare available come diagnostica ma porta `flowEvidence.reliable:false` e non rende reliable il market summary.
+
+Il predicate condiviso del book richiede back e lay positivi e `bestLay > bestBack`. È usato da Data Quality, runner flow, runner Evidence e Temporal Alignment.
 
 ## Marker SofaScore
 
-Facade:
-
-```txt
-backend/src/sofa/sofaEventMarkers.js
-```
-
-Marker implementati:
+La facade `backend/src/sofa/sofaEventMarkers.js` espone marker descrittivi:
 
 ```txt
 DEUCE
@@ -163,122 +118,158 @@ GAME_POINT
 PRESSURE_POINT
 ```
 
-I marker sono descrittivi. Non sono trade trigger.
+I marker non sono trade trigger. `DEUCE` e `THIRTY_ALL` non assegnano automaticamente pressione a un giocatore.
 
-`DEUCE` e `THIRTY_ALL` non assegnano automaticamente pressione a un giocatore.
+## Tre contratti temporali distinti
 
-Un marker SofaScore può partecipare ad allineamento temporale solo quando i dati cross-source richiesti sono utilizzabili e la persistenza canonica non è degradata.
+Il payload usa oggi tre livelli che non devono essere confusi.
 
-## Allineamento temporale
+### Freshness aggregata
 
-L’allineamento usa soltanto timestamp validi.
+`alignmentQuality` e `maxTickGapSec` descrivono l'età dei tick rispetto a `now`, con i limiti indicati sopra.
 
-Può confrontare:
+### Ordine marker/mercato dello snapshot
 
-```txt
-marker SofaScore
-cambio punteggio
-movimento prezzo Betfair
-finestra temporale
-```
-
-Il risultato esprime prossimità e ordine temporale, non causa.
+`latestSnapshotMarkerOrder` confronta il marker corrente con il movimento del dominant runner e usa una finestra di 10 secondi:
 
 ```txt
-temporal proximity
-≠
-causalità dimostrata
+same_window
+market_after_sofa
+market_before_sofa
 ```
 
-Quando `persistenceComplete:false`, l’allineamento cross-source canonicalmente affidabile viene degradato: il sistema può descrivere la disponibilità dei dati letti, ma non deve usare quel confronto come base per Evidence canonica, Market Reactions o reason operative favorevoli al trade.
+### Relazione temporale sul lookback
 
-## Separazione da Source Identity
-
-Source Identity stabilisce se i dati SofaScore e Betfair possono essere attribuiti allo stesso evento.
-
-Persistence integrity stabilisce se i dati canonici persistiti sono completi o degradati.
-
-Sono assi separati:
+`temporalLookbackReactionWindow` seleziona marker e movimento dal lookback e usa una finestra di 30 secondi:
 
 ```txt
-Source Identity pending o mismatch
-→ attribuzione cross-source non autorizzata
-
-partial_persistence o recovery_failed
-→ persistenza canonica incompleta o non recuperabile
+same_window
+sofa_before_betfair
+betfair_before_sofa
 ```
 
-Una Source Identity effective non supera una persistenza incompleta.
+I due ultimi contratti differiscono sia per input sia per soglia. Non sono due nomi equivalenti per la stessa misura.
 
-Una persistenza completa non supera una Source Identity pending o mismatch.
+Il temporal alignment distingue `available` da `reliable`. Il primo indica che marker, movimento e timestamp permettono una relazione diagnostica; il secondo richiede anche fonti recenti, Graph health `ok`, ladder reliable e book tradabile. `reliabilityReasons` spiega in modo bounded ogni degradazione.
+
+Ogni output temporale mantiene `causalityClaimed: false`.
+
+## Persistence integrity e scoping cross-source
+
+Gli stati pubblici sono:
+
+```txt
+no_known_partial
+partial_persistence
+recovery_failed
+```
+
+`partial_persistence` e `recovery_failed` producono `persistenceComplete:false` e la reason:
+
+```txt
+Persistence incomplete: canonical cross-source evidence unavailable
+```
+
+Questo blocco non trasforma un tick fresco in stale e non modifica Graph health, ma impedisce al composer di passare tick e lookback Betfair a `marketEvidence`. Rimane osservabile la quality tecnica calcolata sul tick raw; il dettaglio flow non viene costruito come blocco diagnostico separato.
+
+La stessa separazione vale quando Source Identity non autorizza il confronto. 
+
+Una fonte tecnicamente valida non diventa automaticamente Evidence cross-source.
+
+Reason e predicate della persistence integrity appartengono a `persistenceQuality.js`. `buildNoTradeReasons(dataQuality, alignment)` usa `dataQuality.persistenceComplete` come authority e non riceve parametri inutilizzati.
 
 ## Invarianti
 
 Questo livello non deve:
 
-* trattare money flow come intenzione certa;
-* dedurre causalità da prezzo, volume o prossimità temporale;
-* usare una entry non affidabile come riferimento per il confronto di flow;
-* usare epoch Betfair diverse nello stesso confronto;
-* promuovere flow o alignment cross-source quando `persistenceComplete:false`;
-* trasformare `partial_persistence` o `recovery_failed` in errore Graph, freshness stale, Source Identity mismatch o runtime scraper failure;
-* eseguire fetch, scraping o I/O;
-* eseguire recovery o scrivere journal;
-* modificare history o timeline;
-* dipendere dalla UI.
+- trattare Money Flow come intenzione certa;
+- dedurre causalità da volume, prezzo o prossimità temporale;
+- mescolare epoch Betfair diverse nello stesso confronto;
+- promuovere dati cross-source quando Source Identity o persistence integrity li bloccano;
+- descrivere `available` come sinonimo di `reliable`;
+- trasformare un conflitto di persistenza in errore Graph o mismatch Source Identity;
+- eseguire fetch, scraping, recovery o scritture;
+- dipendere dalla UI.
+
+## Riferimenti implementativi
+
+| Responsabilità              | Implementazione                                                         |
+| --------------------------- | ----------------------------------------------------------------------- |
+| qualità e reason Evidence   | `backend/src/sofa/matchEvidence/dataQuality.js`, `noTradeReasons.js`    |
+| allineamento dello snapshot | `backend/src/sofa/matchEvidence/alignment.js`, `alignmentExtension.js`  |
+| flow per runner e mercato   | `backend/src/sofa/marketFlowEvidence/runnerFlow.js`, `marketSummary.js` |
+| marker SofaScore            | `backend/src/sofa/sofaEventMarkers.js`                                  |
+| allineamento temporale      | `backend/src/sofa/temporalAlignmentEvidence.js`, `temporalAlignment/`   |
+| composizione Evidence       | `backend/src/sofa/matchEvidence/evidenceBuilder.js`                     |
+
+Il percorso di costruzione resta:
+
+```text
+timeline canoniche + integrity + Source Identity
+→ qualità tecnica per sorgente
+→ flow per runner e riepilogo mercato
+→ marker SofaScore
+→ finestre temporali e alignment
+→ reason aggregate
+→ snapshot Evidence read-only
+```
+
+### Matrice delle authority
+
+| Domanda                                          | Authority                                 |
+| ------------------------------------------------ | ----------------------------------------- |
+| Il campione Betfair è tecnicamente utilizzabile? | classificatore Betfair upstream           |
+| La persistenza è completa?                       | integrity di journal/timeline             |
+| Le sorgenti appartengono allo stesso match?      | Source Identity Gate                      |
+| Il flow è affidabile?                            | builder Money Flow e qualità ladder       |
+| L'evento è temporalmente allineato?              | temporal alignment, non la sola freshness |
+
+Queste authority non sono intercambiabili. In particolare:
+
+```text
+fresh == true
+≠ flow affidabile
+≠ persistenza completa
+≠ Source Identity confermata
+≠ alignment disponibile
+```
+
+### Failure e suppression
+
+Un dato mancante, ambiguo o soppresso conserva la propria reason. Il composer non converte suppression in affidabilità e non presenta una finestra temporale come disponibile quando freshness, integrity o Source Identity ne impediscono l'uso.
+
+La verifica automatica usa almeno:
+
+```text
+backend/src/sofa/matchEvidence/dataQuality.test.mjs
+backend/src/sofa/matchEvidence/alignment.test.mjs
+backend/src/sofa/matchEvidence/noTradeReasons.test.mjs
+backend/src/sofa/marketFlowEvidence/runnerFlow.test.mjs
+backend/src/sofa/sofaEventMarkers/markerDetector.test.mjs
+```
 
 ## Verifica
 
-```txt
-node sofa/matchEvidence/dataQuality.test.mjs
-node sofa/matchEvidence/alignment.test.mjs
-node sofa/matchEvidence/marketEvidence.test.mjs
-node sofa/marketFlowEvidence/runnerFlow.test.mjs
-node sofa/sofaEventMarkers/markerDetector.test.mjs
-node sofa/temporalAlignmentEvidence.test.mjs
-```
-
-Verificare almeno:
+Test presenti:
 
 ```txt
-integrity no_known_partial
-→ persistenceComplete true
-→ nessuna reason di persistenza incompleta
-
-integrity partial_persistence
-→ persistenceComplete false
-→ reason “Persistence incomplete: canonical cross-source evidence unavailable” presente una sola volta
-
-integrity recovery_failed
-→ persistenceComplete false
-→ reason di persistenza incompleta presente una sola volta
-
-tick Betfair fresco + partial_persistence
-→ betfairRecent resta true
-→ freshness tecnica non diventa stale
-→ uso cross-source canonico degradato
-
-Source Identity effective + partial_persistence
-→ attribuzione autorizzata ma non utilizzabile come Evidence canonica cross-source
-
-Source Identity mismatch + no_known_partial
-→ persistenza completa ma attribuzione cross-source bloccata
-
-flow ambiguo o anomalo
-→ unclassified / suppressed / invalid
-→ nessuna pressione direzionale certa
-
-allineamento temporale valido
-→ prossimità descritta
-→ nessuna causalità dichiarata
+node backend/src/sofa/matchEvidence/dataQuality.test.mjs
+node backend/src/sofa/matchEvidence/alignment.test.mjs
+node backend/src/sofa/matchEvidence/noTradeReasons.test.mjs
+node backend/src/sofa/matchEvidence/marketEvidence.test.mjs
+node backend/src/sofa/marketFlowEvidence/runnerFlow.test.mjs
+node backend/src/sofa/sofaEventMarkers/markerDetector.test.mjs
+node backend/src/sofa/temporalAlignmentEvidence.test.mjs
 ```
+
+La matrice copre timestamp futuri entro e oltre tolleranza, principali reason Money Flow suppressed, ladder vuota, book zero/negativo/crossed/one-sided, reliability temporale e differenza intenzionale fra finestre 10s e 30s.
 
 ## Documenti collegati
 
-* [Match Evidence Snapshot](./01-match-evidence-snapshot.md)
-* [Source Identity](./02-source-identity.md)
-* [Market Reactions](./04-market-reactions.md)
-* [API Evidence](../../api/03-evidence.md)
-* [API Betfair](../../api/02-betfair.md)
-* [Timeline e history](../storage/01-timelines-and-history.md)
-* [Commit journal e recovery](../storage/02-commit-journal-and-recovery.md)
+- [Match Evidence Snapshot](./01-match-evidence-snapshot.md)
+- [Source Identity](./02-source-identity.md)
+- [Market Reactions](./04-market-reactions.md)
+- [API Evidence](../../api/03-evidence.md)
+- [Validità tecnica campioni Betfair](../betfair/02-technical-sample-validity.md)
+- [Timeline e history](../storage/01-timelines-and-history.md)
+- [Commit journal e recovery](../storage/02-commit-journal-and-recovery.md)

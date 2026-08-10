@@ -8,6 +8,15 @@ function hasOwn(value, property) {
     return Object.prototype.hasOwnProperty.call(value, property);
 }
 
+function normalizeTechnicalSelectionId(value) {
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? String(value) : null;
+    }
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim();
+    return normalized || null;
+}
+
 export function parseBetfairTotalMatched(value) {
     if (typeof value === 'number') {
         return Number.isFinite(value) ? value : null;
@@ -50,6 +59,20 @@ export function classifyBetfairTechnicalSample(raw) {
 
     if (raw.runners.length === 0) {
         return { usable: false, reason: 'runners_empty', totalMatched: null };
+    }
+
+    if (raw.runners.some(runner => !isPlainObject(runner))) {
+        return { usable: false, reason: 'runner_invalid', totalMatched: null };
+    }
+
+    const selectionIds = raw.runners.map(runner =>
+        normalizeTechnicalSelectionId(runner.selectionId)
+    );
+    if (selectionIds.some(selectionId => selectionId === null)) {
+        return { usable: false, reason: 'selection_id_invalid', totalMatched: null };
+    }
+    if (new Set(selectionIds).size !== selectionIds.length) {
+        return { usable: false, reason: 'selection_id_duplicate', totalMatched: null };
     }
 
     if (!isPlainObject(raw.market_info) || !hasOwn(raw.market_info, 'total_matched')) {

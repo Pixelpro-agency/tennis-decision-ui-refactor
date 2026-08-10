@@ -46,6 +46,7 @@ function makeBetfairTick(ts, marketTotal, runnerOpts = {}, seq = 1) {
                 bestLay,
                 matchedTotal,
                 ladderSource: 'graph',
+                ladder: [{ price: ltp, traded: 10 }],
                 moneyFlow: {
                     back: mfBack,
                     lay: mfLay,
@@ -139,7 +140,12 @@ console.log('\n=== marketReactionEvidence.test.mjs ===\n');
         makeSofaTick('2026-06-19T12:00:30Z', { point: '40-0', gamesHome: 2 }),
         makeSofaTick('2026-06-19T12:01:00Z', { point: '0-0', gamesHome: 3 })
     ];
-    const r = buildMarketReactionEvidence({ betfairTicks, sofaTicks, now: NOW });
+    const r = buildMarketReactionEvidence({
+        betfairTicks,
+        sofaTicks,
+        now: NOW,
+        config: { marketLedObservation: { maxSourceAgeSec: 900 } }
+    });
     assert('T03-largeFlowDetected', r.summary.largeFlowDetected === true,
         String(r.significantMarketFlow.summary.largeFlowDetected));
     assert('T03-mlo-available', r.marketLedObservation.available === true,
@@ -300,6 +306,8 @@ console.log('\n=== marketReactionEvidence.test.mjs ===\n');
     assert('T09-summary-fieldLedAvailable', r.summary.fieldLedAvailable === true);
     assert('T09-summary-fieldLedMarketResponseObserved',
         r.summary.fieldLedMarketResponseObserved === true);
+    assert('T09-summary-fieldLedMarketResponseReliable',
+        typeof r.summary.fieldLedMarketResponseReliable === 'boolean');
     assert('T09-summary-fieldLedDataQuality',
         r.summary.fieldLedDataQuality === r.fieldLedReaction.summary.dataQuality,
         `parent: ${r.summary.fieldLedDataQuality} flr: ${r.fieldLedReaction.summary.dataQuality}`);

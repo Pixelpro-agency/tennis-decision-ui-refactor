@@ -1,5 +1,5 @@
 import { loadTimeline } from '../timelineStore.js';
-import { getLatestValidBetfairTick } from '../betfairHealth.js';
+import { getLatestValidBetfairTick, getValidBetfairTicks } from '../betfairHealth.js';
 import { extractLookbackEntries } from '../marketFlowEvidence.js';
 import { getLatestSofaTick, getRecentSofaTicks } from './timeline.js';
 import { buildEvidenceFromTicks } from './evidenceBuilder.js';
@@ -25,10 +25,6 @@ function normalizeAffectedDocuments(value) {
     return Array.isArray(value)
         ? value.filter(name => VALID_AFFECTED_DOCUMENTS.has(name))
         : [];
-}
-
-function hasTimelineEntries(timeline) {
-    return !!(timeline && Array.isArray(timeline.timeline) && timeline.timeline.length > 0);
 }
 
 function getAllBetfairTicks(betfairTimeline) {
@@ -97,8 +93,10 @@ export function buildSourceIdentityConfirmationStateFromTimelines({
     sofaTimeline = null,
     betfairTimeline = null
 } = {}) {
-    const sofaFound = hasTimelineEntries(sofaTimeline);
-    const betfairFound = hasTimelineEntries(betfairTimeline);
+    const sofaTicks = getRecentSofaTicks(sofaTimeline, Number.MAX_SAFE_INTEGER);
+    const betfairTicks = getValidBetfairTicks(betfairTimeline);
+    const sofaFound = sofaTicks.length > 0;
+    const betfairFound = betfairTicks.length > 0;
 
     if (!sofaFound && !betfairFound) {
         return {
@@ -109,9 +107,15 @@ export function buildSourceIdentityConfirmationStateFromTimelines({
         };
     }
 
-    const sofaTick = sofaFound ? getLatestSofaTick(sofaTimeline) : null;
+    const canonicalSofaTimeline = sofaFound
+        ? { ...(sofaTimeline || {}), timeline: sofaTicks }
+        : null;
+    const canonicalBetfairTimeline = betfairFound
+        ? { ...(betfairTimeline || {}), timeline: betfairTicks }
+        : null;
+    const sofaTick = sofaFound ? getLatestSofaTick(canonicalSofaTimeline) : null;
     const activeBetfairEpoch = betfairFound
-        ? selectActiveBetfairMarketEpoch(betfairTimeline.timeline)
+        ? selectActiveBetfairMarketEpoch(canonicalBetfairTimeline.timeline)
         : {
             ticks: [],
             lastTick: null,
@@ -121,7 +125,7 @@ export function buildSourceIdentityConfirmationStateFromTimelines({
 
     const activeBetfairTimeline = betfairFound
         ? {
-            ...betfairTimeline,
+            ...canonicalBetfairTimeline,
             timeline: activeBetfairEpoch.ticks.slice()
         }
         : null;
@@ -135,6 +139,7 @@ export function buildSourceIdentityConfirmationStateFromTimelines({
 
     const automaticSourceIdentity = buildSourceIdentity({
         sofaTick,
+        canonicalSofaTimeline,
         betfairTick: activeBetfairEpoch.lastTick,
         epochReasons: activeBetfairEpoch.reasons
     });
@@ -152,6 +157,7 @@ export function buildSourceIdentityConfirmationStateFromTimelines({
         sofaFound,
         betfairFound,
         sofaTick,
+        canonicalSofaTimeline,
         activeBetfairEpoch,
         activeBetfairTimeline,
         activeBetfairTick,
@@ -168,16 +174,34 @@ export function getLatestSourceIdentityConfirmationState(eventId) {
     });
 }
 
-function getPersistedConfirmation(context, confirmationRecord) {
+function getPersistedConfirmation(context, confirmationRecord, findConfirmation) {
     if (confirmationRecord !== undefined) {
-        return confirmationRecord;
+        return {
+            confirmation: confirmationRecord,
+            storeStatus: 'ok',
+            storeReason: null
+        };
     }
 
     try {
-        const lookup = findApplicableSourceIdentityConfirmation(context);
-        return lookup.ok ? lookup.confirmation : null;
+        const lookup = findConfirmation(context);
+        return lookup.ok
+            ? {
+                confirmation: lookup.confirmation,
+                storeStatus: 'ok',
+                storeReason: lookup.reason || null
+            }
+            : {
+                confirmation: null,
+                storeStatus: 'unavailable',
+                storeReason: lookup.reason || 'lookup_failed'
+            };
     } catch (_) {
-        return null;
+        return {
+            confirmation: null,
+            storeStatus: 'unavailable',
+            storeReason: 'lookup_failed'
+        };
     }
 }
 
@@ -206,6 +230,9 @@ export function buildLatestMatchEvidenceFromTimelines({
     const getIntegrity = typeof dependencies.getMatchPersistenceIntegrity === 'function'
         ? dependencies.getMatchPersistenceIntegrity
         : getMatchPersistenceIntegrityDefault;
+    const findConfirmation = typeof dependencies.findApplicableSourceIdentityConfirmation === 'function'
+        ? dependencies.findApplicableSourceIdentityConfirmation
+        : findApplicableSourceIdentityConfirmation;
 
     const sofaIntegrity = getIntegrity(eventId, 'sofa');
     const betfairIntegrity = getIntegrity(eventId, 'betfair');
@@ -226,25 +253,29 @@ export function buildLatestMatchEvidenceFromTimelines({
         };
     }
 
-    const persistedConfirmation = state.automaticSourceIdentity.status === 'pending'
-        ? getPersistedConfirmation(state.confirmationContext, confirmationRecord)
-        : null;
+    const confirmationLookup = state.automaticSourceIdentity.status === 'pending'
+        ? getPersistedConfirmation(state.confirmationContext, confirmationRecord, findConfirmation)
+        : {
+            confirmation: null,
+            storeStatus: 'not_applicable',
+            storeReason: null
+        };
 
     const sourceIdentity = applyManualConfirmation({
         sourceIdentity: state.automaticSourceIdentity,
         context: state.confirmationContext,
-        confirmation: persistedConfirmation
+        confirmation: confirmationLookup.confirmation
     });
 
-    const recentSofaTicks = state.sofaFound ? getRecentSofaTicks(sofaTimeline, 10) : [];
+    const recentSofaTicks = state.sofaFound ? getRecentSofaTicks(state.canonicalSofaTimeline, 10) : [];
     const lookbackEntries = state.activeBetfairTimeline
         ? extractLookbackEntries(state.activeBetfairTimeline)
         : [];
-    const allSofaTicks = state.sofaFound ? getRecentSofaTicks(sofaTimeline, 60) : [];
+    const allSofaTicks = state.sofaFound ? getRecentSofaTicks(state.canonicalSofaTimeline, 60) : [];
     const allBetfairTicks = getAllBetfairTicks(state.activeBetfairTimeline);
 
     const marketReactionSofaTicks = state.sofaFound
-        ? sofaTimeline.timeline.slice()
+        ? state.canonicalSofaTimeline.timeline.slice()
         : [];
 
     const marketReactionBetfairTicks = state.activeBetfairTimeline
@@ -280,7 +311,9 @@ export function buildLatestMatchEvidenceFromTimelines({
         evidence,
         sources: {
             sofaTimelineFound: state.sofaFound,
-            betfairTimelineFound: state.betfairFound
+            betfairTimelineFound: state.betfairFound,
+            confirmationStoreStatus: confirmationLookup.storeStatus,
+            confirmationStoreReason: confirmationLookup.storeReason
         },
         integrity
     };

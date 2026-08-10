@@ -47,6 +47,7 @@ async def detect_betfair_event_status(page):
         "hasFinished": False,
         "statusText": None,
         "source": None,
+        "weakFinishedHint": False,
     }
 
     try:
@@ -90,7 +91,7 @@ async def detect_betfair_event_status(page):
                             word in text.lower()
                             for word in ("finito", "finished", "terminato")
                         ):
-                            result["hasFinished"] = True
+                            result["weakFinishedHint"] = True
                             result["statusText"] = text.strip()[:200]
                             result["source"] = f"{selector}:visible-text"
                             return result
@@ -156,10 +157,7 @@ async def open_browser_session(playwright, mode, profile_dir, cdp_url):
             },
             args=[
                 "--disable-blink-features=AutomationControlled",
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
                 "--disable-infobars",
-                "--ignore-certificate-errors",
             ],
         )
 

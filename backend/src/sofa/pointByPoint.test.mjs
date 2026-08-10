@@ -21,6 +21,10 @@ function homeWinGame(game) {
     };
 }
 
+function normalizeWithCurrent(sets, set, game) {
+    return normalizePointByPoint({ sets, currentGame: { set, game } });
+}
+
 {
     const raw = structuredClone(verifiedPointByPointFixture);
     const before = structuredClone(raw);
@@ -36,8 +40,8 @@ function homeWinGame(game) {
 }
 
 {
-    const normalized = normalizePointByPoint(
-        verifiedPointByPointFixture
+    const normalized = normalizeWithCurrent(
+        verifiedPointByPointFixture, 2, 10
     );
     const decoded = decodeCompletedGame(normalized.sets[0].games[0]);
 
@@ -98,8 +102,8 @@ function homeWinGame(game) {
 }
 
 {
-    const normalized = normalizePointByPoint(
-        verifiedPointByPointFixture
+    const normalized = normalizeWithCurrent(
+        verifiedPointByPointFixture, 2, 10
     );
     const before = structuredClone(normalized);
     const window = buildRecentCompletedGamesWindow(normalized);
@@ -133,13 +137,13 @@ function homeWinGame(game) {
     ];
 
     const window = buildRecentCompletedGamesWindow(
-        normalizePointByPoint(raw)
+        normalizeWithCurrent(raw, 2, 10)
     );
 
     assert.equal(window.available, false);
     assert.equal(
         window.reason,
-        'insufficient_verified_completed_games'
+        'unsupported_or_ambiguous_score_transition'
     );
     assert.equal(window.includedGames, 0);
     assert.deepEqual(window.games, []);
@@ -150,7 +154,7 @@ function homeWinGame(game) {
     raw[0].games = raw[0].games.slice(0, 3);
 
     const window = buildRecentCompletedGamesWindow(
-        normalizePointByPoint(raw)
+        normalizeWithCurrent(raw, 2, 3)
     );
 
     assert.equal(window.available, false);
@@ -179,21 +183,41 @@ function homeWinGame(game) {
         }
     ];
 
-    const window = buildRecentCompletedGamesWindow(
-        normalizePointByPoint(raw)
-    );
+    const normalized = normalizePointByPoint(raw);
+    assert.equal(normalized.available, false);
+}
 
+{
+    const normalized = normalizePointByPoint(verifiedPointByPointFixture);
+    const window = buildRecentCompletedGamesWindow(normalized);
+    assert.equal(window.available, false);
+    assert.equal(window.reason, 'current_game_identity_unavailable');
+    assert.equal(window.excludedCurrentGame, false);
+}
+
+{
+    const previousSet = structuredClone(verifiedPointByPointFixture[0]);
+    previousSet.games = previousSet.games.slice(0, 3);
+    const currentSet = { set: 3, games: [homeWinGame(1)] };
+    const normalized = normalizeWithCurrent(
+        [previousSet, currentSet], 3, 1
+    );
+    const window = buildRecentCompletedGamesWindow(normalized);
+    assert.equal(window.available, true);
     assert.deepEqual(window.games, [
-        { set: 2, game: 1 },
-        { set: 2, game: 2 },
-        { set: 2, game: 3 }
+        { set: 2, game: 7 },
+        { set: 2, game: 8 },
+        { set: 2, game: 9 }
     ]);
-    assert.equal(window.homePoints, 12);
-    assert.equal(window.awayPoints, 0);
-    assert.equal(window.totalPoints, 12);
-    assert.equal(window.homePct, 100);
-    assert.equal(window.awayPct, 0);
-    assert.equal(window.leadingSide, 'home');
+}
+
+{
+    const raw = structuredClone(verifiedPointByPointFixture);
+    raw[0].games.push(structuredClone(raw[0].games[0]));
+    raw[0].games.at(-1).game = 9;
+    assert.equal(normalizePointByPoint(raw).available, false);
+    raw[0].games.at(-1).game = 10.5;
+    assert.equal(normalizePointByPoint(raw).available, false);
 }
 
 {

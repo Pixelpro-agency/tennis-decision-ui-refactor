@@ -30,7 +30,10 @@ async def extract_ladder_from_url(page, ladder_url):
 
         if any(marker.lower() in html.lower() for marker in blockedMarkers):
             log(f"[Ladder] Blocked by Cloudflare/security: {ladder_url}")
-            return {"ladder": []}
+            return {
+                "ladder": [],
+                "error_reason": "security_challenge",
+            }
 
         bodyText = ""
 
@@ -115,6 +118,9 @@ async def extract_ladder_from_url(page, ladder_url):
             })
 
         log(f"[Ladder] Extracted {len(ladderRows)} rows from {ladder_url}")
+
+        if not ladderRows:
+            return {"ladder": [], "error_reason": "no_ladder_rows"}
 
         return {"ladder": ladderRows}
 

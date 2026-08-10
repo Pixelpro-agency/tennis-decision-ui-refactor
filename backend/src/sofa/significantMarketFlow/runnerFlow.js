@@ -1,12 +1,6 @@
 import { DEFAULT_CONFIG } from './config.js';
 import { roundN, safeNum } from './utils.js';
-const INVALID_MONEY_FLOW_REASONS = new Set([
-    'matched_total_decreased',
-    'runner_delta_exceeds_market_delta',
-    'classified_volume_exceeds_runner_delta',
-    'runner_delta_raw_computed_mismatch',
-    'market_delta_raw_computed_mismatch'
-]);
+import { isConfirmedMoneyFlow } from '../matchEvidence/qualityPredicates.js';
 
 export function extractRunnerFlowAmount(runner, tickData) {
     const mf = runner?.moneyFlow && typeof runner.moneyFlow === 'object' ? runner.moneyFlow : null;
@@ -21,6 +15,7 @@ export function extractRunnerFlowAmount(runner, tickData) {
     const mfRunnerDelta = safeNum(mf?.runnerDelta);
     const mfMarketDelta = safeNum(mf?.marketDelta);
     const mfReason = mf?.reason ?? null;
+    const mfConfidence = mf?.confidence ?? null;
 
                                                                                     
     const runnerMatchedDelta = mfRunnerDelta;
@@ -55,6 +50,8 @@ export function extractRunnerFlowAmount(runner, tickData) {
         back,
         lay,
         mfReason,
+        mfConfidence,
+        moneyFlowConfirmed: isConfirmedMoneyFlow(mf),
         mfRunnerDelta,
         mfMarketDelta
     };
@@ -74,16 +71,16 @@ export function computeMarketLiquiditySharePct(observedFlowAmount, marketTotalMa
     return { marketLiquiditySharePct: mkPct, runnerLiquiditySharePct: rnrPct };
 }
 
-export function validateVolume(extractedFlow, tolerance) {
-    const { mfReason, mfRunnerDelta, mfMarketDelta, runnerMatchedDelta } = extractedFlow;
-    const tol = typeof tolerance === 'number' ? tolerance : DEFAULT_CONFIG.tolerance;
+export function validateVolume(extractedFlow) {
+    const { mfReason, mfRunnerDelta, mfMarketDelta, runnerMatchedDelta, moneyFlowConfirmed } = extractedFlow;
+    const tol = Math.max(1, Math.abs(mfMarketDelta ?? 0) * 0.05);
 
     const validationReasons = [];
     let volumeInvalidated = false;
 
-    if (mfReason != null && INVALID_MONEY_FLOW_REASONS.has(mfReason)) {
+    if (!moneyFlowConfirmed) {
         volumeInvalidated = true;
-        validationReasons.push(`moneyFlow.reason invalidated: ${mfReason}`);
+        validationReasons.push(`moneyFlow not confirmed: ${mfReason || 'confidence_not_confirmed'}`);
     }
     if (mfRunnerDelta !== null && mfRunnerDelta < 0) {
         volumeInvalidated = true;

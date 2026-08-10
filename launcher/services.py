@@ -10,6 +10,7 @@ Rules enforced here:
 """
 
 import json
+import hashlib
 import os
 import signal
 import subprocess
@@ -48,7 +49,7 @@ _MAX_PORT_ATTEMPTS = 5
 _MAX_BACKEND_WAIT = 20     # seconds
 _MAX_FRONTEND_WAIT = 30    # seconds
 _FRONTEND_IDENTITY_TIMEOUT = 2.0
-_SHUTDOWN_GRACE = 5        # seconds before fallback tree-kill
+_SHUTDOWN_GRACE = 8        # exceeds the backend's 6s internal shutdown budget
 _FAILED_PROCESS_GRACE = 3  # seconds before fallback tree-kill for a failed startup
 _FORCE_KILL_CONFIRM_GRACE = 2  # bounded confirmation after escalation
 
@@ -70,6 +71,25 @@ class _OwnedProcsProxy:
         pass
 
 _owned_procs = _OwnedProcsProxy()
+
+def _path_identity(value: str) -> str:
+    normalized = os.path.normpath(os.path.realpath(value))
+    if sys.platform == "win32":
+        normalized = normalized.lower()
+    return "sha256:" + hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+_EXPECTED_REPOSITORY_IDENTITY = _path_identity(ROOT)
+_EXPECTED_STORAGE_IDENTITY = _path_identity(os.path.join(ROOT, "backend", "match_history"))
+
+def _is_expected_backend(data: dict) -> bool:
+    return (
+        isinstance(data, dict)
+        and data.get("ok") is True
+        and data.get("project") == "tennis-decision-ui"
+        and data.get("repositoryIdentity") == _EXPECTED_REPOSITORY_IDENTITY
+        and data.get("storageIdentity") == _EXPECTED_STORAGE_IDENTITY
+        and bool(data.get("instanceId"))
+    )
 
 
 def _register_owned_proc(proc: subprocess.Popen, role: str):
@@ -172,6 +192,7 @@ def _start_vite_frontend(port: int, backend_port: int, cdp_url: str) -> subproce
 
 _CDP_DISCOVERY_TIMEOUT = 0.2
 _CDP_HELPER_TIMEOUT = 5.0
+_CDP_READY_RECONCILIATION_ATTEMPTS = 3
 _CDP_HELPER_RESPONSE_CODES = {
     "already_ready": (True, 0),
     "launch_requested": (True, 0),
@@ -378,10 +399,14 @@ def resolve_cdp(manifest: dict) -> str:
             continue
 
         if state == "launch_requested" and result.get("ok") is True:
-            ready, _ = check_cdp_endpoint(
-                port,
-                timeout=_CDP_DISCOVERY_TIMEOUT,
-            )
+            ready = False
+            for _attempt in range(_CDP_READY_RECONCILIATION_ATTEMPTS):
+                ready, _ = check_cdp_endpoint(
+                    port,
+                    timeout=_CDP_DISCOVERY_TIMEOUT,
+                )
+                if ready:
+                    break
             return _set_cdp_helper_result(
                 manifest,
                 port,
@@ -416,6 +441,32 @@ def resolve_backend(manifest: dict) -> tuple[bool, str]:
     """
     preferred = PREFERRED_BACKEND_PORT
 
+    # Read-only discovery of every bounded candidate precedes any spawn.
+    for attempt in range(_MAX_PORT_ATTEMPTS):
+        port = preferred + attempt
+        if is_port_free(port):
+            continue
+        health_url = f"http://127.0.0.1:{port}/api/health"
+        base_url = f"http://127.0.0.1:{port}"
+        ok, data = check_backend_identity(health_url)
+        if not ok or not _is_expected_backend(data):
+            continue
+        reported_pid = data.get("pid")
+        if type(reported_pid) is not int or reported_pid <= 0:
+            continue
+        started_at = data.get("startedAt")
+        if not isinstance(started_at, str) or not started_at.strip():
+            started_at = None
+        manifest_set_backend(
+            manifest, status="ready", ownership="reused",
+            selected_port=port, pid=reported_pid, base_url=base_url,
+            health_url=health_url, instance_id=data.get("instanceId"),
+            started_at=started_at, source="existing_health",
+            reason="reused_preferred_port" if port == preferred else "reused_fallback_port",
+        )
+        log("Launcher", "backend_reuse", service="backend", port=port, ownership="reused")
+        return True, base_url
+
     for attempt in range(_MAX_PORT_ATTEMPTS):
         port = preferred + attempt
         health_url = f"http://127.0.0.1:{port}/api/health"
@@ -429,12 +480,7 @@ def resolve_backend(manifest: dict) -> tuple[bool, str]:
                 health_url,
                 "Launcher",
                 timeout=_MAX_BACKEND_WAIT,
-                validator=lambda d: (
-                    isinstance(d, dict)
-                    and d.get("ok") is True
-                    and d.get("project") == "tennis-decision-ui"
-                    and bool(d.get("instanceId"))
-                ),
+                validator=_is_expected_backend,
             )
 
             if ok and isinstance(data, dict):
@@ -477,7 +523,7 @@ def resolve_backend(manifest: dict) -> tuple[bool, str]:
             continue
 
         ok, data = check_backend_identity(health_url)
-        if ok and isinstance(data, dict):
+        if ok and _is_expected_backend(data):
             reported_pid = data.get("pid")
             instance_id = data.get("instanceId")
             if (
@@ -1039,7 +1085,12 @@ def open_browser(url: str):
     except (TypeError, ValueError):
         port = None
     log("Launcher", "browser_open", service="frontend", port=port)
-    webbrowser.open(url)
+    try:
+        opened = webbrowser.open(url)
+    except Exception:
+        opened = False
+    log("Launcher", "browser_result", service="frontend", port=port, ok=opened is True)
+    return opened is True
 
 
 # ---------------------------------------------------------------------------

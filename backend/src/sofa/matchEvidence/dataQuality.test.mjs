@@ -21,7 +21,7 @@ const healthy = buildDataQuality({
         timestamp: now.toISOString(),
         data: { graphHealth: { status: 'ok' }, runners: [{
             ladderSource: 'graph', ladder: [{ traded: 10 }],
-            moneyFlow: { back: 10, lay: 0, runnerDelta: 10, marketDelta: 20, reason: null },
+            moneyFlow: { back: 10, lay: 0, runnerDelta: 10, marketDelta: 20, confidence: 'confirmed', reason: null },
             bestBack: 1.5, bestLay: 1.52
         }] }
     },
@@ -40,7 +40,7 @@ const invalidFlow = buildDataQuality({
         timestamp: now.toISOString(),
         data: { graphHealth: { status: 'ok' }, runners: [{
             ladderSource: 'graph', ladder: [{ traded: 10 }],
-            moneyFlow: { back: 0, lay: 0, runnerDelta: -1, marketDelta: 20, reason: 'matched_total_decreased' },
+            moneyFlow: { back: 0, lay: 0, runnerDelta: -1, marketDelta: 20, confidence: 'suppressed', reason: 'matched_total_decreased' },
             bestBack: 1.5, bestLay: 1.52
         }] }
     },
@@ -57,7 +57,7 @@ const freshWithPartial = buildDataQuality({
         timestamp: now.toISOString(),
         data: { graphHealth: { status: 'ok' }, runners: [{
             ladderSource: 'graph', ladder: [{ traded: 10 }],
-            moneyFlow: { back: 10, lay: 0, runnerDelta: 10, marketDelta: 20, reason: null },
+            moneyFlow: { back: 10, lay: 0, runnerDelta: 10, marketDelta: 20, confidence: 'confirmed', reason: null },
             bestBack: 1.5, bestLay: 1.52
         }] }
     },
@@ -98,4 +98,23 @@ const missingNoJournal = buildDataQuality({
 assert(missingNoJournal.persistenceComplete === true, 'no_known_partial keeps persistence complete');
 assert(!missingNoJournal.reasons.includes(PERSISTENCE_INCOMPLETE_REASON), 'no_known_partial has no persistence reason');
 
-console.log('matchEvidence dataQuality: 17 assertions passed');
+const suppressed = buildDataQuality({
+    sofaTick: { timestamp: now.toISOString(), data: { status: 'inprogress' } },
+    betfairTick: { timestamp: now.toISOString(), data: {
+        graphHealth: { status: 'ok' },
+        runners: [{ ladderSource: 'graph', ladder: [{}], bestBack: 2, bestLay: 2.1,
+            moneyFlow: { back: 0, lay: 0, confidence: 'suppressed', reason: 'runner_matched_unavailable' } }]
+    } },
+    now
+});
+assert(suppressed.moneyFlowReliable === false, 'suppressed money flow is never reliable');
+
+const future = buildDataQuality({
+    sofaTick: { timestamp: '2026-06-21T00:00:30.000Z', data: { status: 'inprogress' } },
+    betfairTick: null,
+    now
+});
+assert(future.sofaRecent === false, 'future Sofa timestamp is not recent');
+assert(future.reasons.includes('SofaScore timestamp is in the future'), 'future timestamp reason');
+
+console.log('matchEvidence dataQuality: 21 assertions passed');

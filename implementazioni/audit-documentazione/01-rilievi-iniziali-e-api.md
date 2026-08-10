@@ -1071,3 +1071,20 @@ prossimo blocco
 ```
 
 ---
+## Autorità temporale e riconciliazione corrente
+
+Questo modulo conserva i checkpoint storici B1/B2 e i relativi owner. Non va letto come stato corrente senza l'overlay seguente:
+
+```txt
+risolti o assorbiti lato documentazione
+→ DOC-001, DOC-003, DOC-004, DOC-005, DOC-007, DOC-008, DOC-010, DOC-012
+
+DOC-013
+→ documentazione sostanzialmente risolta
+→ CODE-002 resta aperto lato implementazione
+
+ancora attivi nei rispettivi owner
+→ DOC-002, DOC-006, DOC-009, DOC-011, WORKFLOW-001
+```
+
+Le frasi storiche secondo cui la correzione canonica API non era stata eseguita descrivono il checkpoint, non lo stato corrente post-migrazione. I test citati nel checkpoint furono letti ma non rieseguiti, salvo indicazione esplicita diversa.

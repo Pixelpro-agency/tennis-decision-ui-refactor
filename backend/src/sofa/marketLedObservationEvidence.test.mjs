@@ -41,7 +41,7 @@ console.log('\n=== marketLedObservationEvidence.test.mjs ===\n');
         makeSofaTick('2025-01-01T12:00:30Z', { point: '40-0', gamesHome: 2, gamesAway: 1 }),
         makeSofaTick('2025-01-01T12:01:30Z', { point: '0-0', gamesHome: 3, gamesAway: 1 })
     ];
-    const r = buildMarketLedObservationEvidence({ sourceMarketEvent: src, sofaTicks: ticks, now: new Date('2025-01-01T12:05:00Z') });
+    const r = buildMarketLedObservationEvidence({ sourceMarketEvent: src, sofaTicks: ticks, now: new Date('2025-01-01T12:04:00Z') });
     assert('T03-available', r.available === true);
     assert('T03-windows-count', r.observationWindows.length === 4, String(r.observationWindows.length));
     assert('T03-windows-60', r.observationWindows[0].windowSec === 60);
@@ -130,7 +130,7 @@ console.log('\n=== marketLedObservationEvidence.test.mjs ===\n');
     const ticks = [
         makeSofaTick('2025-01-01T11:59:50Z', { point: '30-0' })
     ];
-    const r = buildMarketLedObservationEvidence({ sourceMarketEvent: src, sofaTicks: ticks });
+    const r = buildMarketLedObservationEvidence({ sourceMarketEvent: src, sofaTicks: ticks, now: new Date('2025-01-01T12:05:00Z') });
     const win60 = r.observationWindows[0];
     assert('T10-poor', win60.dataQuality === 'poor', win60.dataQuality);
     assert('T10-tickCount-0', win60.tickCount === 0, String(win60.tickCount));
@@ -268,7 +268,7 @@ console.log('\n=== marketLedObservationEvidence.test.mjs ===\n');
     console.log('\nT18: empty window has stable shape with zero/null/false values');
     const src = makeSourceEvent('2025-01-01T12:05:00Z');
     const ticks = [makeSofaTick('2025-01-01T11:59:50Z', { point: '30-0' })];
-    const r = buildMarketLedObservationEvidence({ sourceMarketEvent: src, sofaTicks: ticks });
+    const r = buildMarketLedObservationEvidence({ sourceMarketEvent: src, sofaTicks: ticks, now: new Date('2025-01-01T12:05:00Z') });
     const w = r.observationWindows[0];
     assert('T18-tickCount-0', w.tickCount === 0, String(w.tickCount));
     assert('T18-sofaTicksObserved-0', w.sofaTicksObserved === 0, String(w.sofaTicksObserved));
@@ -296,7 +296,7 @@ console.log('\n=== marketLedObservationEvidence.test.mjs ===\n');
     console.log('\nT19: summary.reasons includes exact message when no post-event ticks');
     const src = makeSourceEvent('2025-01-01T12:05:00Z');
     const ticks = [makeSofaTick('2025-01-01T11:59:50Z', { point: '30-0' })];
-    const r = buildMarketLedObservationEvidence({ sourceMarketEvent: src, sofaTicks: ticks });
+    const r = buildMarketLedObservationEvidence({ sourceMarketEvent: src, sofaTicks: ticks, now: new Date('2025-01-01T12:05:00Z') });
     assert('T19-reason', r.summary.reasons.includes('No SofaScore ticks found after source market event'),
         JSON.stringify(r.summary.reasons));
 }
@@ -376,5 +376,25 @@ console.log('\n=== marketLedObservationEvidence.test.mjs ===\n');
     }
 }
 
+
+{
+    console.log('\nT23: stale and future source events are rejected');
+    const ticks = [makeSofaTick('2025-01-01T12:10:00Z', { point: '15-0' })];
+    const stale = buildMarketLedObservationEvidence({
+        sourceMarketEvent: makeSourceEvent('2025-01-01T12:00:00Z'),
+        sofaTicks: ticks,
+        now: new Date('2025-01-01T12:10:00Z')
+    });
+    assert('T23-stale-unavailable', stale.available === false);
+    assert('T23-stale-reason', stale.summary.reasons.some(reason => reason.includes('older than maxSourceAgeSec')));
+
+    const future = buildMarketLedObservationEvidence({
+        sourceMarketEvent: makeSourceEvent('2025-01-01T12:10:30Z'),
+        sofaTicks: ticks,
+        now: new Date('2025-01-01T12:10:00Z')
+    });
+    assert('T23-future-unavailable', future.available === false);
+    assert('T23-future-reason', future.summary.reasons.includes('Source market event timestamp is in the future'));
+}
 
 finish();

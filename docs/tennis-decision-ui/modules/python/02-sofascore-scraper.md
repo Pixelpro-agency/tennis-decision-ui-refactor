@@ -40,11 +40,13 @@ Comando base:
 python .\scraper.py <url-1> <url-2> ...
 ```
 
-Lo scraper accetta:
+Il consumer canonico Node passa i tre endpoint SofaScore dello stesso evento. 
+
+La CLI applica la stessa authority:
 
 * URL match SofaScore;
 * endpoint API SofaScore;
-* una o più URL nella stessa esecuzione.
+* uno o più endpoint API appartenenti allo stesso evento.
 
 Se riceve un singolo URL match con event ID, lo espande in:
 
@@ -55,6 +57,12 @@ Se riceve un singolo URL match con event ID, lo espande in:
 ```
 
 L’output è un oggetto JSON indicizzato per URL endpoint.
+
+Sono ammessi soltanto HTTPS, host `sofascore.com`/`www.sofascore.com`, porta standard e path match/API riconosciuti. 
+
+Query, credenziali, host esterni, più match URL e batch mixed-event vengono rifiutati prima di cache e browser. 
+
+Gli endpoint duplicati vengono normalizzati una sola volta mantenendo l'ordine.
 
 ## Cache
 
@@ -73,6 +81,14 @@ TTL attuale:
 La cache è un’ottimizzazione runtime.
 
 Non è una timeline, una fonte di replay o un archivio da inviare a un’API AI.
+
+La chiave è il digest SHA-256 della lista URL canonica serializzata in modo deterministico. 
+
+Il filename è opaco e conserva l'ordine del batch.
+
+Sono cacheabili soltanto risultati non vuoti in cui ogni endpoint è riuscito. 
+
+Le failure HTTP, browser, challenge e timeout non vengono persistite; una cache scaduta, corrotta o contenente errori viene trattata come miss.
 
 ## Browser e fallback
 
@@ -102,7 +118,29 @@ headless
 → tentativo fetch API nel contesto browser
 ```
 
-Il fallback headed può attendere fino a 60 secondi prima di proseguire al fetch API. Non certifica che la challenge sia stata effettivamente risolta.
+Il fallback headed attende fino a 60 secondi. Se la challenge resta presente, termina con `challenge_unresolved` e non la confonde con un errore endpoint.
+
+La gerarchia temporale è:
+
+```txt
+navigazione pagina: 30 secondi
+challenge manuale: massimo 60 secondi
+singolo endpoint: 15 secondi con AbortController
+intera esecuzione Python: 105 secondi
+bridge Node: 120 secondi
+```
+
+Il budget Python vale anche per la CLI autonoma ed è inferiore a quello parent.
+
+## Profilo persistente
+
+`backend/scraper_profile/` è il `user_data_dir` del browser persistente e non una cache. Conserva stato del sito e può contenere session data locale.
+
+Il percorso backend serializza fisicamente le esecuzioni SofaScore tramite il barrier di `directFetch.js`; invocazioni manuali concorrenti di `scraper.py` non sono invece coordinate.
+
+Il progetto non applica cleanup automatici al profilo: eventuale rimozione deve avvenire offline, in modo esplicito, con browser e scraper fermi.
+
+Il profilo non deve essere pubblicato, allegato a risposte HTTP o trattato come dato canonico.
 
 ## Output e logging
 
@@ -118,7 +156,24 @@ Esempio errore input:
 
 Log e messaggi browser usano `stderr`.
 
+Prima della scrittura, la diagnostica SofaScore usa la redazione bounded condivisa con il runtime Betfair. 
+
+URL, query sensibili, token, header, path e testo eccessivo vengono redatti o limitati.
+
+Il backend limita stdout a 2 MiB. Se il child supera il limite:
+
+```txt
+buffer azzerato
+→ terminazione del solo processo owned
+→ scraper_output_too_large
+→ nessun parsing del JSON parziale
+```
+
 Non aggiungere testo libero su stdout: il backend Node esegue parsing JSON diretto.
+
+Le failure Python usano un envelope bounded con `ok:false`, `error.code` e `error.message`; per errori HTTP può essere presente `error.status`. 
+
+Raw exception text non entra nel result pubblico.
 
 ## Confini
 
@@ -138,6 +193,8 @@ Lo scraper SofaScore non deve:
 python -m py_compile .\scraper.py
 python -c "from scrapers.sofa.cli import main; print('import OK')"
 python -c "from scrapers.sofa.urls import build_sofascore_api_urls; urls = build_sofascore_api_urls('16402319'); assert len(urls) == 3; assert not any('tennis-power-rankings' in url for url in urls); print('Sofa URL builder: OK')"
+python -m unittest launcher.tests.test_runtime_hardening
+python -m unittest scrapers.sofa.runtime_contract_test
 ```
 
 Dopo modifiche a URL o output:

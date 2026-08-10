@@ -1,5 +1,6 @@
 import { isReliableLadderSource } from './ladder.js';
 import { buildRunnerFlowEvidence, computeSpreadQuality } from '../marketFlowEvidence.js';
+import { isTradableBook } from './qualityPredicates.js';
 
 export function buildRunnerEvidence(runner, betfairRecent, graphHealthStatus, currentEntry, lookbackEntries) {
     if (!runner) return null;
@@ -8,7 +9,7 @@ export function buildRunnerEvidence(runner, betfairRecent, graphHealthStatus, cu
     const bl = typeof runner.bestLay === 'number' ? runner.bestLay : null;
     const ltp = typeof runner.lastTradedPrice === 'number' ? runner.lastTradedPrice : null;
 
-    const bookTradable = bb !== null && bl !== null && bb > 0 && bl > 0 && bl > bb;
+    const bookTradable = isTradableBook(runner);
     const spread = bookTradable ? Math.round((bl - bb) * 1000) / 1000 : null;
     const midPrice = bookTradable ? Math.round(((bb + bl) / 2) * 1000) / 1000 : null;
 
@@ -106,4 +107,3 @@ export function buildRunnerEvidence(runner, betfairRecent, graphHealthStatus, cu
         }
     };
 }
-

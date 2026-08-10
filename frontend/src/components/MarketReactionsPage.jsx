@@ -1,3 +1,4 @@
+import React from 'react';
 import { RefreshCw } from 'lucide-react';
 import MarketLedObservationCard from './marketReactions/MarketLedObservationCard';
 import FieldLedReactionCard from './marketReactions/FieldLedReactionCard';
@@ -18,6 +19,10 @@ export default function MarketReactionsPage({
     loading,
     error,
     reasons,
+    integrity,
+    sources,
+    persistenceComplete,
+    readStatus,
     lastUpdate,
     isPolling,
     refresh
@@ -59,6 +64,14 @@ export default function MarketReactionsPage({
                 </div>
             </div>
 
+            {(readStatus === 'degraded' || persistenceComplete === false) && (
+                <div className="bg-[var(--card)] rounded-2xl border border-amber-700/50 p-4 mb-6" role="status">
+                    <p className="text-sm text-amber-300">Evidence persistence is incomplete.</p>
+                    {integrity?.reason && <p className="mt-1 text-xs text-[var(--muted)]">{integrity.reason}</p>}
+                    {sources && <p className="mt-1 text-xs text-[var(--muted)]">Source diagnostics are available from the current Evidence read.</p>}
+                </div>
+            )}
+
             {loading && !evidence && !error && (
                 <div className="bg-[var(--card)] rounded-2xl border border-[var(--card-border)] p-8 text-center mb-6">
                     <p className="text-sm text-[var(--muted)]">Loading evidence data…</p>
@@ -89,10 +102,22 @@ export default function MarketReactionsPage({
             )}
 
             {evidence && (
+                <>
+                {Array.isArray(evidence.summary?.reasons) && evidence.summary.reasons.length > 0 && (
+                    <div className="bg-[var(--card)] rounded-2xl border border-[var(--card-border)] p-4 mb-4">
+                        <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-widest">Availability reasons</p>
+                        <ul className="mt-2 space-y-1">
+                            {evidence.summary.reasons.slice(0, 5).map((reason, index) => (
+                                <li key={index} className="text-xs text-[var(--muted)]">{reason}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     <MarketLedObservationCard evidence={evidence.marketLedObservation ?? null} />
                     <FieldLedReactionCard evidence={evidence.fieldLedReaction ?? null} />
                 </div>
+                </>
             )}
 
         </div>

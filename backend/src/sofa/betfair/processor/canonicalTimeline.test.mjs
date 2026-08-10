@@ -194,4 +194,48 @@ const { check, finish } = createCheckSuite('canonicalTimeline');
     );
 }
 
+{
+    const baselineSample = createSample();
+    const baseline = buildBetfairTimelineTick(baselineSample, 'market-key', { timeline: [] });
+    baseline.seq = 1;
+    baseline.commitId = 'baseline-commit';
+    const harness = createHarness({
+        existingTimeline: {
+            metadata: { eventId: 'status-only-event' },
+            timeline: [{ timestamp: baseline.timestamp, data: baseline }]
+        }
+    });
+    let timelinePayload = null;
+    const originalRemove = harness.journalStore.removeCompletedCommit.bind(harness.journalStore);
+    harness.journalStore.removeCompletedCommit = commitId => {
+        const record = harness.journalStore.records.get(commitId);
+        timelinePayload = structuredClone(record?.documents?.timeline?.payload?.document || null);
+        return originalRemove(commitId);
+    };
+    const processed = createSample({ marketTotal: 900, firstMatched: 350 });
+    processed.timelineIntegrity = { accepted: false, reason: 'regressive_sample' };
+    processed.diagnostics.graphLoginRequired = true;
+    processed.graph_diagnostics.graphRowsTotal = 0;
+
+    const result = persistBetfairProcessedResult(
+        'status-only-event', processed, 'market-key', harness.dependencies
+    );
+    const tick = timelinePayload?.timeline?.at(-1)?.data;
+    const historyDocument = harness.calls.historyWrites[0]?.document;
+
+    check(
+        'graph-login-status-only-is-canonical-without-history-row',
+        result.ok === true &&
+        result.status === 'complete' &&
+        tick?.seq === 2 &&
+        tick?.commitId === 'commit-1' &&
+        tick?.diagnostics?.statusOnlyGraphLogin === true &&
+        tick?.runners?.every(runner =>
+            runner.moneyFlow?.confidence === 'suppressed' &&
+            runner.moneyFlow?.reason === 'graph_login_required'
+        ) &&
+        historyDocument?.history?.length === 0
+    );
+}
+
 finish();

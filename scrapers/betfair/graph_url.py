@@ -4,6 +4,7 @@ from urllib.parse import urlsplit
 
 _MARKET_ID_RE = re.compile(r"^\d+\.\d+$")
 _SELECTION_ID_RE = re.compile(r"^\d+$")
+_AMBIGUOUS_SELECTION_IDS = "__ambiguous_selection_ids__"
 
 
 def _failure(reason):
@@ -60,6 +61,9 @@ def parse_direct_ladder_url(raw_url):
         "ok": True,
         "market_id": market_id,
         "selection_id": selection_id,
+        "canonical_url": (
+            f"https://graphs.betfair.it/{market_id}/{selection_id}/0"
+        ),
     }
 
 
@@ -67,6 +71,7 @@ def build_selection_map(runners):
     """Return runners keyed by non-null API selectionId values."""
 
     selection_map = {}
+    ambiguous_ids = set()
 
     for runner in runners or []:
         if not isinstance(runner, dict):
@@ -75,7 +80,14 @@ def build_selection_map(runners):
         selection_id = runner.get("selectionId")
 
         if selection_id is not None:
-            selection_map[str(selection_id)] = runner
+            key = str(selection_id)
+            if key in selection_map:
+                ambiguous_ids.add(key)
+                selection_map.pop(key, None)
+            elif key not in ambiguous_ids:
+                selection_map[key] = runner
+
+    selection_map[_AMBIGUOUS_SELECTION_IDS] = ambiguous_ids
 
     return selection_map
 
@@ -102,8 +114,21 @@ def validate_ladder_mapping(
     if not isinstance(market_id, str) or not isinstance(selection_id, str):
         return _failure("bad_graph_url_invalid")
 
+    if expected_market_id is None or not _MARKET_ID_RE.fullmatch(
+        str(expected_market_id)
+    ):
+        return _failure("bad_graph_url_market_identity_unavailable")
+
     if market_id != str(expected_market_id):
         return _failure("bad_graph_url_market_mismatch")
+
+    ambiguous_ids = (
+        selection_map.get(_AMBIGUOUS_SELECTION_IDS, set())
+        if isinstance(selection_map, dict)
+        else set()
+    )
+    if selection_id in ambiguous_ids:
+        return _failure("bad_graph_url_selection_ambiguous")
 
     runner = (
         selection_map.get(selection_id)
@@ -121,5 +146,6 @@ def validate_ladder_mapping(
         "ok": True,
         "market_id": market_id,
         "selection_id": selection_id,
+        "canonical_url": parsed_url["canonical_url"],
         "runner": runner,
     }

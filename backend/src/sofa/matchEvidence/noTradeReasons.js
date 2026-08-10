@@ -1,6 +1,6 @@
-const PERSISTENCE_INCOMPLETE_REASON = 'Persistence incomplete: canonical cross-source evidence unavailable';
+import { PERSISTENCE_INCOMPLETE_REASON } from './persistenceQuality.js';
 
-export function buildNoTradeReasons(dataQuality, alignment, integrity) {
+export function buildNoTradeReasons(dataQuality, alignment) {
     const reasons = [];
     if (!dataQuality.sofaLive) reasons.push('Sofa market not live');
     if (!dataQuality.sofaRecent) reasons.push('SofaScore tick too old');

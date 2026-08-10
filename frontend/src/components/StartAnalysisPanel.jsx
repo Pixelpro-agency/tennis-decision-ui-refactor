@@ -11,7 +11,6 @@ export default function StartAnalysisPanel({
   setBetfairMode,
   chromeProfilePath,
   setChromeProfilePath,
-  chromeProfileName,
   cdpUrl,
   setCdpUrl,
   openBetfairLogin,
@@ -28,7 +27,8 @@ export default function StartAnalysisPanel({
   runAllChecks,
   handleSearch,
   sofaLoading,
-  sofaError
+  sofaError,
+  startTrackingError
 }) {
   return (
                 <div className="w-full flex items-center justify-center p-6">
@@ -151,7 +151,7 @@ export default function StartAnalysisPanel({
                             />
 
                             <button
-                                onClick={() => handleSearch(matchUrl, betfairUrl, betfairGraphUrls, betfairMode, chromeProfilePath, chromeProfileName, cdpUrl)}
+                                onClick={() => handleSearch(matchUrl, betfairUrl, betfairGraphUrls, betfairMode, chromeProfilePath, cdpUrl)}
                                 disabled={!matchUrl || sofaLoading}
                                 className="w-full bg-[var(--accent-blue)] hover:bg-blue-600 text-white font-bold py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center mt-2"
                             >
@@ -163,9 +163,11 @@ export default function StartAnalysisPanel({
                                 ) : 'Link Accounts & Start'}
                             </button>
 
-                            {sofaError && (
+                            {(startTrackingError || sofaError) && (
                                 <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm text-center">
-                                    {sofaError}
+                                    {startTrackingError
+                                        ? 'Unable to start live tracking.'
+                                        : sofaError}
                                 </div>
                             )}
                         </div>

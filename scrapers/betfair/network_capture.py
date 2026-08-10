@@ -34,6 +34,18 @@ INTERESTING_DATA_KEYS = (
     "selection",
     "market",
 )
+MAX_CAPTURE_TASKS = 16
+CAPTURE_DRAIN_SECONDS = 3
+MAX_COLLECTOR_ITEMS = 250
+
+
+def append_bounded(collector, key, value):
+    items = collector.setdefault(key, [])
+    if len(items) < MAX_COLLECTOR_ITEMS:
+        items.append(value)
+        return True
+    collector["collector_truncated"] = True
+    return False
 
 
 def ensure_network_dump_dir():
@@ -98,7 +110,7 @@ async def handle_network_response(response, collector, dump_dir):
             "headers": redact_headers(headers),
         }
 
-        collector["responses"].append(record)
+        append_bounded(collector, "responses", record)
 
         shortName = sanitize_filename(
             redactedUrl.split("?")[0].split("/")[-1] or "response"
@@ -124,7 +136,7 @@ async def handle_network_response(response, collector, dump_dir):
                 f"[NetworkCapture] Could not read body for "
                 f"{redactedUrl}: {errorText}"
             )
-            collector["errors"].append({
+            append_bounded(collector, "errors", {
                 "url": redactedUrl,
                 "error": f"body read failed: {errorText}",
             })
@@ -153,7 +165,7 @@ async def handle_network_response(response, collector, dump_dir):
                     )
                     redactedJson = redact_value(parsedJson)
                     record["json"] = True
-                    collector["json_payloads"].append({
+                    append_bounded(collector, "json_payloads", {
                         "url": redactedUrl,
                         "status": status,
                         "payload": redactedJson,
@@ -164,7 +176,7 @@ async def handle_network_response(response, collector, dump_dir):
                         f"[NetworkCapture] JSON parse failed "
                         f"for {redactedUrl}: {errorText}"
                     )
-                    collector["errors"].append({
+                    append_bounded(collector, "errors", {
                         "url": redactedUrl,
                         "error": f"json parse: {errorText}",
                     })
@@ -175,14 +187,14 @@ async def handle_network_response(response, collector, dump_dir):
             with metaPath.open("w", encoding="utf-8") as file:
                 json.dump(record, file, ensure_ascii=False, indent=2)
 
-            collector["saved"].append(str(metaPath))
+            append_bounded(collector, "saved", str(metaPath))
         except Exception as error:
             errorText = redact_text(str(error))
             log(
                 f"[NetworkCapture] Failed to write metadata "
                 f"for {redactedUrl}: {errorText}"
             )
-            collector["errors"].append({
+            append_bounded(collector, "errors", {
                 "url": redactedUrl,
                 "error": f"metadata write: {errorText}",
             })
@@ -199,7 +211,7 @@ async def handle_network_response(response, collector, dump_dir):
                         indent=2,
                     )
 
-                collector["saved"].append(str(jsonPath))
+                append_bounded(collector, "saved", str(jsonPath))
                 bodySaved = True
             except Exception as error:
                 errorText = redact_text(str(error))
@@ -207,7 +219,7 @@ async def handle_network_response(response, collector, dump_dir):
                     f"[NetworkCapture] Failed to write JSON "
                     f"body for {redactedUrl}: {errorText}"
                 )
-                collector["errors"].append({
+                append_bounded(collector, "errors", {
                     "url": redactedUrl,
                     "error": f"json write: {errorText}",
                 })
@@ -227,7 +239,7 @@ async def handle_network_response(response, collector, dump_dir):
                         )
                     )
 
-                collector["saved"].append(str(textPath))
+                append_bounded(collector, "saved", str(textPath))
             except Exception as error:
                 errorText = redact_text(str(error))
                 log(
@@ -249,7 +261,7 @@ async def handle_network_response(response, collector, dump_dir):
             f"{redactedUrl}: {errorText}"
         )
 
-        collector["errors"].append({
+        append_bounded(collector, "errors", {
             "url": redactedUrl,
             "error": errorText,
         })
@@ -258,12 +270,38 @@ def install_network_capture(page, collector, dump_dir):
     if not collector.get("enabled"):
         return
 
-    page.on(
-        "response",
-        lambda response: asyncio.create_task(
-            handle_network_response(response, collector, dump_dir)
-        ),
+    tasks = collector.setdefault("tasks", set())
+    semaphore = collector.setdefault(
+        "semaphore", asyncio.Semaphore(MAX_CAPTURE_TASKS)
     )
+
+    async def bounded_handle(response):
+        async with semaphore:
+            await handle_network_response(response, collector, dump_dir)
+
+    def schedule(response):
+        task = asyncio.create_task(bounded_handle(response))
+        tasks.add(task)
+        task.add_done_callback(tasks.discard)
+
+    page.on("response", schedule)
+
+
+async def drain_network_capture(collector, timeout=CAPTURE_DRAIN_SECONDS):
+    tasks = list(collector.get("tasks", ()))
+    if not tasks:
+        return
+    try:
+        await asyncio.wait_for(
+            asyncio.gather(*tasks, return_exceptions=True),
+            timeout=timeout,
+        )
+    except TimeoutError:
+        collector["drain_timed_out"] = True
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
 
 
 def find_json_candidates(
@@ -414,6 +452,7 @@ def summarize_network_capture(collector):
         "json_count": len(jsonPayloads),
         "errors_count": len(errors),
         "interesting_urls": interestingUrls,
-        "dump_dir": str(collector.get("dump_dir", "")),
+        "drain_timed_out": bool(collector.get("drain_timed_out", False)),
+        "collector_truncated": bool(collector.get("collector_truncated", False)),
         "candidates": extract_network_candidates_from_collector(collector),
     }

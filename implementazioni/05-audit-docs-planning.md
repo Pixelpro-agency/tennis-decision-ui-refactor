@@ -1,5 +1,9 @@
 # Tennis Decision UI — Audit e pulizia delle fonti documentali locali
 
+> **Closeout storico:** questo file descrive il checkpoint di cleanup. La baseline confrontata è `2697f66ea8e17a9e35481299cb47ec402558df55`; il commit `3de08ca09ac7cf3d64533b2e72b8f61d1d32f196` applica e registra la pulizia, ma non sostituisce la baseline del confronto.
+
+> I riferimenti a `docs/archive/README.md` e a `IMPL-015` come prossimo passo descrivono lo stato del checkpoint. La policy archive corrente è in `DEC-027`; stato IMPL e prossimo passo correnti sono nella Todo, negli owner IMPL e nel root registry.
+
 ## Scopo
 
 Questo registro chiude la classificazione dei materiali ricevuti fuori dalla

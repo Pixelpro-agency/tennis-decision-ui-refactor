@@ -11,6 +11,7 @@ import {
     freezeRecord,
     isActiveRecord,
     compareIntegrityRecords
+    ,stableJson
 } from './recordSchema.js';
 import { createJournalFileStore } from './filesystemStore.js';
 import { getPersistenceIntegrityStatusFromRecords } from './integrity.js';
@@ -52,8 +53,7 @@ export function createCommitJournalStore({
 
         try {
             const content = fs.readFileSync(target, 'utf8');
-            JSON.parse(content);
-            return { ok: true };
+            return { ok: true, document: JSON.parse(content) };
         } catch (_) {
             return { ok: false };
         }
@@ -62,6 +62,66 @@ export function createCommitJournalStore({
     const resolveVerifyDocumentTarget = typeof verifyDocumentTarget === 'function'
         ? verifyDocumentTarget
         : defaultVerifyDocumentTarget;
+
+    function verifyCompletedDocument(record, documentName) {
+        const descriptor = record?.documents?.[documentName];
+        if (!descriptor || descriptor.completed !== true) {
+            return { ok: false, reason: 'document_incomplete' };
+        }
+        const verified = resolveVerifyDocumentTarget(descriptor.target, {
+            eventId: record.eventId,
+            source: record.source,
+            documentName,
+            expectedDocument: descriptor.payload?.document
+        });
+        if (verified?.ok !== true) return { ok: false, reason: verified?.reason || 'target_unverified' };
+
+        const expected = descriptor.payload?.document;
+        const expectedTyped = expected && typeof expected === 'object' && !Array.isArray(expected) &&
+            expected.metadata && typeof expected.metadata === 'object' && !Array.isArray(expected.metadata) &&
+            Array.isArray(documentName === 'history' ? expected.history : expected.timeline);
+        if (verified.document === undefined && typeof verifyDocumentTarget === 'function') {
+            return { ok: true, reason: null };
+        }
+        let actual = verified.document;
+        if (actual === undefined) {
+            try { actual = JSON.parse(fs.readFileSync(descriptor.target, 'utf8')); }
+            catch (_) { return { ok: false, reason: 'target_unreadable' }; }
+        }
+        if (!actual || typeof actual !== 'object' || Array.isArray(actual) ||
+            !expected || typeof expected !== 'object' || Array.isArray(expected)) {
+            return expectedTyped
+                ? { ok: false, reason: 'invalid_document_shape' }
+                : { ok: true, reason: null };
+        }
+        if (!expectedTyped) return { ok: true, reason: null };
+        const metadata = actual.metadata;
+        const expectedArray = documentName === 'history' ? actual.history : actual.timeline;
+        if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata) || !Array.isArray(expectedArray) ||
+            (metadata.eventId != null && metadata.eventId !== record.eventId) ||
+            (documentName === 'timeline' && metadata.source != null && metadata.source !== record.source) ||
+            stableJson(actual) !== stableJson(expected)) {
+            return { ok: false, reason: 'target_mismatch' };
+        }
+        return { ok: true, reason: null };
+    }
+
+    function verifyAndCleanupCompletedCommit(commitId) {
+        const loaded = findRecordByCommitId(commitId);
+        if (loaded.reason !== null) {
+            return createResult({ commitId, status: 'failed', reason: loaded.reason });
+        }
+        const record = loaded.record;
+        const failed = DOCUMENT_NAMES.filter(name => !verifyCompletedDocument(record, name).ok);
+        if (failed.length > 0) {
+            for (const name of failed) {
+                const reopened = markDocumentIncomplete(commitId, name);
+                if (reopened?.ok !== true) return reopened;
+            }
+            return createResult({ eventId: record.eventId, source: record.source, commitId, status: 'failed', reason: 'target_verification_failed' });
+        }
+        return removeCompletedCommit(commitId);
+    }
 
     const logSafe = createSafeLogger(logError);
     const fileStore = createJournalFileStore({
@@ -184,15 +244,11 @@ export function createCommitJournalStore({
         );
 
         for (const entry of completed) {
-            const historyVerified = resolveVerifyDocumentTarget(
-                entry.record.documents.history.target
-            );
-            const timelineVerified = resolveVerifyDocumentTarget(
-                entry.record.documents.timeline.target
-            );
+            const historyVerified = verifyCompletedDocument(entry.record, 'history');
+            const timelineVerified = verifyCompletedDocument(entry.record, 'timeline');
 
             if (historyVerified.ok && timelineVerified.ok) {
-                const cleanup = removeCompletedCommit(entry.record.commitId);
+                const cleanup = verifyAndCleanupCompletedCommit(entry.record.commitId);
 
                 if (cleanup?.ok !== true) {
                     return createResult({
@@ -597,6 +653,15 @@ export function createCommitJournalStore({
 
     function getPersistenceIntegrityStatus(eventId, source = undefined) {
         const journal = listJournalRecords();
+        if (journal.reason !== null) {
+            return {
+                status: 'integrity_unavailable',
+                reason: journal.reason,
+                source: isValidSource(source) ? source : null,
+                commitId: null,
+                affectedDocuments: []
+            };
+        }
         return getPersistenceIntegrityStatusFromRecords(
             journal.records.map(entry => entry.record),
             eventId,
@@ -613,6 +678,7 @@ export function createCommitJournalStore({
         markDocumentIncomplete,
         markRecoveryFailed,
         removeCompletedCommit,
+        verifyAndCleanupCompletedCommit,
         listPendingCommits,
         scanRecoveryCandidates,
         getPersistenceIntegrityStatus

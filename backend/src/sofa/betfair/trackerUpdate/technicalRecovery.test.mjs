@@ -83,7 +83,7 @@ await runTest('valid sample after technical failures resumes gate observation an
                 : createValidResult());
         },
         getBetfairTrackingKey: (url) => { keyCount++; return 'normalized-' + url; },
-        observeBetfairSourceIdentitySample: () => { observeCount++; return { action: 'no-gate' }; },
+        observeBetfairSourceIdentitySample: () => { observeCount++; return { action: 'persist-current' }; },
         persistBetfairTrackingSample: () => { persistCount++; }
     };
 

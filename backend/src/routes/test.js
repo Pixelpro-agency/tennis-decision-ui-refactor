@@ -1,17 +1,11 @@
 import express from 'express';
-import { extractEventId } from '../sofa/extractEventId.js';
 import { validateGraphUrls } from './test/graphUrlValidation.js';
 import { classifyCdpBaseUrl, buildCdpVersionUrl } from '../utils/cdpUrl.js';
+import { classifySofaUrl } from '../utils/sofaUrl.js';
+import { classifyBetfairUrl } from '../utils/betfairUrl.js';
+import { fetchWithTimeout, FetchTimeoutError } from '../utils/fetchWithTimeout.js';
 
 const router = express.Router();
-
-router.get('/health', (req, res) => {
-    res.json({
-        ok: true,
-        service: 'backend',
-        timestamp: new Date().toISOString()
-    });
-});
 
 export async function handleCdpTestRequest(
     req,
@@ -19,6 +13,7 @@ export async function handleCdpTestRequest(
     dependencies = {}
 ) {
     const fetchFn = dependencies.fetchFn || fetch;
+    const timeoutMs = dependencies.timeoutMs || 4000;
     const classified = classifyCdpBaseUrl(req.body?.cdpUrl);
 
     if (!classified.ok) {
@@ -35,7 +30,7 @@ export async function handleCdpTestRequest(
     const checkedUrl = buildCdpVersionUrl(normalizedCdpUrl);
 
     try {
-        const response = await fetchFn(checkedUrl);
+        const response = await fetchWithTimeout(fetchFn, checkedUrl, {}, timeoutMs);
         const text = await response.text();
 
         if (text.trim() === '') {
@@ -90,9 +85,10 @@ export async function handleCdpTestRequest(
             browser: data.Browser || null,
             error: 'CDP endpoint reached but webSocketDebuggerUrl is missing'
         });
-    } catch (_) {
+    } catch (error) {
         return res.json({
             ok: false,
+            code: error instanceof FetchTimeoutError ? 'cdp_timeout' : 'cdp_unreachable',
             cdpUrl: normalizedCdpUrl,
             checkedUrl,
             webSocketDebuggerUrl: false,
@@ -103,70 +99,43 @@ export async function handleCdpTestRequest(
 
 router.post('/cdp', handleCdpTestRequest);
 
-router.post('/sofa-url', (req, res) => {
+export function handleSofaUrlTestRequest(req, res) {
     const { sofaUrl } = req.body || {};
-    const eventId = extractEventId(sofaUrl);
-    
-    if (!eventId) {
+    const result = classifySofaUrl(sofaUrl);
+    if (!result.ok) {
         return res.json({
             ok: false,
-            error: 'Could not extract SofaScore eventId'
+            code: result.code,
+            error: 'Invalid SofaScore URL'
         });
     }
-    
-    res.json({
+    return res.json({
         ok: true,
-        eventId
+        eventId: result.eventId
     });
-});
+}
 
-router.post('/betfair-url', (req, res) => {
+router.post('/sofa-url', handleSofaUrlTestRequest);
+
+export function handleBetfairUrlTestRequest(req, res) {
     const { betfairUrl } = req.body || {};
-    
-    if (!betfairUrl || typeof betfairUrl !== 'string') {
+    const result = classifyBetfairUrl(betfairUrl, { requireEventId: true });
+    if (!result.ok) {
         return res.json({
             ok: false,
-            error: 'Betfair URL missing'
+            code: result.code,
+            error: 'Invalid Betfair URL'
         });
     }
-    
-    let parsed;
-    try {
-        parsed = new URL(betfairUrl);
-    } catch (error) {
-        return res.json({
-            ok: false,
-            error: 'Invalid URL format'
-        });
-    }
-    
-    const isBetfair = /betfair\.\w+$/i.test(parsed.hostname);
-    if (!isBetfair) {
-        return res.json({
-            ok: false,
-            error: 'Not a Betfair domain'
-        });
-    }
-    
-    const slugMatch = parsed.pathname.match(/-([\d]{6,})(?:\/|$)/);
-    const eventId = slugMatch ? slugMatch[1] : null;
-    
-    if (!eventId) {
-        return res.json({
-            ok: false,
-            betfairUrl,
-            domain: parsed.hostname,
-            error: 'Could not extract numeric event id from URL slug'
-        });
-    }
-    
-    res.json({
+    return res.json({
         ok: true,
-        betfairUrl,
-        domain: parsed.hostname,
-        eventId
+        betfairUrl: result.value,
+        domain: result.hostname,
+        eventId: result.eventId
     });
-});
+}
+
+router.post('/betfair-url', handleBetfairUrlTestRequest);
 
 router.post('/graph-urls', (req, res) => {
     const { graphUrls } = req.body || {};

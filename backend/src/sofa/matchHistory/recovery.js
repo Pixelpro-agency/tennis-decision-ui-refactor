@@ -232,6 +232,26 @@ export async function runPendingCommitRecovery(dependencies = {}) {
         const timelineCompleted = record.documents.timeline.completed === true;
 
         if (historyCompleted && timelineCompleted) {
+            if (typeof journalStore.verifyAndCleanupCompletedCommit === 'function' &&
+                typeof dependencies.verifyDocumentTarget !== 'function') {
+                const cleanup = journalStore.verifyAndCleanupCompletedCommit(record.commitId);
+                if (cleanup?.ok === true) {
+                    summary.cleaned += 1;
+                    addOutcome(summary, { source: record.source, eventId: record.eventId, commitId: record.commitId, category: 'cleaned', reason: 'completed_residual_removed' });
+                    continue;
+                }
+                const reloaded = journalStore.getPendingCommit(record.commitId);
+                if (!reloaded) {
+                    summary.retryablePending += 1;
+                    addOutcome(summary, { source: record.source, eventId: record.eventId, commitId: record.commitId, category: 'retryable_pending', reason: cleanup?.reason || 'target_verification_failed', failedDocument: 'journal' });
+                    continue;
+                }
+                const repairResult = await runRepairForRecord(reloaded, dependencies);
+                if (repairResult?.ok === true) summary.recovered += 1;
+                else summary.retryablePending += 1;
+                addOutcome(summary, { source: record.source, eventId: record.eventId, commitId: record.commitId, category: repairResult?.ok === true ? 'recovered' : 'retryable_pending', reason: repairResult?.reason || repairResult?.status || 'repair_failed', failedDocument: repairResult?.failedDocument || null });
+                continue;
+            }
             const historyVerified = verifyDocumentTarget(
                 dependencies,
                 record.documents.history.target

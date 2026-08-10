@@ -17,31 +17,37 @@ export function validateGraphUrls(graphUrls) {
 
     const graphs = [];
     const marketIds = new Set();
+    const selectionIds = new Set();
 
     for (const url of urls) {
         try {
             const parsed = new URL(url);
+            const hasExplicitPort = /^[a-z][a-z0-9+.-]*:\/\/[^/]*:\d+(?:\/|$)/i.test(url);
 
-            if (!/^graphs\.betfair\.\w+$/i.test(parsed.hostname)) {
+            if (
+                parsed.protocol !== 'https:' ||
+                parsed.hostname !== 'graphs.betfair.it' ||
+                parsed.username || parsed.password || parsed.port || hasExplicitPort
+            ) {
                 graphs.push({
                     url,
                     marketId: null,
                     selectionId: null,
                     valid: false,
-                    error: 'Not a graphs.betfair.* domain'
+                    error: 'bad_graph_url_invalid'
                 });
                 continue;
             }
 
             const parts = parsed.pathname.split('/').filter(Boolean);
 
-            if (parts.length < 2) {
+            if (parts.length !== 3 || parts[2] !== '0') {
                 graphs.push({
                     url,
                     marketId: null,
                     selectionId: null,
                     valid: false,
-                    error: 'Path too short'
+                    error: 'bad_graph_url_invalid'
                 });
                 continue;
             }
@@ -56,12 +62,24 @@ export function validateGraphUrls(graphUrls) {
                     marketId: marketValid ? marketId : null,
                     selectionId: selectionValid ? selectionId : null,
                     valid: false,
-                    error: 'marketId or selectionId format invalid'
+                    error: 'bad_graph_url_invalid'
+                });
+                continue;
+            }
+
+            if (selectionIds.has(selectionId)) {
+                graphs.push({
+                    url,
+                    marketId,
+                    selectionId,
+                    valid: false,
+                    error: 'bad_graph_url_duplicate_selection'
                 });
                 continue;
             }
 
             marketIds.add(marketId);
+            selectionIds.add(selectionId);
 
             graphs.push({
                 url,
@@ -75,7 +93,7 @@ export function validateGraphUrls(graphUrls) {
                 marketId: null,
                 selectionId: null,
                 valid: false,
-                error: 'Invalid URL'
+                    error: 'bad_graph_url_invalid'
             });
         }
     }

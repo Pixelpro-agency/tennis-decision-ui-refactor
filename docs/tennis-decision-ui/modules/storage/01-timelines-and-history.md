@@ -1,687 +1,197 @@
-# Timeline e history
+# Timeline e history: facade e contratti core
+
+Questo documento è l'owner del boundary comune di persistenza. I flussi specifici sono descritti in [Persistenza SofaScore](./03-sofa-persistence.md) e [Persistenza Betfair](./04-betfair-persistence.md); journal e recovery appartengono a [Commit journal e recovery](./02-commit-journal-and-recovery.md).
 
 ## Scopo
 
-Questo modulo definisce la persistenza canonica del progetto.
+Definire artefatti canonici, discovery, letture fail-closed, API comuni e stato cross-source condiviso senza duplicare i contratti specifici dei writer.
 
-```txt
-backend/src/sofa/timelineStore.js
-backend/src/sofa/matchHistory.js
-backend/src/sofa/matchHistory/
+## Stato
+
+History e timeline usano target univoci, read result strutturati e scrittura atomica per singolo file. La coppia di documenti resta coordinata dal commit journal.
+
+## Responsabilità
+
+La facade possiede formato degli artefatti, discovery canonica, letture fail-closed, API comuni e proiezioni cross-source committed. Non possiede le regole di materialità specifiche di SofaScore o Betfair e non possiede recovery o writer authority.
+
+## Struttura corrente
+
+```text
+backend/match_history/
+├── <history canoniche per eventId>.json
+├── sofa_<eventId>.json
+├── betfair_<eventId>.json
+├── .pending_commits/
+│   └── journal sidecar globale
+└── .writer_authority/
+    └── authority process-level dello storage
 ```
 
-Timeline e history non sono equivalenti.
+I nomi dei file canonici includono anche i segmenti descrittivi costruiti dagli helper di storage; lo schema mostra ownership e collocazione, non una filename da costruire manualmente.
 
-Questo documento descrive i file canonici e i loro writer.
+## Flusso corrente
 
-Il coordinamento multi-documento tramite `commitId`, journal sidecar e recovery deterministica appartiene al documento dedicato:
-
-```txt
-./02-commit-journal-and-recovery.md
+```text
+eventId + source
+→ validazione identità
+→ discovery target
+   ├── zero candidati → missing
+   ├── un candidato → found
+   └── più candidati → ambiguous_storage_target
+→ lettura e validazione shape
+→ decisione di materialità nell'owner della sorgente
+→ commit journalizzato
+→ write atomica per singolo file
+→ promotion dello stato shared soltanto dopo complete
 ```
 
-## Dati canonici
+```text
+history aggregata
+→ righe materialmente cambiate
+→ può includere la projection committed della sorgente opposta
 
-| Artefatto                | Scopo                                                                                                        |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| Timeline SofaScore       | Sequenza append-only dei tick di campo                                                                       |
-| Timeline Betfair         | Sequenza di tick algoritmici di mercato; il cleanup legacy può riscriverla rimuovendo entry raw non conformi |
-| History aggregata        | Righe compatte con campi selezionati SofaScore e Betfair; non conserva lo snapshot SofaScore completo        |
-| Conferme Source Identity | Stato operatore separato dalle timeline raw                                                                  |
-
-Le timeline sono la fonte cronologica per Evidence, audit e replay futuro.
-
-La history è una vista aggregata utile per consultazione e compatibilità.
-
-Il runtime Betfair del tracker non è un artefatto canonico.
-
-Non viene salvato in timeline, history o confirmation store.
-
-Il commit journal non è un dato canonico e non sostituisce history o timeline.
-
-È un sidecar tecnico usato per coordinare commit logici incompleti e repair deterministici.
-
-## Precondizione di processo: writer authority
-
-Prima di recovery e runtime il processo backend deve possedere la writer authority esclusiva della repository e della storage identity.
-
-```txt
-startServer()
-→ createMatchHistoryWriterAuthority()
-→ acquire()
-→ recovery
-→ listener readiness
-→ runtime
+timeline SofaScore / Betfair
+→ tick canonici della singola sorgente
+→ materialità e deduplica specifiche
 ```
 
-La writer authority vive nel sidecar tecnico:
+## Artefatti canonici
 
-```txt
-backend/match_history/.writer_authority/
+In `backend/match_history/` convivono una history aggregata per `eventId`, le timeline SofaScore e Betfair e il journal sidecar globale `.pending_commits/`.
+
+Ogni documento canonico contiene un oggetto `metadata` e un array `history` oppure `timeline`. `latest` non viene persistito: `loadTimeline()` lo deriva dall'ultimo tick. Un aggiornamento dei soli metadati non viene scritto quando il tick è duplicato e non va presentato come modifica canonica avvenuta.
+
+### History aggregata
+
+La history raccoglie righe prodotte alternativamente dalle due sorgenti e può includere una projection committed della sorgente opposta. Non è una copia della timeline e non conserva ogni poll.
+
+### Timeline per sorgente
+
+Le timeline SofaScore e Betfair conservano tick canonici con materialità propria. Il campo `latest` appartiene esclusivamente alla vista di lettura; i writer persistono `metadata` e `timeline`.
+
+## Letture fail-closed
+
+`loadHistoryResult()` e `loadTimelineResult()` distinguono `found`, `missing`, `discovery_failed`, `read_failed`, `invalid_json`, `invalid_shape` e `ambiguous_storage_target`.
+
+Solo `missing` autorizza l'inizializzazione. Ogni failure blocca la riscrittura: JSON corrotto, shape invalida o errore filesystem non diventano documenti vuoti. Le facade legacy restituiscono il documento solo per `found`; i writer canonici usano i read result strutturati.
+
+La shape minima richiede un documento oggetto, `metadata` oggetto e l'array coerente con il tipo. La compatibilità legacy non viene applicata come normalizzazione silenziosa nel boundary di scrittura.
+
+## Discovery e identità
+
+Per `source + eventId` o per la history aggregata: zero candidati significa `missing`, uno identifica il target, più candidati produce `ambiguous_storage_target`. Non viene scelto il primo file lessicografico né eseguito cleanup automatico.
+
+L'`eventId` attraversa il validator condiviso prima della risoluzione dei target. Discovery ambigua, traversal e identità non canoniche non autorizzano creazione, rinomina o cancellazione automatica.
+
+## API e ownership
+
+`matchHistory.js` espone `getHistoryFile`, `loadHistory`, `loadHistoryResult`, `saveHistory(eventId, historyData, metadata = {}, commitId = null)`, `addSofaUpdate` e `prepareBetfairHistory`.
+
+`addBetfairUpdate` è una facade di compatibilità prepare-only: il commit Betfair appartiene al processor di persistenza.
+
+`timelineStore.js` espone `getTimelineFile`, `loadTimeline`, `loadTimelineResult`, `saveTimeline` e `writeTimelineDocument`.
+
+Le scritture usano file temporaneo e rename sul singolo target. La consistenza della coppia history/timeline è coordinata dal journal.
+
+`saveTimeline()` conserva la semantica legacy ma non trasforma un duplicate tick in un metadata-only write. I consumer non devono interpretare metadata calcolati in memoria come dati persistiti quando il risultato è `unchanged`.
+
+## Stato cross-source
+
+Le projection riusate dalla sorgente opposta rappresentano solo stato canonico confermato. Preparation, failure, partial commit e sample status-only regressivi non promuovono lo stato condiviso. La promozione avviene dopo un commit `complete`; il recovery riusa gli artefatti journalizzati.
+
+Questo impedisce che un sample Betfair fallito compaia in una successiva riga SofaScore o che un sample SofaScore non committato venga incorporato da Betfair. Stato osservato, candidato e committed non sono sinonimi.
+
+## Rappresentazione Betfair condivisa
+
+`selectionId` è l'identità del runner, il confronto è indipendente dall'ordine e i valori mancanti non vengono convertiti in zero. Questo vale anche per market total e Money Flow.
+
+`matchedTotal` del mercato e `totalMatchedOnSelection` del runner restano campi distinti. Le rappresentazioni di deduplica preservano questa distinzione e non usano il nome come identity primaria quando `selectionId` è disponibile.
+
+## Failure model
+
+```text
+missing
+→ inizializzazione consentita
+
+invalid_json / invalid_shape / read_failed / discovery_failed
+→ nessun overwrite
+→ failure strutturata
+
+ambiguous_storage_target
+→ nessuna selezione automatica
+→ intervento esplicito richiesto
 ```
 
-Il sidecar non è canonico, non è una timeline, non è una history, non è un commit journal, non è una fonte dati e non è una cache. Non viene esposto dalle API e non deve essere manipolato dai writer business.
+Il cleanup legacy e i consumer HTTP devono mantenere la stessa distinzione: un errore di lettura non equivale a `unchanged` o `not found`.
 
-`saveTimeline(...)`, `saveHistory(...)`, `addSofaUpdate(...)` e `addBetfairUpdate(...)` non acquisiscono né verificano autonomamente l'authority. La precondizione viene garantita dal processo backend attraverso `startServer()`.
+## Riferimenti implementativi
 
-Di conseguenza, una chiamata diretta ai writer non è automaticamente protetta cross-process. I percorsi canonici runtime sono protetti perché il secondo backend sulla stessa storage identity viene bloccato prima della recovery e del listener.
+| Boundary            | Implementazione                                   |
+| ------------------- | ------------------------------------------------- |
+| timeline            | `backend/src/sofa/timelineStore.js`               |
+| history facade      | `backend/src/sofa/matchHistory.js`                |
+| storage e discovery | `backend/src/sofa/matchHistory/storage.js`        |
+| SofaScore documents | `backend/src/sofa/matchHistory/sofaUpdates/`      |
+| Betfair documents   | `backend/src/sofa/matchHistory/betfairUpdates.js` |
 
-## Precondizione Source Identity Gate
-
-Nel flusso live coordinato da `matchTracker.js`, con URL Betfair timeline e history vengono aggiornate soltanto dopo l’autorizzazione del Source Identity Gate.
-
-| Fase gate        | Scrittura timeline/history |
-| ---------------- | -------------------------- |
-| `collecting`     | Vietata                    |
-| `pending`        | Vietata                    |
-| `recording`      | Autorizzata                |
-| `mismatch`       | Bloccata                   |
-| `not-applicable` | Autorizzata per SofaScore  |
-
-Il gate appartiene al tracking, non alla persistenza.
-
-`saveTimeline(...)`, `addSofaUpdate(...)` e `addBetfairUpdate(...)` non devono calcolare o modificare Source Identity.
-
-Questa precondizione è applicata dai call site del tracking, non è un controllo interno della facade storage.
-
-Chiamate dirette a `saveTimeline(...)`, `addSofaUpdate(...)` o `addBetfairUpdate(...)` non ricostruiscono né verificano il gate.
-
-## Timeline
-
-API del modulo:
-
-```txt
-loadTimeline(source, eventId)
-saveTimeline(source, eventId, entryData, metadata)
-```
-
-Helper tecnico interno:
-
-`writeTimelineDocument(source, eventId, timelineObj, metadata)`
-
-Sorgenti ammesse:
-
-```txt
-sofa
-betfair
-```
-
-Struttura logica restituita:
-
-```txt
-metadata
-timeline
-updatedAt
-latest
-```
-
-Ogni tick include dati normalizzati, timestamp e sequenza.
-
-Per la sorgente SofaScore, il payload applicativo del tick può contenere:
+### Shape canoniche
 
 ```json
 {
-  "snapshot": {},
-  "localContext": {}
+  "metadata": {},
+  "history": []
 }
 ```
 
-`snapshot` conserva il dato SofaScore normalizzato.
-
-`localContext` conserva il contesto descrittivo calcolato dal progetto e può includere:
-
-```txt
-match.pointShare
-recent
-comparison
-dataQuality
+```json
+{
+  "metadata": {},
+  "timeline": []
+}
 ```
 
-`localContext` appartiene al tick timeline SofaScore.
+La view di lettura può aggiungere:
 
-Non viene aggiunto alla history aggregata.
-
-Non introduce un nuovo store, un nuovo file storico o una nuova sorgente timeline.
-
-`saveTimeline(...)` carica o crea la timeline, unisce i metadata, ignora duplicati identici rispetto all’ultimo tick, aggiunge il nuovo tick con timestamp ed `elapsedSeconds` e aggiorna `latest`.
-
-Dopo aver costruito il documento aggiornato, `saveTimeline(...)` delega la persistenza a `writeTimelineDocument(...)`.
-
-La freshness del mercato è determinata dal timestamp dell’ultimo tick Betfair canonico valido.
-
-Uno scrape runtime riuscito non rende fresco un tick timeline vecchio.
-
-I writer di timeline devono restituire un risultato strutturato.
-
-Un risultato assente, `undefined`, non-ok, con file diverso dal target atteso o con `commitId` diverso dal commit atteso deve essere trattato come failure di persistenza, non come successo implicito.
-
-Esiti minimi:
-
-```txt
-written
-unchanged
-failed
+```json
+{
+  "latest": "ultimo elemento oppure null",
+  "integrity": "stato read-only"
+}
 ```
 
-## History aggregata
-
-Facade pubblica:
-
-```txt
-backend/src/sofa/matchHistory.js
-```
-
-API pubblica:
-
-```txt
-getHistoryFile(eventId)
-loadHistory(eventId)
-saveHistory(eventId, historyData, metadata)
-addSofaUpdate(eventId, sofaData, tournamentName, date, timelineData)
-addBetfairUpdate(eventId, betfairData, marketUrl)
-```
-
-La lettura history distingue esplicitamente:
-
-```txt
-found
-missing
-failed
-```
-
-Un errore di discovery, lettura o JSON invalido non deve essere trattato come history mancante.
-
-I writer di history devono restituire un risultato strutturato e conservare il `commitId` quando partecipano a un commit journalizzato.
-
-Un risultato `undefined` o non-ok è sempre una failure di persistenza.
-
-La facade mantiene lo stato condiviso più recente di SofaScore e Betfair.
-
-I moduli specializzati gestiscono gli update:
-
-```txt
-matchHistory/sofaUpdates.js
-matchHistory/sofaUpdates/
-matchHistory/betfairUpdates.js
-matchHistory/storage.js
-```
-
-`matchHistory/sofaUpdates.js` resta la facade pubblica. I file sotto `matchHistory/sofaUpdates/` separano handler, change detection, costruzione history, costruzione timeline, workflow journal e recovery.
-
-## Update SofaScore
-
-L'update SofaScore:
-
-```txt
-snapshot SofaScore
-→ aggiornamento stato corrente
-→ deduplicazione history
-→ commit Sofa journalizzato
-→ history row
-→ timeline tick Sofa
-→ sofa_commit result
-```
-
-La deduplicazione della history è anche il gate effettivo della timeline SofaScore.
-
-Quando l’update è considerato invariato:
-
-```txt
-history
-→ nessuna nuova riga
-
-timeline
-→ nessun nuovo tick
-
-journal
-→ nessun nuovo commit
-```
-
-La deduplica confronta lo stato SofaScore e la parte Betfair persistibile utile alla history, non l’intero oggetto tecnico Betfair.
-
-Sono rilevanti almeno:
-
-```txt
-totalMatched
-runners[].name
-runners[].wom
-runners[].moneyFlow.back
-runners[].moneyFlow.lay
-```
-
-Sono esclusi dal confronto di deduplica Sofa:
-
-```txt
-backPrice
-layPrice
-back
-lay
-ladder
-ladderStats
-matchedTotal
-campi asimmetrici o transitori
-```
-
-La distinzione tra assenza di stato Betfair e presenza di stato Betfair resta significativa.
-
-Un `localContext` nuovo, da solo, non forza un nuovo tick se score, servizio, statistiche, stato, superficie e rappresentazione Betfair persistibile restano invariati.
-
-Questo flusso viene invocato quando l’observer restituisce:
-
-```txt
-persist-current
-no-gate
-```
-
-Il bootstrap usa il callback dedicato di apertura recording.
-
-Con `bootstrapped`, il callback ha già persistito i campioni iniziali: il flusso normale non deve essere invocato di nuovo.
-
-Con `buffered` o `blocked`, non viene eseguita una persistenza Sofa. Il risultato osservabile è un commit `unchanged` valido con warning `source_identity_gate:<action>`.
-
-## Update Betfair
-
-L’update Betfair accetta soltanto un campione tecnicamente utilizzabile.
-
-L’autorizzazione Source Identity non è sufficiente da sola:
-
-```txt
-campione tecnicamente utilizzabile
-+
-autorizzazione del gate
-→ persistenza canonica possibile
-```
-
-Il processor Betfair resta owner della classificazione tecnica. Il gate resta owner dell’autorizzazione alla persistenza.
-
-La facade pubblica del commit Betfair resta:
-
-```txt
-backend/src/sofa/betfair/processor/persistence.js
-```
-
-I moduli sotto `backend/src/sofa/betfair/processor/` separano decisione di persistenza, costruzione documenti, wiring delle dipendenze e workflow di commit journalizzato. L'export pubblico resta re-esposto da `backend/src/sofa/betfair/processor.js`.
-
-La costruzione del tick Betfair canonico resta esposta da:
-
-```txt
-backend/src/sofa/betfair/timeline.js
-```
-
-I file sotto `backend/src/sofa/betfair/timeline/` separano stato/deduplica, snapshot runner, riepilogo ladder, health Graph e preservazione status-only.
-
-Flusso ordinario:
-
-```txt
-sample Betfair normalizzato
-→ validazione tecnica
-→ repair pending journal, se presente
-→ costruzione tick e confronto con ultimo tick algoritmico
-→ skip se regressivo ordinario o duplicato
-→ commit Betfair journalizzato
-→ history row
-→ timeline tick Betfair
-→ betfair_commit result
-→ commit marketState solo dopo complete o recovered
-```
-
-### Eccezione stretta: tick status-only per logout Graph
-
-Un `regressive_sample` non viene normalmente persistito. Può produrre un tick Betfair canonico di sola transizione di stato (`status-only`) soltanto quando sono tutte vere le condizioni seguenti:
-
-```txt
-esiste un tick Betfair canonico precedente
-→ diagnostics.graphLoginRequired = true
-→ le Graph URL non hanno prodotto righe ladder
-→ sample classificato regressive_sample
-```
-
-In questo caso il flusso di persistenza è separato da quello ordinario:
-
-```txt
-logout Graph esplicitamente rilevato
-→ costruzione tick status-only dal precedente tick canonico
-→ assegnazione seq
-→ append alla timeline Betfair canonica
-→ latest aggiornato
-→ baseline runner e mercato invariato
-```
-
-Il tick `status-only` conserva mercato e runner dell’ultimo tick canonico. Non adotta quote, volumi, ladder o Money Flow regressivi del sample di logout.
-
-```txt
-timeline Betfair
-→ nuovo tick status-only canonico
-
-history aggregata
-→ nessuna riga raw del sample regressivo
-
-baseline marketState
-→ non aggiornato
-```
-
-Il tick espone:
-
-```txt
-graphHealth.status = auth_suspected
-diagnostics.graphLoginRequired = true
-diagnostics.statusOnlyGraphLogin = true
-```
-
-L’eccezione non modifica Source Identity. Un errore rete/API o un’assenza feed non viene classificato come logout Graph.
-
-
-Un campione tecnico non altera il baseline elaborato prima.
-
-### Integrità runner e tick Betfair
-
-Per i tick Betfair algoritmici e per `marketState` runtime, `selectionId` normalizzato è l’unica identità del runner.
-
-selectionId identico
-→ stesso runner
-
-nome identico
-→ non implica stesso runner
-
-Non esiste fallback per nome o indice.
-
-Senza `selectionId`, il runner non eredita baseline, ladder o matched total da runner precedenti. Un tick senza ID runner non è deduplicabile in modo affidabile.
-
-Le row Betfair persistono i campi necessari al restore del runner:
-
-```txt
-selectionId
-moneyFlow
-wom
-ladder
-ladderSource
-ladderStats
-matchedTotal
-totalMatchedOnSelection
-lastTradedPrice
-```
-
-`matchedTotal` e `totalMatchedOnSelection` restano valori distinti.
-
-Il restore usa `selectionId`, non il nome runner. `lastTradedPrice` può essere recuperato dallo stato runtime oppure dalla history persistita.
-
-Una regressione include una diminuzione materiale di:
-
-```txt
-total matched del mercato
-matched total del runner
-total matched sulla selection
-traded ladder allo stesso prezzo e selectionId
-```
-
-Per un tick duplicato o un `regressive_sample` ordinario, non vengono aggiornati:
-
-```txt
-history
-timeline
-baseline marketState in memoria
-```
-
-L’unica eccezione è il logout Graph esplicitamente rilevato alle condizioni cumulative previste nel flusso precedente. In quel caso viene aggiunto un tick `status-only` alla sola timeline Betfair: la history aggregata non riceve il sample raw regressivo e il baseline `marketState` resta invariato.
-
-## Bootstrap cross-source
-
-Quando il gate passa a `recording`, il bootstrap può scrivere i campioni bufferizzati nell’ordine:
-
-```txt
-SofaScore
-→ Betfair
-```
-
-Il bootstrap non è transazionale.
-
-Se SofaScore viene scritto e Betfair fallisce:
-
-```txt
-tick SofaScore già persistito
-→ gate torna pending
-→ errore sintetico: Bootstrap persistence failed
-```
-
-Non esiste rollback automatico del tick SofaScore già scritto.
-
-Il bootstrap Betfair non deve partire quando il commit Sofa non è valido.
-
-Un risultato Sofa incompleto, incoerente, con `eventId` assente o diverso da quello atteso, oppure con `ok` non booleano, viene normalizzato come failure di persistenza e blocca l’avvio Betfair.
-
-## Scrittura atomica e commit logico
-
-History e timeline usano scrittura atomica per ciascun file.
-
-Il journal non rende atomica la coppia history + timeline a livello filesystem. Coordina però un commit logico recuperabile tramite `commitId`, payload, metadata e target persistiti.
-
-Per ciascun file canonico:
-
-```txt
-serializzazione JSON in memoria
-→ file temporaneo nella stessa directory
-→ rename sul file canonico
-```
-
-La funzione:
-
-* risolve il file timeline canonico;
-* serializza il documento timeline completo in memoria;
-* scrive un file temporaneo nella stessa directory;
-* sostituisce il file canonico tramite rename;
-* rimuove il file temporaneo quando possibile nei failure path coperti;
-* restituisce un risultato strutturato.
-
-Per un commit logico nuovo:
-
-```txt
-pending journal
-→ history
-→ marker history completed
-→ timeline
-→ marker timeline completed
-→ remove journal
-```
-
-Se la history viene scritta e la timeline fallisce:
-
-```txt
-history
-→ resta disponibile
-
-journal
-→ resta osservabile come partial_persistence
-
-timeline
-→ può essere riparata con payload e target journalizzati
-```
-
-Non esiste rollback automatico della history già scritta.
-
-Un completed residual viene rimosso solo dopo verifica dei target canonici. Se history o timeline indicate dal journal sono assenti o non leggibili, il marker viene riaperto e lo stato non deve diventare un falso `no_known_partial`.
-
-Per le timeline, `writeTimelineDocument(...)` centralizza ogni riscrittura canonica in `timelineStore.js`.
-
-Sia `saveTimeline(...)` sia il cleanup legacy Betfair usano lo stesso percorso di persistenza atomica. Non devono esistere bypass con scrittura diretta sul file timeline canonico.
-
-Se il rename fallisce:
-
-* il file canonico precedente resta invariato;
-* il file temporaneo viene rimosso quando possibile;
-* l’errore viene propagato o registrato dal chiamante;
-* il writer restituisce un esito `failed`.
-
-## Confini
-
-La persistenza non deve:
-
-* avviare scraper;
-* gestire polling;
-* aprire browser;
-* costruire payload HTTP;
-* modificare Source Identity;
-* interpretare strategie;
-* usare dump browser come dati canonici.
-* esporre payload journalizzati, target locali, path filesystem o dettagli interni di recovery tramite contratti pubblici.
-
-La persistenza e le timeline non devono:
-
-* calcolare runtime health;
-* salvare runtime health;
-* ripristinare runtime health;
-* usare uno scrape runtime riuscito per cambiare la freshness di un tick canonico;
-* trasformare uno skip per duplicato o regressione in un errore tecnico o in una fine mercato.
-
-Il journal può conservare solo payload sicuri e aggregati.
-
-Non deve conservare cookie, token, authorization, header, credenziali, password, secret, browser profile, network dump o payload raw.
-
-Lo schema aggregato `diagnostics.networkCaptureSummary` è consentito.
+`latest` e `integrity` non diventano automaticamente campi persistiti.
+
+### Contratto dei read result
+
+| `status` / `reason`                   | Documento        | Scrittura successiva           |
+| ------------------------------------- | ---------------- | ------------------------------ |
+| `found` / `null`                      | valido           | consentita secondo materialità |
+| `missing` / `null`                    | assente          | inizializzazione consentita    |
+| `failed` / `invalid_json`             | non affidabile   | vietata                        |
+| `failed` / `invalid_shape`            | non canonico     | vietata                        |
+| `failed` / `read_failed`              | sconosciuto      | vietata                        |
+| `failed` / `discovery_failed`         | sconosciuto      | vietata                        |
+| `failed` / `ambiguous_storage_target` | identità ambigua | vietata                        |
 
 ## Verifica
 
-```txt
-cd backend/src
+Eseguire le suite `storage/discoveryAndRead`, `sofaUpdates/changeDetection`, `sofaUpdates/writerContract`, `betfairUpdates`, `processor/persistenceCommit`, `processor/persistenceRecovery`, `processor/canonicalTimeline` e le integrazioni `timelineStore`.
 
-node --check sofa/timelineStore.js
-node --check sofa/matchHistory/commitId.js
-node --check sofa/matchHistory/commitJournal.js
-node --check sofa/matchHistory/commitJournal/store.js
-node --check sofa/matchHistory/recovery.js
-node --check sofa/matchHistory/sofaUpdates/handler.js
-node --check sofa/matchHistory/sofaUpdates/changeDetection.js
-node --check sofa/matchHistory/sofaUpdates/historyDocument.js
-node --check sofa/matchHistory/sofaUpdates/timelineDocument.js
-node --check sofa/matchHistory/sofaUpdates/journalWorkflow.js
-node --check sofa/betfairFetch.js
-node --check sofa/betfair/scraperLifecycle/facadeIntegration.test.mjs
-node --check sofa/betfair/processor/persistence.js
-node --check sofa/betfair/processor/persistenceDecision.js
-node --check sofa/betfair/processor/persistenceDocuments.js
-node --check sofa/betfair/processor/persistenceCommitWorkflow.js
-node --check sofa/betfair/timeline.js
-node --check sofa/betfair/timeline/state.js
-node --check sofa/betfair/timeline/runnerSnapshot.js
-node --check sofa/betfair/timeline/ladderSummary.js
-node --check sofa/betfair/timeline/graphHealth.js
-node --check sofa/betfair/timeline/statusOnlySnapshot.js
+La matrice copre invalid JSON/shape senza overwrite, discovery ambigua, failure parziali, assenza di leakage cross-source, materialità Sofa separata, identity `selectionId` e distinzione missing/zero.
 
-node sofa/timelineStore.test.mjs
-node sofa/matchHistory/commitId.test.mjs
-node sofa/matchHistory/commitJournal/lifecycle.test.mjs
-node sofa/matchHistory/commitJournal/integrityStatus.test.mjs
-node sofa/matchHistory/commitJournal/payloadSafety.test.mjs
-node sofa/matchHistory/commitJournal/residualRecovery.test.mjs
-node sofa/matchHistory/commitJournal/filesystem.integration.test.mjs
-node sofa/matchHistory/recovery/basicRecovery.integration.test.mjs
-node sofa/matchHistory/recovery/completedTargetVerification.integration.test.mjs
-node sofa/matchHistory/recovery/invalidJournal.integration.test.mjs
-node sofa/matchHistory/recovery/retryAndFailure.integration.test.mjs
-node sofa/matchHistory/sofaUpdates/changeDetection.test.mjs
-node sofa/matchHistory/sofaUpdates/commitLifecycle.test.mjs
-node sofa/matchHistory/sofaUpdates/recoveryAndRetry.test.mjs
-node sofa/matchHistory/sofaUpdates/writerContract.test.mjs
-node sofa/matchHistory/betfairUpdates.test.mjs
-node sofa/betfair/scraperLifecycle/facadeIntegration.test.mjs
-node sofa/betfair/processor/persistenceCommit.test.mjs
-node sofa/betfair/processor/persistenceRecovery.test.mjs
-node sofa/betfair/processor/canonicalTimeline.test.mjs
-```
+## Confini
 
-Controllare sempre:
-
-```txt
-deduplicazione
-→ aggiunta del tick e calcolo di elapsedSeconds
-→ metadata preservati
-→ documento timeline completo riscritto in modo atomico
-→ file JSON valido dopo write
-→ errore rename senza modifica del file canonico
-→ rimozione del file temporaneo quando possibile
-→ errore timeline non cancella history
-→ journal resta osservabile come partial_persistence
-→ repair usa payload, metadata e target journalizzati
-→ completed residual con target mancante non diventa falso no_known_partial
-→ writer undefined, non-ok, target errato o commitId errato trattato come failure
-→ cleanup legacy Betfair con sole entry valide e persistenza centralizzata
-→ nel tracking coordinato, nessuna history o timeline in collecting/pending
-→ bootstrap SofaScore → Betfair senza duplicazione
-→ nel tracking coordinato, mismatch non crea tick causale
-→ fallimento Betfair dopo bootstrap SofaScore non fa rollback automatico
-→ writer authority acquisita prima della recovery e del runtime
-→ secondo backend bloccato prima delle scritture canoniche
-```
-
-### Controlli Betfair: validità tecnica e integrità tick
-
-Dalla cartella `backend/src`:
-
-```txt
-node sofa/betfair/processor/runnerProcessing.test.mjs
-node sofa/betfair/timeline/state.test.mjs
-node sofa/betfair/processor/persistenceCommit.test.mjs
-node sofa/betfair/processor/persistenceRecovery.test.mjs
-node sofa/betfair/processor/runtimeOrchestration.test.mjs
-node sofa/betfairFetch.test.mjs
-node sofa/betfair/trackerUpdate/technicalRecovery.test.mjs
-node routes/betfair/moneyFlowHistorySeries.test.mjs
-```
-
-Verificare almeno:
-
-```txt
-campione tecnico diretto alla persistenza
-→ risultato skipped
-→ zero addBetfairUpdate
-→ zero loadHistory
-→ zero saveTimeline
-→ zero cleanup timeline
-
-stesso selectionId con nome aggiornato
-→ continuità del runner
-
-nome uguale con selectionId diverso
-→ nessuna continuità ereditata
-
-selectionId assente
-→ nessuna eredità baseline, ladder o matched total
-
-tick regressivo o retry identico
-→ nessuna nuova history
-→ nessuna nuova timeline
-→ baseline in memoria invariato
-
-sample tecnico con journal pending
-→ repairOnly consentito
-→ recovered o failure strutturata propagati
-→ nessuna mutazione marketState
-
-commit Betfair completo
-→ marketState confermato solo dopo complete o recovered
-
-cleanup legacy fallito
-→ legacyWarning osservabile
-→ commit canonico riuscito non invalidato
-```
-
-```txt
-logout Graph esplicito con regressive_sample
-→ tick status-only append alla timeline Betfair
-→ mercato e runner dal precedente tick canonico
-→ nessuna riga raw aggiunta alla history
-→ baseline runner e mercato invariato
-→ graphHealth.auth_suspected
-→ health red / alert
-```
-
-L’osservazione logout Graph, popup/audio e recovery dopo login è live manuale. Non è archiviato un test automatico PASS dedicato al tick `status-only` e lo script Node con here-doc corrotto non deve essere dichiarato come test valido.
+Questo owner non descrive polling, browser, payload HTTP, Source Identity o strategie. Non sostituisce gli owner SofaScore, Betfair e journal/recovery.
 
 ## Documenti collegati
 
-* [Ciclo di vita dei dati](../../architecture/02-data-lifecycle.md)
-* [Commit journal e recovery](./02-commit-journal-and-recovery.md)
-* [Tracking live](../sofa/01-live-tracking.md)
-* [Validità tecnica campioni Betfair](../betfair/02-technical-sample-validity.md)
-* [Lifecycle scraper Betfair](../betfair/01-scraper-lifecycle.md)
-* [API Evidence](../../api/03-evidence.md)
-* [Contesto locale e point-by-point](../sofa/02-local-context-and-point-by-point.md)
+- [Ciclo di vita dei dati](../../architecture/02-data-lifecycle.md)
+- [Commit journal e recovery](./02-commit-journal-and-recovery.md)
+- [Persistenza SofaScore](./03-sofa-persistence.md)
+- [Persistenza Betfair](./04-betfair-persistence.md)
+- [Tracking live](../sofa/01-live-tracking.md)
+- [Contesto locale e point-by-point](../sofa/02-local-context-and-point-by-point.md)
+- [Validità tecnica dei campioni Betfair](../betfair/02-technical-sample-validity.md)
+- [API Match](../../api/01-match.md)
+- [API Betfair](../../api/02-betfair.md)
+- [API Evidence](../../api/03-evidence.md)

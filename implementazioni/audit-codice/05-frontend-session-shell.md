@@ -586,7 +586,7 @@ L’autorità globale resta `useSourceIdentityGateUi(...)`.
 Restano stringhe renderizzate come:
 
 ```txt
-ModalitÃ
+sequenza mojibake al posto di “Modalità”
 âEUR”
 ```
 

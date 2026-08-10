@@ -23,13 +23,14 @@ function createSeedHistory(eventId, betfairData, getNow) {
 
 function buildBetfairRepresentation(betfairData) {
     return JSON.stringify({
-        market_total_matched: betfairData.market_info?.total_matched,
+        market_total_matched: betfairData.market_info?.total_matched ?? null,
         runner_money_flows: (betfairData.runners || []).map(runner => ({
+            selectionId: runner.selectionId ?? null,
             name: runner.name,
-            back: runner.moneyFlow?.back || 0,
-            lay: runner.moneyFlow?.lay || 0,
+            back: Number.isFinite(runner.moneyFlow?.back) ? runner.moneyFlow.back : null,
+            lay: Number.isFinite(runner.moneyFlow?.lay) ? runner.moneyFlow.lay : null,
             wom: runner.wom
-        }))
+        })).sort((a, b) => String(a.selectionId).localeCompare(String(b.selectionId)))
     });
 }
 
@@ -133,7 +134,7 @@ export function createBetfairUpdateHandler({
                 surface: latestSofa.surface
             } : null,
             betfair: {
-                totalMatched: betfairData?.market_info?.total_matched || '0 €',
+                totalMatched: betfairData?.market_info?.total_matched ?? null,
                 runners: runnersWithFlow
             },
             latestBetfairState: {
@@ -162,11 +163,12 @@ export function createBetfairUpdateHandler({
             ? JSON.stringify({
                 market_total_matched: lastRow.betfair?.totalMatched,
                 runner_money_flows: (lastRow.betfair?.runners || []).map(runner => ({
+                    selectionId: runner?.selectionId ?? null,
                     name: runner?.name,
-                    back: runner?.moneyFlow?.back || 0,
-                    lay: runner?.moneyFlow?.lay || 0,
+                    back: Number.isFinite(runner?.moneyFlow?.back) ? runner.moneyFlow.back : null,
+                    lay: Number.isFinite(runner?.moneyFlow?.lay) ? runner.moneyFlow.lay : null,
                     wom: runner?.wom
-                }))
+                })).sort((a, b) => String(a.selectionId).localeCompare(String(b.selectionId)))
             })
             : null;
         const duplicateHistoryRow = lastRepresentation === currentRepresentation;
@@ -176,12 +178,6 @@ export function createBetfairUpdateHandler({
             newRow.commitId = commitId;
             historyObj.history.push(newRow);
         }
-
-        latestBetfairState.set(eventId, {
-            runners: runnersWithFlow,
-            market_info: betfairData?.market_info || {},
-            _repr: currentRepresentation
-        });
 
         return {
             ok: true,
@@ -194,7 +190,12 @@ export function createBetfairUpdateHandler({
             reason: null,
             document: historyObj,
             metadata,
-            row: appendRow ? newRow : null
+            row: appendRow ? newRow : null,
+            committedState: {
+                runners: runnersWithFlow,
+                market_info: betfairData?.market_info || {},
+                _repr: currentRepresentation
+            }
         };
     }
 

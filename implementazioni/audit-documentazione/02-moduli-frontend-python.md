@@ -634,7 +634,7 @@ La documentazione deve evitare di presentare due authority concorrenti e classif
 Le stringhe:
 
 ```txt
-ModalitÃ 
+sequenza mojibake al posto di “Modalità”
 âEUR”
 ```
 
@@ -740,3 +740,17 @@ B5 — Operations e roadmap
 ```
 
 ---
+## Autorità temporale e riconciliazione corrente
+
+B3 e B4 sono checkpoint storici. Gli esiti “nessuna modifica a docs/ o codice” descrivono ciò che avvenne durante quei checkpoint, non la working tree corrente.
+
+```txt
+ancora attivi secondo owner e stato corrente
+→ DOC-014, DOC-015, DOC-016, DOC-017, DOC-019
+
+DOC-018
+→ risolto lato documentazione
+→ FRONTEND-002 resta aperto lato implementazione
+```
+
+Baseline, qualificatore test letti/non eseguiti e note collegate a `EVIDENCE-001`, `SOFA-001` e `TEST-001` restano storici e non vengono promossi a evidenza corrente.

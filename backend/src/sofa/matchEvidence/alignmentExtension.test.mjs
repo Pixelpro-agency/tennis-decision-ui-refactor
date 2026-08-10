@@ -19,4 +19,6 @@ assert(result.lastBetfairMove && result.lastBetfairMove.available === false, 'em
 assert(result.eventMarketGapSec === null, 'missing timestamp gap');
 assert(result.marketReactionOrder === 'unknown', 'missing timestamp order');
 assert(result.temporal && Array.isArray(result.temporal.warnings), 'temporal block');
-console.log('matchEvidence alignment extension: 6 assertions passed');
+assert(result.latestSnapshotMarkerOrder?.windowSec === 10, 'snapshot order contract is named');
+assert(result.temporalLookbackReactionWindow?.windowSec === 30, 'lookback window contract is named');
+console.log('matchEvidence alignment extension: 8 assertions passed');

@@ -168,7 +168,9 @@ export async function fetchBetfairData(url, sofaEventId = null, options = {}) {
             cdpUrl,
             ladderUrls,
             networkCapture,
-            networkCaptureInput
+            networkCaptureInput,
+            noCache: options.noCache === true,
+            trackingSessionId: options.trackingSessionId ?? null
         },
         logDebug,
         processBetfairResults: effectiveProcessor

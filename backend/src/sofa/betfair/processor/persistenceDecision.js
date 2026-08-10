@@ -25,7 +25,13 @@ export function evaluateBetfairPersistenceDecision({
         };
     }
 
-    const existingTimeline = dependencies.loadTimeline('betfair', eventId);
+    const readResult = typeof dependencies.loadTimelineResult === 'function'
+        ? dependencies.loadTimelineResult('betfair', eventId)
+        : { status: 'found', timeline: dependencies.loadTimeline('betfair', eventId) };
+    if (readResult.status === 'failed') {
+        return { action: 'failed', reason: readResult.reason };
+    }
+    const existingTimeline = readResult.status === 'found' ? readResult.timeline : null;
     const canonicalTimeline = toCanonicalTimelineView(existingTimeline);
     const lastTick = findLastAlgorithmicTick(canonicalTimeline);
     const newTick = buildBetfairTimelineTick(

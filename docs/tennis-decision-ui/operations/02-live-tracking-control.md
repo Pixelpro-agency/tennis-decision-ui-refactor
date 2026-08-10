@@ -40,6 +40,14 @@ Un valore visibile non dimostra automaticamente che sia recente, completo o trad
 
 ## Verifica minima di una sessione
 
+La verifica deve distinguere tre piani che possono coesistere senza rappresentare lo stesso stato:
+
+| Piano | Authority corrente | Limite operativo |
+| --- | --- | --- |
+| Sessione live corrente | `trackingSessionId` e Source Identity Gate della sessione attiva | Una timeline con lo stesso `eventId` può essere precedente allo Start corrente |
+| Stato persistito | Timeline, history ed Evidence ricostruita | Dimostra che esistono dati canonici, non che il tracker corrente li abbia appena prodotti |
+| Ultimo stato frontend noto | View model e dati conservati dai poller | Deve essere presentato come `last-known` o fermo, non come aggiornamento live |
+
 Ordine consigliato:
 
 ```txt
@@ -77,7 +85,7 @@ GET /api/match/:eventId/source-identity-status
 | `collecting`     | Dati ancora incompleti; nessuna persistenza                                                                                                                                                          |
 | `pending`        | Giocatori e runner presenti; conferma manuale ammessa                                                                                                                                                |
 | `recording`      | Persistenza canonica attiva                                                                                                                                                                          |
-| `mismatch`       | Tick causale bloccato; il callback ferma i tracker logici, preserva il gate mismatch, invalida la generation e termina il Betfair tracking attivo; un eventuale SofaScore in flight diventa obsoleto |
+| `mismatch`       | Tick causale bloccato; il callback ferma i tracker logici, preserva il gate mismatch, invalida la generation e termina il Betfair tracking attivo. Le operazioni SofaScore già in volo restano protette dalla verifica della `trackingSessionId`; il solo stop logico non prova un drain fisico |
 | `not-applicable` | Sessione SofaScore senza Betfair                                                                                                                                                                     |
 
 La conferma manuale è ammessa solo in `pending`.
@@ -113,6 +121,22 @@ stopAllMatchTrackers()
 
 La risposta include `pythonCleanup`; lo schema completo resta nell’owner [API Match](../api/01-match.md).
 
+Il successo logico della richiesta e il completamento fisico non sono sinonimi:
+
+```txt
+body.ok = true
+→ stop logico accettato
+
+pythonCleanup.ok = true
++ pythonCleanup.remaining = 0
+→ cleanup dei processi Python tracking completato
+
+activeTrackerOperations = 0 oppure drain esplicito
+→ quiescenza delle operazioni Node
+```
+
+Lo Stop ordinario non esegue il drain terminale usato dallo shutdown. Di conseguenza, `pythonCleanup.ok: true` non dimostra da solo che ogni operazione Node già avviata sia terminata.
+
 Lo stop è globale e idempotente. L’eventuale `eventId` è informativo. Non cancella history, timeline, journal, writer authority, conferme Source Identity, dashboard, URL o profilo browser.
 
 Dopo lo stop ordinario:
@@ -121,10 +145,12 @@ Dopo lo stop ordinario:
 backend resta attivo
 → writer authority resta posseduta dal backend
 → terminal tracker barrier non viene attivata
-→ un nuovo Start successivo è consentito
+→ l’API consente un nuovo Start
+→ il nuovo Start riceve una nuova trackingSessionId
+→ le callback della sessione precedente vengono rifiutate quando non corrispondono alla sessione corrente
 ```
 
-Il controllo Overview ferma esplicitamente il polling SofaScore frontend. Gli hook Betfair, Evidence e Source Identity possono restare montati e leggere dati persistiti, ma non riavviano il tracking backend.
+Il controllo Overview ferma esplicitamente il polling SofaScore frontend. Betfair ed Evidence possono continuare a mostrare dati persistiti o `last-known`, ma non riavviano il tracking backend. Il Source Identity Gate è invece uno stato live in memoria: lo Stop lo rimuove e `GET /api/match/:eventId/source-identity-status` può quindi restituire `404`. La UI deve presentare queste superfici come ferme, persistite o `last-known`, mai come prova della sessione corrente.
 
 Questa distinzione è obbligatoria:
 
@@ -147,6 +173,16 @@ stopping = 0
 ```
 
 `scope=tracking` non termina `betfair_login`; il conteggio può comunque cambiare per il lifecycle autonomo del login. Se `pythonCleanup.remaining > 0`, il cleanup è incompleto e i contatori possono non essere ancora a zero.
+
+I contatori del registry descrivono soltanto il lifecycle dei processi Python:
+
+```txt
+sofa_tracking = 0
++ betfair_tracking = 0
+≠ prova di activeTrackerOperations = 0
+```
+
+Se `pythonCleanup.remaining > 0`, una seconda chiamata Stop non garantisce oggi un nuovo tentativo fisico: il registry può riutilizzare la `terminationPromise` già conclusa. Non usare kill per porta o PID non owned; eseguire lo shutdown controllato oppure applicare la procedura owner approvata finché il retry scoped non viene implementato e collaudato.
 
 ## Shutdown completo
 
@@ -223,7 +259,7 @@ Non sono riportati event ID, giocatori o dati reali della sessione.
 
 ## Documenti collegati
 
-* [API Runtime Health](../api/06-runtime-health.md)
+* [API Runtime Health](../api/05-runtime-health.md)
 * [Runtime locale](./01-local-runtime.md)
 * [Diagnostica Betfair](./03-betfair-diagnostics.md)
 * [API Match](../api/01-match.md)

@@ -49,10 +49,24 @@ export function startSourceIdentityGate(eventId, options = {}) {
     setGateSession(eventId, createGateSession(eventId, options));
 }
 
-export function observeSofaSourceIdentitySample(eventId, sample, persistenceData = null) {
+function sessionMismatch(session, trackingSessionId) {
+    if (!session || session.trackingSessionId === null) return false;
+    return session.trackingSessionId !== trackingSessionId;
+}
+
+function unavailableObservation(reason = 'gate_unavailable') {
+    return { ok: false, phaseBefore: null, phase: null, action: 'blocked', reason };
+}
+
+export function observeSofaSourceIdentitySample(eventId, sample, persistenceData = null, options = {}) {
     const session = getGateSession(eventId);
     if (!session) {
-        return { ok: true, phaseBefore: null, phase: null, action: 'no-gate' };
+        return options.hasBetfairUrl === false
+            ? { ok: true, phaseBefore: null, phase: 'not-applicable', action: 'persist-current' }
+            : unavailableObservation();
+    }
+    if (sessionMismatch(session, options.trackingSessionId)) {
+        return unavailableObservation('stale_tracking_session');
     }
     if (session.phase === 'mismatch' || session.phase === 'stopped') {
         return {
@@ -81,10 +95,13 @@ export function observeSofaSourceIdentitySample(eventId, sample, persistenceData
     };
 }
 
-export function observeBetfairSourceIdentitySample(eventId, sample, key) {
+export function observeBetfairSourceIdentitySample(eventId, sample, key, options = {}) {
     const session = getGateSession(eventId);
     if (!session) {
-        return { ok: true, phaseBefore: null, phase: null, action: 'no-gate' };
+        return unavailableObservation();
+    }
+    if (sessionMismatch(session, options.trackingSessionId)) {
+        return unavailableObservation('stale_tracking_session');
     }
     if (session.phase === 'mismatch' || session.phase === 'stopped') {
         return {
@@ -114,7 +131,11 @@ export function observeBetfairSourceIdentitySample(eventId, sample, key) {
 }
 
 export function confirmActiveSourceIdentityGate(eventId, confirmationInput) {
-    return confirmGateSession(getGateSession(eventId), eventId, confirmationInput);
+    const session = getGateSession(eventId);
+    if (sessionMismatch(session, confirmationInput?.trackingSessionId)) {
+        return { ok: false, code: 'stale_session' };
+    }
+    return confirmGateSession(session, eventId, confirmationInput);
 }
 
 export function getSourceIdentityGateStatus(eventId) {

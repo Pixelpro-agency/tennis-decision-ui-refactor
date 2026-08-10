@@ -5,6 +5,8 @@ import {
     buildSharedGrid,
     computeFlowWom,
     getDisplayMatchedVolume,
+    getMatchedVolumeObservation,
+    getMoneyFlowAxisMax,
     toNumber
 } from './betfairMoneyFlow.js';
 
@@ -13,6 +15,15 @@ assert.equal(toNumber('12.5'), 12.5);
 assert.equal(toNumber('not-a-number'), 0);
 assert.equal(toNumber(null), 0);
 assert.equal(toNumber(undefined, 7), 7);
+assert.equal(getMoneyFlowAxisMax(250, [120, 250]), 300);
+assert.deepEqual(
+    getMatchedVolumeObservation({ matchedVolume: 0, validForDisplay: true }),
+    { available: true, value: 0 }
+);
+assert.deepEqual(
+    getMatchedVolumeObservation({ matchedVolume: 0, emptySlot: true }),
+    { available: false, value: null }
+);
 
 assert.equal(
     getDisplayMatchedVolume({

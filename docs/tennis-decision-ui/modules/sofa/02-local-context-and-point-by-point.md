@@ -2,242 +2,175 @@
 
 ## Scopo
 
-Questo modulo documenta il contesto descrittivo locale calcolato dai dati SofaScore.
-
-```txt
-payload SofaScore
-→ normalizeSnapshot
-→ snapshot con pointByPoint normalizzato
-→ buildLocalContext
-→ localContext
-→ tick timeline SofaScore
-```
-
-`localContext` non è un segnale operativo, una previsione, una strategia o una fair odds.
+`normalizePointByPoint()` normalizza la sorgente SofaScore; `buildRecentCompletedGamesWindow()` costruisce una finestra fail-closed; `buildLocalContext()` confronta point share complessiva e recente senza produrre segnali prescrittivi.
 
 ## Stato
 
-**Implementato, da validare su match reale.**
-
-La copertura locale verifica normalizzazione, decoder point-by-point, finestra degli ultimi tre game, integrazione con analisi, tracking, bootstrap Source Identity e frontend.
-
-Restano da validare live dati point-by-point reali, inclusi casi di indisponibilità o transizioni non supportate.
+Il contratto è implementato e coperto da test automatici. La semantica osservata del payload upstream resta separata in una validazione datata: il codice non presume che l'ultimo game sia quello corrente quando l'identità non è dimostrabile.
 
 ## Responsabilità
 
-Il modulo:
+Questo owner definisce:
 
-* normalizza il payload point-by-point minimo;
-* decodifica un game soltanto quando tutte le transizioni sono univoche;
-* costruisce la finestra degli ultimi tre game completati;
-* costruisce il contesto match, recente, comparativo e di qualità;
-* mantiene indisponibili i dati non verificabili.
+- normalizzazione strutturale del point-by-point;
+- identità canonica di set e game;
+- decodifica dei game completati supportati;
+- calcolo della point share complessiva e recente;
+- classificazione della qualità della derivazione;
+- propagazione di `localContext` verso analisi e persistenza.
 
-Non deve:
+Non è owner del polling, del Source Identity Gate, della scrittura canonica o della presentazione frontend.
 
-* inventare percentuali o fallback `50/50`;
-* usare game parziali;
-* saltare game ambigui per usare game più vecchi;
-* calcolare break, pressure, trend, volatilità o segnali betting;
-* modificare timeline, history, Source Identity o dati raw.
+## Contratto PBP normalizzato
 
-## Normalizzazione point-by-point
+Una struttura disponibile contiene set ordinati, game ordinati e coppie `(set, game)` univoche. Set e game devono essere interi positivi. Game vuoti, duplicati, ordine regressivo, valori frazionari o identità corrente incoerente rendono il PBP unavailable.
 
-Il payload point-by-point ammesso contiene i campi minimi:
+I token ordinari supportati sono:
 
-```txt
-set
-game
-points
-homePoint
-awayPoint
+```text
+0 15 30 40 A
 ```
 
-Ogni record rappresenta lo stato dopo un punto.
+Il decoder gestisce gioco regolare, deuce e advantage. Tie-break numerici o transizioni ambigue restano unsupported: non vengono reinterpretati.
 
-Lo stato iniziale del game è implicito:
+## Game corrente e finestra recente
 
-```txt
-0-0
+La coppia più alta non è automaticamente il game corrente. L’esclusione è autorizzata soltanto quando il PBP normalizzato contiene un’identità `currentGame` valida e presente nell’elenco.
+
+```text
+currentGame verificato
+→ tre game immediatamente precedenti
+→ excludedCurrentGame=true
+
+currentGame assente o non verificabile
+→ recent unavailable
+→ reason=current_game_identity_unavailable
+→ excludedCurrentGame=false
 ```
 
-La normalizzazione verifica la struttura minima e conserva i token point-by-point come stringhe.
+I tre game precedenti devono essere decodificabili come completati. Una singola transizione ambigua rende indisponibile l’intera finestra.
 
-Il decoder supporta soltanto:
+### Identità strutturale
 
-```txt
-0
-15
-30
-40
-A
+`set` e `game` devono essere interi positivi e la coppia deve essere univoca. Duplicati, regressioni d'ordine, valori frazionari e riferimenti a un `currentGame` non presente rendono indisponibile la derivazione. Non viene selezionato arbitrariamente uno dei record in conflitto.
+
+### Transizioni supportate
+
+Il decoder ricostruisce punti soltanto da transizioni deterministiche di game regolari, deuce e advantage. Tie-break numerici, sequenze tronche e cambi di stato incompatibili non vengono approssimati: la finestra recente fallisce nel suo insieme con una reason strutturata.
+
+## `pointsTotal`
+
+La point share complessiva usa una sola statistica con:
+
+```text
+period=ALL
+key=pointsTotal
 ```
 
-Deuce, vantaggio e ritorno a deuce sono decodificati soltanto quando ogni transizione osservata è univoca.
+Home e away devono essere conteggi interi non negativi, numerici o stringhe decimali senza frazione. Due record `ALL/pointsTotal`, valori frazionari, negativi, non finiti o non numerici producono `points_total_unavailable`. La coppia `0/0` è strutturalmente valida ma non permette una percentuale e resta unavailable.
 
-Tie-break numerici, token non supportati e transizioni ambigue non vengono decodificati. Se ricadono in uno dei tre game richiesti dalla finestra recente, recent resta indisponibile senza usare game più vecchi come sostituzione.
+## Data quality
 
-La normalizzazione strutturale non convalida subito la semantica dei token: il rifiuto avviene nel decoder del game.
+`dataQuality.level` qualifica la completezza del calcolo:
 
-## Decoder dei game
-
-Il decoder considera concluso un game soltanto quando il suo ultimo stato consente di dedurre un vincitore senza ambiguità.
-
-Il game con coppia `set` e `game` più alta viene sempre escluso perché può essere ancora in corso.
-
-Tie-break numerici, token non osservati e transizioni ambigue restano indisponibili.
-
-## Finestra ultimi tre game completati
-
-La finestra recente segue queste regole:
-
-```txt
-ordinamento per set crescente, poi game crescente
-→ esclusione del game corrente potenzialmente aperto
-→ selezione degli esatti tre game immediatamente precedenti
-→ validazione completa di tutti e tre i game
+```text
+derivation_complete
+derivation_partial
+derivation_insufficient
 ```
 
-La sezione `recent` è disponibile soltanto quando:
+Gli assi distinti restano espliciti:
 
-```txt
-includedGames === 3
-excludedCurrentGame === true
+```text
+freshness=unknown
+provenance=normalized_provider_payload
+temporalAlignment=unknown
 ```
 
-Se uno dei tre game non è decodificabile, la finestra resta indisponibile.
+`derivation_complete` non dimostra freschezza, provenienza live verificata o allineamento temporale.
 
-Non vengono usati game più vecchi come sostituzione.
+`localContext.available` è un riepilogo della disponibilità complessiva, non autorizza i consumer a ignorare l'availability delle singole sezioni. `match`, `recent` e `observedShift` devono essere letti con i rispettivi stati e reason.
 
-## Contratto localContext
+## Output del contesto locale
 
-`buildLocalContext(snapshot)` restituisce un contesto descrittivo che può contenere:
+Il risultato mantiene versione, purpose e provenienza della derivazione. La point share complessiva deriva esclusivamente da `ALL/pointsTotal`; la finestra recente deriva esclusivamente dai game completati verificati. `observedShift` è una differenza descrittiva fra le due quote, non causalità, previsione o raccomandazione.
 
-```txt
-match
-recent
-comparison
-dataQuality
+Quando uno dei due lati non è calcolabile, il producer conserva la reason specifica e non sostituisce dati mancanti con zero. Un risultato parziale non viene promosso a derivazione completa.
+
+## Bootstrap e persistenza
+
+`updateSofa()` calcola `localContext` prima dell’osservazione Source Identity e lo passa come `persistenceData` opaco. Il matching Source Identity usa snapshot e identità dei giocatori, non `localContext`. La persistenza usa il contesto già calcolato; il ricalcolo è solo fallback quando il chiamante non lo fornisce.
+
+`POST /api/match/analyze` e `/api/match/snapshot` sono compute-only. Restituiscono `snapshot` e `localContext`, ma non scrivono history, timeline o journal. La persistenza canonica resta nel tracking autorizzato dal gate e dalla session authority.
+
+Il bootstrap riusa il medesimo `localContext` calcolato per la risposta e per `persistenceData`; non esegue un secondo calcolo salvo fallback esplicito del writer. `localContext` non partecipa al matching Source Identity e non può trasformare una sessione non autorizzata in writer.
+
+Nella persistenza SofaScore, una variazione materiale di point-by-point o `localContext` può produrre un tick timeline anche quando la history aggregata non cambia. La decisione e il commit appartengono all'owner della persistenza SofaScore.
+
+## Validazione
+
+Le proprietà confermate e quelle ancora sconosciute sono registrate in [Validazione source contract PBP 2026-08-10](../../../validations/sofascore-point-by-point-source-contract-2026-08-10.md).
+
+## Riferimenti implementativi
+
+| Responsabilità           | Implementazione                                               |
+| ------------------------ | ------------------------------------------------------------- |
+| normalizzazione snapshot | `backend/src/sofa/normalizeSnapshot.js`                       |
+| point-by-point           | `backend/src/sofa/pointByPoint.js`                            |
+| contesto locale          | `backend/src/sofa/localContext.js`                            |
+| analisi SofaScore        | `backend/src/sofa/buildSofaAnalysis.js`                       |
+| fixture verificata       | `backend/src/sofa/fixtures/pointByPoint.verified.fixture.mjs` |
+
+### Shape concettuale
+
+```json
+{
+  "version": 1,
+  "source": "project-calculated",
+  "purpose": "descriptive-match-context",
+  "available": true,
+  "match": {
+    "pointShare": { "available": true }
+  },
+  "recent": {
+    "available": true,
+    "window": { "requestedGames": 3, "includedGames": 3 },
+    "pointShare": { "available": true }
+  },
+  "comparison": {
+    "available": true,
+    "observedShift": false
+  },
+  "dataQuality": {
+    "level": "derivation_complete",
+    "freshness": "unknown",
+    "provenance": "normalized_provider_payload",
+    "temporalAlignment": "unknown"
+  }
+}
 ```
 
-`localContext.available` riflette soltanto la disponibilità di `match.pointShare`.
-
-Può quindi essere `true` quando le statistiche `pointsTotal` sono valide ma `recent` e `comparison` restano indisponibili per point-by-point insufficiente o non decodificabile.
-
-Per riconoscere un contesto completo, il consumer deve usare:
-
-```txt
-dataQuality.level === complete
-```
-
-dataQuality.sources.pointByPoint rappresenta la disponibilità della finestra recente verificata, non la sola presenza del payload point-by-point raw.
-
-Il contesto top-level usa la disponibilità di `pointsTotal`; la qualità completa richiede anche una finestra recente valida.
-
-### Match
-
-`match.pointShare` usa esclusivamente la statistica SofaScore:
-
-```txt
-period: ALL
-key: pointsTotal
-```
-
-Può includere:
-
-```txt
-homePoints
-awayPoints
-totalPoints
-homePct
-awayPct
-leadingSide
-```
-
-Numeri e stringhe numeriche finite non negative sono validi.
-
-Lo zero è valido; un totale uguale a zero rende il contesto indisponibile.
-
-### Recent
-
-`recent` descrive i punti degli ultimi tre game completati soltanto quando la finestra point-by-point è completa e verificabile.
-
-Non usa conteggi parziali, valori sintetici o quote inventate.
-
-### Comparison
-
-`comparison` può esporre differenze percentuali osservate tra finestra recente e andamento complessivo del match.
-
-`observedShift` è descrittivo: non rappresenta un trend, una previsione o un’indicazione operativa.
-
-### Data quality
-
-`dataQuality` rappresenta la disponibilità effettiva delle statistiche match e della finestra point-by-point.
-
-Il contesto è completo soltanto quando sono disponibili sia le statistiche match necessarie sia una finestra recente valida.
-
-## Persistenza e tracking
-
-Il tracking costruisce `localContext` dopo `normalizeSnapshot`.
-
-Il tick timeline SofaScore può contenere:
-
-```txt
-snapshot
-localContext
-```
-
-`localContext` appartiene al tick SofaScore e non viene aggiunto alla history aggregata.
-
-Il sample osservato dal Source Identity Gate resta limitato a:
-
-```txt
-snapshot
-tournamentName
-dateStr
-```
-
-`localContext` non viene aggiunto al sample del gate.
-
-Durante il bootstrap Source Identity, `matchTracker.js` passa soltanto `sofaSample.snapshot`; `persistSofaTrackingSample(...)` calcola quindi `localContext` da quello snapshot prima della persistenza canonica.
-
-## Confini e limiti intenzionali
-
-Questo modulo non implementa:
-
-```txt
-tie-break numerici
-token point-by-point non osservati
-transizioni point-by-point ambigue
-fallback numerici inventati
-break
-pressure
-trend
-volatilità
-previsione
-segnali betting
-```
-
-L’assenza o l’ambiguità dei dati resta esplicita.
+La struttura segue `buildLocalContext()`. I valori sono esemplificativi; reason, percentuali e availability dipendono dalla derivazione effettiva.
 
 ## Verifica
 
-```txt
-node sofa/pointByPoint.test.mjs
-node sofa/normalizeSnapshot.test.mjs
-node sofa/localContext.test.mjs
-node sofa/buildSofaAnalysis.test.mjs
-node sofa/trackerUpdate.test.mjs
-node sofa/matchHistory/sofaUpdates.test.mjs
-node routes/match/analysisResponse.test.mjs
+```powershell
+node backend/src/sofa/pointByPoint.test.mjs
+node backend/src/sofa/localContext.test.mjs
+node backend/src/sofa/normalizeSnapshot.test.mjs
+node backend/src/sofa/buildSofaAnalysis.test.mjs
+node backend/src/sofa/trackerUpdate/gateRouting.test.mjs
+node backend/src/routes/match/analysisResponse.test.mjs
 ```
 
-La validazione locale non sostituisce una verifica su payload point-by-point reale.
+La matrice copre current game presente e assente, ordine, identità duplicate, ordinali non canonici, transizioni regolari/deuce/advantage, tie-break unsupported, `pointsTotal`, bootstrap e assenza di scritture da `/analyze`.
+
+## Confini
+
+Questo documento non certifica la freschezza della sorgente SofaScore, non definisce l'UI, non autorizza persistenza fuori dal tracking e non interpreta `observedShift` come segnale. Le assunzioni sul payload reale appartengono alla validazione storica collegata.
 
 ## Documenti collegati
 
-* [Tracking live](./01-live-tracking.md)
-* [Timeline e history](../storage/01-timelines-and-history.md)
-* [API Match](../../api/01-match.md)
-* [Scraper SofaScore](../python/02-sofascore-scraper.md)
-* [Validazione e rollback](../../operations/04-validation-and-rollback.md)
+- [Tracking live](./01-live-tracking.md)
+- [API analisi e snapshot](../../api/match/03-analysis-and-snapshot.md)
+- [Timeline e history](../storage/01-timelines-and-history.md)

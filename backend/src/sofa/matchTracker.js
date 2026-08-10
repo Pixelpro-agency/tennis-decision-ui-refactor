@@ -10,7 +10,10 @@ import {
     terminateActiveBetfairScrapers,
     persistBetfairTrackingSample
 } from './betfairFetch.js';
-import { invalidatePythonGeneration } from '../runtime/pythonProcessRegistry.js';
+import {
+    invalidatePythonGeneration,
+    terminatePythonProcesses
+} from '../runtime/pythonProcessRegistry.js';
 import { runtimeLog, runtimeErrorCode } from '../runtime/runtimeLogger.js';
 import {
     startSourceIdentityGate,
@@ -22,6 +25,7 @@ const trackedMatches = new Map();
 const activeTrackerOperations = new Set();
 let schedulerInterval = null;
 let terminalTrackerBarrier = false;
+let nextTrackingSessionId = 1;
 
 const SOFA_INTERVAL_MS = 5000;
 const BETFAIR_INTERVAL_MS = 6000;
@@ -96,9 +100,9 @@ function registerTrackerOperation(operation) {
     return operationPromise;
 }
 
-function invokeTrackerUpdate(updateFn, eventId, info) {
+function invokeTrackerUpdate(updateFn, eventId, info, dependencies) {
     try {
-        return registerTrackerOperation(updateFn(eventId, info));
+        return registerTrackerOperation(updateFn(eventId, info, dependencies));
     } catch (error) {
         return registerTrackerOperation(Promise.reject(error));
     }
@@ -111,7 +115,12 @@ function startSofaUpdate(eventId, info) {
     const operation = invokeTrackerUpdate(
         info.updateSofaFn || updateSofa,
         eventId,
-        info
+        info,
+        {
+            isTrackingSessionCurrent: () =>
+                trackedMatches.get(eventId)?.trackingSessionId ===
+                info.trackingSessionId
+        }
     );
     void operation
         .catch(err => runtimeLog.error(
@@ -137,7 +146,12 @@ function startBetfairUpdate(eventId, info) {
     const operation = invokeTrackerUpdate(
         info.updateBetfairFn || updateBetfair,
         eventId,
-        info
+        info,
+        {
+            isTrackingSessionCurrent: () =>
+                trackedMatches.get(eventId)?.trackingSessionId ===
+                info.trackingSessionId
+        }
     );
     void operation
         .catch(err => runtimeLog.error(
@@ -200,13 +214,34 @@ export function handleSourceIdentityMismatch(
     const terminateBetfairScrapersFn =
         dependencies.terminateBetfairScrapersFn ||
         terminateActiveBetfairScrapers;
+    const terminateTrackingPythonProcessesFn =
+        dependencies.terminateTrackingPythonProcessesFn ||
+        (() => terminatePythonProcesses('tracking'));
 
     stopAllMatchTrackersFn({ preserveGateEventId: eventId });
     invalidateGenerationFn('tracking');
 
     try {
-        return Promise.resolve(terminateBetfairScrapersFn())
-            .catch(() => null);
+        const invokeCleanup = cleanupFn => {
+            try {
+                return Promise.resolve(cleanupFn());
+            } catch (error) {
+                return Promise.reject(error);
+            }
+        };
+        return Promise.allSettled([
+            invokeCleanup(terminateBetfairScrapersFn),
+            invokeCleanup(terminateTrackingPythonProcessesFn)
+        ]).then(results => ({
+            ok: results.every(result =>
+                result.status === 'fulfilled' && result.value?.ok !== false
+            ),
+            cleanup: results.map(result =>
+                result.status === 'fulfilled'
+                    ? result.value
+                    : { ok: false, code: 'cleanup_failed' }
+            )
+        }));
     } catch (_error) {
         return Promise.resolve(null);
     }
@@ -239,7 +274,10 @@ export function trackMatch(
     // Nuovo Start pulisce tutti i gate precedenti, incluso un mismatch vecchio
     clearAllSourceIdentityGates();
 
+    const trackingSessionId = `tracking-${nextTrackingSessionId++}`;
+
     startSourceIdentityGate(eventId, {
+        trackingSessionId,
         hasBetfairUrl: Boolean(betfairUrl && betfairUrl.trim()),
         onOpenRecording: ({
             sofaSample,
@@ -264,6 +302,7 @@ export function trackMatch(
     });
 
     trackedMatches.set(eventId, {
+        trackingSessionId,
         sofaUrl,
         betfairUrl,
         betfairGraphUrls,
@@ -354,4 +393,8 @@ export function getBetfairTrackingRuntime(eventId) {
 
 export function getTrackedMatches() {
     return Array.from(trackedMatches.keys());
+}
+
+export function getTrackingSessionId(eventId) {
+    return trackedMatches.get(eventId)?.trackingSessionId ?? null;
 }

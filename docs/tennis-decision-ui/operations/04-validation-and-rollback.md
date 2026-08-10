@@ -31,6 +31,8 @@ osservazione live ≠ test automatico
 status HTTP corretto ≠ recovery verificata
 ```
 
+Nel result artifact, `counts.passed` conta le entry del manifest concluse con successo, non le assertion interne. `perTestResults` contiene qualsiasi entry eseguita, inclusi build, checker, compile e test. Lo stato del workflow (`planned`, `implemented`, `executed`) resta distinto dallo status prodotto dal runner (`passed`, `failed`, `timeout`).
+
 ## Sequenza minima
 
 ```txt
@@ -154,6 +156,15 @@ Quindi i profili `fast` e `full-offline` devono fallire anche in presenza di rif
 
 I checker non correggono automaticamente file, ID o link.
 
+I controlli hanno perimetri distinti:
+
+| Controllo | Automatizza | Non dimostra |
+| --- | --- | --- |
+| link checker | target, anchor e divieto link MDX | correttezza semantica del contenuto |
+| registry checker | owner ID, Todo, stati e metadata implementati | validità del codice o completezza di ogni schema storico |
+| controlli strutturali | H1, fence, UTF-8 e pattern mirati quando eseguiti | comportamento runtime |
+| audit manuale | semantica, current-vs-historical e provenance | PASS automatico |
+
 ## Persistenza e recovery
 
 Per modifiche a writer, journal o recovery verificare almeno:
@@ -173,6 +184,10 @@ pending creato prima dei target
 Usare directory temporanee e fixture controllate. Non manipolare manualmente history, timeline o journal reali.
 
 Un `409 persistence_integrity` verifica la lettura pubblica di uno stato già noto; non dimostra che la recovery funzioni.
+
+`TEST-072` non è un HTTP harness generale riusabile per ogni route. Per i contratti HTTP usare i test specifici presenti, una porta dinamica e cleanup dei soli processi owned; l'assenza di un harness comune va riportata come limite.
+
+`TEST-073` verifica la dichiarazione `requires` del manifest e rifiuta capability vietate nei profili interessati. Non crea un sandbox di sicurezza: i child ereditano ancora l'environment del runner finché la relativa hardening task resta aperta.
 
 ### Test modulari reali
 
@@ -358,7 +373,7 @@ Sono implementati e configurati:
 - controllo coerenza Todo ↔ registri;
 - test mirati del runner e dei checker.
 
-La configurazione strict introdotta nel branch deve ancora essere rieseguita tramite il profilo `fast` o `full-offline` sullo stesso commit. Fino a un output reale positivo, il wiring corrente non va dichiarato validato localmente.
+Ogni modifica al wiring strict deve essere rieseguita tramite `fast` o `full-offline` sulla stessa working tree. Un PASS storico non viene trasferito automaticamente alla configurazione corrente.
 
 Restano aperti:
 

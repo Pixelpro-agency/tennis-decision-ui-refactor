@@ -198,7 +198,8 @@ canonico allora corrente.
 
 ### TEST-077 — Mapping univoco MDX → Markdown
 
-**Stato:** `CONFERMATO`
+**Stato corrente:** `COMPLETATO`
+**Stato al Batch 0:** `CONFERMATO`; da ripetere durante i batch allora futuri.
 **Area:** migrazione documentale
 
 Verifica, per ogni batch, che ogni sostituzione abbia un solo mapping, che il
@@ -207,7 +208,8 @@ non venga presentata come doppia fonte canonica.
 
 ### TEST-078 — Link relativi dei file migrati
 
-**Stato:** `CONFERMATO`
+**Stato corrente:** `COMPLETATO`
+**Stato al Batch 0:** `CONFERMATO`; da ripetere durante i batch allora futuri.
 **Area:** migrazione documentale
 
 Verifica che i link relativi risolvano sulla working tree combinata e distingue
@@ -217,7 +219,8 @@ fornisce ora il controllo ricorsivo read-only.
 
 ### TEST-079 — Coerenza fra corrente, deprecato, storico e futuro
 
-**Stato:** `CONFERMATO`
+**Stato corrente:** `COMPLETATO`
+**Stato al Batch 0:** `CONFERMATO`; da ripetere durante i batch allora futuri.
 **Area:** migrazione documentale
 
 Verifica che gli owner canonici descrivano il codice corrente, che le
@@ -230,7 +233,8 @@ come implementato.
 ## 24.1 Implementazione iniziale di IMPL-028
 
 **Data:** `2026-08-03`
-**Stato:** `IMPLEMENTATA, DA VALIDARE SULLA WORKING TREE LOCALE`
+**Stato iniziale:** `IMPLEMENTATA, DA VALIDARE SULLA WORKING TREE LOCALE`
+**Stato finale del checkpoint:** `IMPLEMENTATA E VALIDATA LOCALMENTE`
 
 ### Perimetro
 

@@ -5,9 +5,11 @@ const toggleAudioAlert = () => {};
 
 const connected = buildDashboardConnections({
     backendData: { snapshot: {} },
+    sofaReadStatus: 'current',
     sofaLastUpdate: '2026-06-24T20:00:00.000Z',
     sofaServerStatus: 'waiting',
     betfairData: { health: { status: 'green' } },
+    betfairReadStatus: 'current',
     betfairLastUpdate: '2026-06-24T20:00:05.000Z',
     betfairHealth: { status: 'green' },
     betfairHealthTransition: { from: 'yellow', to: 'green' },
@@ -95,5 +97,22 @@ assert.deepEqual(emptyConnections.sofa, {
 });
 assert.equal(emptyConnections.betfair.ok, false);
 assert.equal(emptyConnections.modelTot.ok, false);
+
+const stalePayload = buildDashboardConnections({
+    backendData: { snapshot: {} },
+    sofaReadStatus: 'error',
+    betfairData: { price: 2 },
+    betfairReadStatus: 'error'
+});
+
+assert.equal(stalePayload.sofa.ok, false);
+assert.equal(stalePayload.sofa.status, 'disconnected');
+assert.equal(stalePayload.betfair.ok, false);
+assert.equal(stalePayload.betfair.status, 'error');
+
+const degraded = buildDashboardConnections({
+    sofaReadStatus: 'degraded'
+});
+assert.equal(degraded.sofa.status, 'degraded');
 
 console.log('dashboardConnections tests passed');

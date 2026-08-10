@@ -15,6 +15,7 @@ let trackCalls = [];
 const dependencies = {
     extractEventId: () => '123',
     trackMatch: (...args) => trackCalls.push(args),
+    getTrackingSessionId: () => 'tracking-test-session',
     getBetfairScraperRuntimeConflict: () => null,
     log: () => {}
 };
@@ -50,6 +51,7 @@ result = buildTrackMatchResponse({
     cdpUrl: ' http://localhost:9224/ '
 }, dependencies);
 check(result.httpStatus === 200, 'P30 valid CDP tracking succeeds');
+check(result.body.trackingSessionId === 'tracking-test-session', 'Start returns tracking session authority');
 check(
     trackCalls.at(-1)[5] === 'http://localhost:9224',
     'P30 exact normalized CDP URL reaches trackMatch'
@@ -85,6 +87,15 @@ check(
     conflictResult.body.code === 'scraper_runtime_conflict',
     'runtime conflict code is canonical'
 );
+
+const rejectedStart = buildTrackMatchResponse({
+    sofaUrl: 'https://www.sofascore.com/example'
+}, {
+    ...dependencies,
+    trackMatch: () => null
+});
+check(rejectedStart.httpStatus === 409, 'tracker rejection is not HTTP success');
+check(rejectedStart.body.ok === false, 'tracker rejection acknowledgement is bounded');
 
 let untracked = null;
 result = buildUntrackMatchResponse(
@@ -146,6 +157,8 @@ result = await buildStopMatchResponse({}, {
 });
 check(result.httpStatus === 200, 'stop cleanup failure remains bounded');
 check(result.body.pythonCleanup.ok === false, 'cleanup failure is observable');
+check(result.body.ok === false, 'cleanup failure prevents top-level success');
+check(result.body.stopped === false, 'tracker cleanup failure is reflected');
 check(
     result.body.pythonCleanup.errors[0] === 'cleanup_failed',
     'cleanup failure uses static code'
@@ -162,7 +175,7 @@ buildTrackMatchResponse({}, eventDependencies);
 buildTrackMatchResponse({ sofaUrl: 'invalid' }, eventDependencies);
 buildTrackMatchResponse({ sofaUrl: 'valid', betfairMode: 'cdp', cdpUrl: '' }, eventDependencies);
 buildTrackMatchResponse({ sofaUrl: 'valid', betfairMode: 'cdp', cdpUrl: 'http://remote.example:9222' }, eventDependencies);
-buildTrackMatchResponse({ sofaUrl: 'valid', betfairUrl: 'https://secret.example/market', betfairMode: 'persistent', chromeProfilePath: 'C:/Private/Profile' }, {
+buildTrackMatchResponse({ sofaUrl: 'valid', betfairUrl: 'https://www.betfair.it/secret-market', betfairMode: 'persistent', chromeProfilePath: 'C:/Private/Profile' }, {
     ...eventDependencies,
     getBetfairScraperRuntimeConflict: () => ({ code: 'scraper_runtime_conflict' })
 });
@@ -174,7 +187,7 @@ const conflictRecord = eventRecords.find(record => record.event === 'runtime_con
 check(conflictRecord?.fields.eventId === 'event-ev', 'EV5 conflict eventId');
 check(conflictRecord?.fields.mode === 'persistent', 'EV5 conflict mode');
 check(conflictRecord?.fields.reason === 'scraper_runtime_conflict', 'EV5 conflict reason');
-check(JSON.stringify(eventRecords).includes('secret.example') === false, 'EV5 no URL');
+check(JSON.stringify(eventRecords).includes('secret-market') === false, 'EV5 no URL');
 check(JSON.stringify(eventRecords).includes('Private/Profile') === false, 'EV5 no profile');
 
 const stopRecords = [];

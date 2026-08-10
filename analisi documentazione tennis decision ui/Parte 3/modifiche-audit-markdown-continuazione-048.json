@@ -1,0 +1,718 @@
+{
+  "schema_version": "1.4.0",
+  "ledger_id": "TDUI-MD-AUDIT-CHANGES-003",
+  "updated_at": "2026-08-10T14:47:00+02:00",
+  "purpose": "Terzo ledger incrementale delle modifiche documentali. Continua dal report 048 senza duplicare i report 001-047 né le 320 task già registrate nei segmenti precedenti.",
+  "repository": {
+    "name": "Pixelpro-agency/tennis-decision-ui-refactor",
+    "branch": "main",
+    "commit": "4c5f43b007149f3210c27d7565357a447a3a6ef4"
+  },
+  "authority": {
+    "inventory_and_audit_order": "mappa-file-markdown-repository-continuazione-048.md",
+    "incremental_change_ledger": "modifiche-audit-markdown-continuazione-048.json",
+    "legacy_full_json_status": "historical_snapshot_through_report_007_do_not_update"
+  },
+  "baseline": {
+    "starts_with_sequence": 48,
+    "starts_with_report_id": "TDUI-DOC-REPORT-048",
+    "previous_reports_not_duplicated": 47,
+    "previous_change_tasks_not_duplicated": 320
+  },
+  "audit_state": {
+    "total_markdown_files": 72,
+    "analyzed_files": 72,
+    "pending_files": 0,
+    "completion_percentage": 100.0,
+    "last_analyzed_index": 72,
+    "last_analyzed_file": "todo-list-tennis-decision-ui.md",
+    "last_report_id": "TDUI-DOC-REPORT-072",
+    "last_report_path": "Report documentale/72 - todo-list-tennis-decision-ui.md",
+    "next_index": null,
+    "next_document_path": null,
+    "known_project_change_tasks": 350,
+    "known_completed_change_tasks": 323
+  },
+  "reports": [
+    {
+      "sequence": 48,
+      "report_id": "TDUI-DOC-REPORT-048",
+      "document_path": "implementazioni/04-task-completate.md",
+      "report_path": "Report documentale/48 - 04-task-completate.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": [
+        "TASK-RECHECK-001",
+        "TASK-RECHECK-002"
+      ]
+    },
+    {
+      "sequence": 49,
+      "report_id": "TDUI-DOC-REPORT-049",
+      "document_path": "implementazioni/05-audit-docs-planning.md",
+      "report_path": "Report documentale/49 - 05-audit-docs-planning.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": [
+        "PLANNING-AUDIT-001",
+        "PLANNING-AUDIT-002"
+      ]
+    },
+    {
+      "sequence": 50,
+      "report_id": "TDUI-DOC-REPORT-050",
+      "document_path": "implementazioni/06-implementazioni-proposte.md",
+      "report_path": "Report documentale/50 - 06-implementazioni-proposte.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": [
+        "IMPL-IDX-001"
+      ]
+    },
+    {
+      "sequence": 51,
+      "report_id": "TDUI-DOC-REPORT-051",
+      "document_path": "implementazioni/99-decisioni-utente.md",
+      "report_path": "Report documentale/51 - 99-decisioni-utente.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": []
+    },
+    {
+      "sequence": 52,
+      "report_id": "TDUI-DOC-REPORT-052",
+      "document_path": "implementazioni/README.md",
+      "report_path": "Report documentale/52 - README-implementazioni.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": [
+        "REGISTRY-README-001"
+      ]
+    },
+    {
+      "sequence": 53,
+      "report_id": "TDUI-DOC-REPORT-053",
+      "document_path": "implementazioni/audit-codice/01-rilievi-iniziali.md",
+      "report_path": "Report documentale/53 - 01-rilievi-iniziali.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": true,
+      "proposed_files": [
+        "implementazioni/audit-codice/01-rilievi-iniziali/01-checkpoint-b3-b6.md",
+        "implementazioni/audit-codice/01-rilievi-iniziali/02-punto-1-runtime-writer-authority.md"
+      ],
+      "change_ids": [
+        "AUDIT-CODE-P1-001",
+        "AUDIT-CODE-P1-002"
+      ]
+    },
+    {
+      "sequence": 54,
+      "report_id": "TDUI-DOC-REPORT-054",
+      "document_path": "implementazioni/audit-codice/02-runtime-sessioni-betfair.md",
+      "report_path": "Report documentale/54 - 02-runtime-sessioni-betfair.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": true,
+      "proposed_files": [
+        "implementazioni/audit-codice/02-runtime-sessioni-betfair/01-session-authority-start-stop.md",
+        "implementazioni/audit-codice/02-runtime-sessioni-betfair/02-betfair-lifecycle-control-plane.md"
+      ],
+      "change_ids": [
+        "AUDIT-CODE-P23-001",
+        "AUDIT-CODE-P23-002"
+      ]
+    },
+    {
+      "sequence": 55,
+      "report_id": "TDUI-DOC-REPORT-055",
+      "document_path": "implementazioni/audit-codice/03-storage-recovery.md",
+      "report_path": "Report documentale/55 - 03-storage-recovery.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": []
+    },
+    {
+      "sequence": 56,
+      "report_id": "TDUI-DOC-REPORT-056",
+      "document_path": "implementazioni/audit-codice/04-evidence-market-reactions.md",
+      "report_path": "Report documentale/56 - 04-evidence-market-reactions.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": []
+    },
+    {
+      "sequence": 57,
+      "report_id": "TDUI-DOC-REPORT-057",
+      "document_path": "implementazioni/audit-codice/05-frontend-session-shell.md",
+      "report_path": "Report documentale/57 - 05-frontend-session-shell.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": []
+    },
+    {
+      "sequence": 58,
+      "report_id": "TDUI-DOC-REPORT-058",
+      "document_path": "implementazioni/audit-codice/06-validazione-e-test.md",
+      "report_path": "Report documentale/58 - 06-validazione-e-test.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": [
+        "AUDIT-CODE-P7-001"
+      ]
+    },
+    {
+      "sequence": 59,
+      "report_id": "TDUI-DOC-REPORT-059",
+      "document_path": "implementazioni/audit-codice/07-post-audit-e-migrazione.md",
+      "report_path": "Report documentale/59 - 07-post-audit-e-migrazione.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": [
+        "AUDIT-CODE-POST-001"
+      ]
+    },
+    {
+      "sequence": 60,
+      "report_id": "TDUI-DOC-REPORT-060",
+      "document_path": "implementazioni/audit-documentazione/01-rilievi-iniziali-e-api.md",
+      "report_path": "Report documentale/60 - 01-rilievi-iniziali-e-api.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": true,
+      "proposed_files": [
+        "implementazioni/audit-documentazione/01-rilievi-iniziali-e-api/01-rilievi-iniziali.md",
+        "implementazioni/audit-documentazione/01-rilievi-iniziali-e-api/02-api.md"
+      ],
+      "change_ids": [
+        "DOC-AUDIT-P12-001",
+        "DOC-AUDIT-P12-002"
+      ]
+    },
+    {
+      "sequence": 61,
+      "report_id": "TDUI-DOC-REPORT-061",
+      "document_path": "implementazioni/audit-documentazione/02-moduli-frontend-python.md",
+      "report_path": "Report documentale/61 - 02-moduli-frontend-python.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": true,
+      "proposed_files": [
+        "implementazioni/audit-documentazione/02-moduli-frontend-python/01-moduli-owner-b3.md",
+        "implementazioni/audit-documentazione/02-moduli-frontend-python/02-frontend-python-b4.md"
+      ],
+      "change_ids": [
+        "DOC-AUDIT-B34-001",
+        "DOC-AUDIT-B34-002"
+      ]
+    },
+    {
+      "sequence": 62,
+      "report_id": "TDUI-DOC-REPORT-062",
+      "document_path": "implementazioni/audit-documentazione/03-operations-roadmap-e-controlli.md",
+      "report_path": "Report documentale/62 - 03-operations-roadmap-e-controlli.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": true,
+      "proposed_files": [
+        "implementazioni/audit-documentazione/03-operations-roadmap-e-controlli/01-operations-roadmap-b5.md",
+        "implementazioni/audit-documentazione/03-operations-roadmap-e-controlli/02-controlli-trasversali-b6.md"
+      ],
+      "change_ids": [
+        "DOC-AUDIT-B56-001",
+        "DOC-AUDIT-B56-002"
+      ]
+    },
+    {
+      "sequence": 63,
+      "report_id": "TDUI-DOC-REPORT-063",
+      "document_path": "implementazioni/audit-documentazione/04-processo-e-materiali-storici.md",
+      "report_path": "Report documentale/63 - 04-processo-e-materiali-storici.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": [
+        "DOC-AUDIT-PROC-001"
+      ]
+    },
+    {
+      "sequence": 64,
+      "report_id": "TDUI-DOC-REPORT-064",
+      "document_path": "implementazioni/implementazioni-proposte/01-utility-e-autorita-base.md",
+      "report_path": "Report documentale/64 - 01-utility-e-autorita-base.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": true,
+      "proposed_files": [
+        "implementazioni/implementazioni-proposte/01-utility-e-autorita-base/01-utility-e-controlli.md",
+        "implementazioni/implementazioni-proposte/01-utility-e-autorita-base/02-autorita-boundary-e-supporto.md",
+        "implementazioni/implementazioni-proposte/01-utility-e-autorita-base/03-offline-replay-strategy-performance.md"
+      ],
+      "change_ids": [
+        "IMPL-BASE-001",
+        "IMPL-BASE-002"
+      ]
+    },
+    {
+      "sequence": 65,
+      "report_id": "TDUI-DOC-REPORT-065",
+      "document_path": "implementazioni/implementazioni-proposte/02-runtime-betfair.md",
+      "report_path": "Report documentale/65 - 02-runtime-betfair.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": [
+        "IMPL-BETFAIR-001"
+      ]
+    },
+    {
+      "sequence": 66,
+      "report_id": "TDUI-DOC-REPORT-066",
+      "document_path": "implementazioni/implementazioni-proposte/03-storage-recovery.md",
+      "report_path": "Report documentale/66 - 03-storage-recovery.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": [
+        "IMPL-STORAGE-001",
+        "IMPL-STORAGE-002"
+      ]
+    },
+    {
+      "sequence": 67,
+      "report_id": "TDUI-DOC-REPORT-067",
+      "document_path": "implementazioni/implementazioni-proposte/04-evidence-provenance.md",
+      "report_path": "Report documentale/67 - 04-evidence-provenance.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": [
+        "IMPL-EVIDENCE-001"
+      ]
+    },
+    {
+      "sequence": 68,
+      "report_id": "TDUI-DOC-REPORT-068",
+      "document_path": "implementazioni/implementazioni-proposte/05-frontend-session-polling.md",
+      "report_path": "Report documentale/68 - 05-frontend-session-polling.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": [
+        "IMPL-FRONTEND-001"
+      ]
+    },
+    {
+      "sequence": 69,
+      "report_id": "TDUI-DOC-REPORT-069",
+      "document_path": "implementazioni/implementazioni-proposte/06-validazione-e-fixture.md",
+      "report_path": "Report documentale/69 - 06-validazione-e-fixture.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": true,
+      "proposed_files": [
+        "implementazioni/implementazioni-proposte/06-validazione-e-fixture/01-runner-e-result-ledger.md",
+        "implementazioni/implementazioni-proposte/06-validazione-e-fixture/02-fixture-e-sandbox.md",
+        "implementazioni/implementazioni-proposte/06-validazione-e-fixture/03-frontend-interaction-harness.md"
+      ],
+      "change_ids": [
+        "IMPL-VALIDATION-001",
+        "IMPL-VALIDATION-002"
+      ]
+    },
+    {
+      "sequence": 70,
+      "report_id": "TDUI-DOC-REPORT-070",
+      "document_path": "implementazioni/implementazioni-proposte/07-documentazione-e-normalizzazione.md",
+      "report_path": "Report documentale/70 - 07-documentazione-e-normalizzazione.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": [
+        "IMPL-DOCNORM-001"
+      ]
+    },
+    {
+      "sequence": 71,
+      "report_id": "TDUI-DOC-REPORT-071",
+      "document_path": "scripts/validation/README.md",
+      "report_path": "Report documentale/71 - scripts-validation-README.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": [
+        "VALID-RUNNER-001"
+      ]
+    },
+    {
+      "sequence": 72,
+      "report_id": "TDUI-DOC-REPORT-072",
+      "document_path": "todo-list-tennis-decision-ui.md",
+      "report_path": "Report documentale/72 - todo-list-tennis-decision-ui.md",
+      "status": "completed",
+      "modularization_reviewed": true,
+      "split_required": false,
+      "proposed_files": [],
+      "change_ids": []
+    }
+  ],
+  "change_tasks": [
+    {
+      "change_id": "TASK-RECHECK-001",
+      "report_id": "TDUI-DOC-REPORT-048",
+      "document_path": "implementazioni/04-task-completate.md",
+      "priority": "high",
+      "type": "historical_recertification_authority",
+      "action": "Rendere esplicito che il ricontrollo D1–D18 è uno snapshot storico sulla baseline `b277bd9`; preservare gli esiti storici, aggiungere un pointer allo stato corrente/overlay e impedire che `Esito reale @ b277bd9` venga letto come stato corrente a HEAD.",
+      "checkbox": "[x]",
+      "completed": true,
+      "status": "completed"
+    },
+    {
+      "change_id": "TASK-RECHECK-002",
+      "report_id": "TDUI-DOC-REPORT-048",
+      "document_path": "implementazioni/04-task-completate.md",
+      "priority": "critical",
+      "type": "completed_task_status_supersession",
+      "action": "Riconciliare lo stato corrente D1–D18 con le evidenze degli audit successivi senza riscrivere il checkpoint storico: riesaminare almeno D5, D6, D9, D10, D11, D12, D13, D16 e D18, mantenere D14/D17 riaperte, collegare gli owner tecnici esistenti e aggiornare Todo/current counts con una overlay esplicita.",
+      "checkbox": "[x]",
+      "completed": true,
+      "status": "completed"
+    },
+    {
+      "change_id": "PLANNING-AUDIT-001",
+      "report_id": "TDUI-DOC-REPORT-049",
+      "document_path": "implementazioni/05-audit-docs-planning.md",
+      "priority": "high",
+      "type": "historical_cleanup_provenance",
+      "action": "Separare la baseline usata per il confronto finale (`2697f66...`) dal commit che applica e registra la pulizia (`3de08ca...`); non sostituire una provenance con l’altra e registrare eventuale riallineamento archive successivo solo come metadata aggiuntivo dimostrabile.",
+      "checkbox": "[x]",
+      "completed": true,
+      "status": "completed"
+    },
+    {
+      "change_id": "PLANNING-AUDIT-002",
+      "report_id": "TDUI-DOC-REPORT-049",
+      "document_path": "implementazioni/05-audit-docs-planning.md",
+      "priority": "high",
+      "type": "temporal_authority_historical_closeout",
+      "action": "Etichettare il file come closeout storico del checkpoint di cleanup, qualificare `docs/archive/README.md` e `IMPL-015` come stato/next-step del checkpoint e indirizzare policy archive, stato IMPL e prossimo passo correnti verso i relativi owner senza riscrivere la storia.",
+      "checkbox": "[x]",
+      "completed": true,
+      "status": "completed"
+    },
+    {
+      "change_id": "IMPL-IDX-001",
+      "report_id": "TDUI-DOC-REPORT-050",
+      "document_path": "implementazioni/06-implementazioni-proposte.md",
+      "priority": "high",
+      "type": "implementation_registry_summary_divergence",
+      "action": "Riallineare le summary delle implementazioni concluse a owner e Todo aggiungendo `IMPL-004` nel facade e nel root registry; mantenere invariati owner, Todo e `DEC-013`, non promuovere le IMPL ancora aperte e preservare il next step `DA SELEZIONARE`.",
+      "checkbox": "[x]",
+      "completed": true,
+      "status": "completed"
+    },
+    {
+      "change_id": "REGISTRY-README-001",
+      "report_id": "TDUI-DOC-REPORT-052",
+      "document_path": "implementazioni/README.md",
+      "priority": "medium",
+      "type": "registry_navigation_index_drift",
+      "action": "Riallineare `implementazioni/README.md` alla struttura modulare corrente usando una convenzione uniforme per i facade 02/03/06, preferibilmente esponendo i 4+7+7 moduli con descrizioni brevi; aggiornare le descrizioni di 05 e 06 come consumer dei rispettivi owner senza duplicare stati o schede.",
+      "checkbox": "[x]",
+      "completed": true,
+      "status": "completed"
+    },
+    {
+      "change_id": "AUDIT-CODE-P1-001",
+      "report_id": "TDUI-DOC-REPORT-053",
+      "document_path": "implementazioni/audit-codice/01-rilievi-iniziali.md",
+      "priority": "high",
+      "type": "historical_checkpoint_temporal_authority",
+      "action": "Esplicitare la temporal authority interna del modulo: dichiarare B3–B6 come snapshot storico, distinguere il secondo audit Punto 1 e l’update successivo IMPL-015, aggiungere pointer allo stato corrente in Todo/owner e annotare le sezioni storiche superseded senza riscrivere retroattivamente la storia.",
+      "checkbox": "[x]",
+      "completed": true,
+      "status": "completed"
+    },
+    {
+      "change_id": "AUDIT-CODE-P1-002",
+      "report_id": "TDUI-DOC-REPORT-053",
+      "document_path": "implementazioni/audit-codice/01-rilievi-iniziali.md",
+      "priority": "medium-high",
+      "type": "modularization_context_boundary",
+      "action": "Trasformare `01-rilievi-iniziali.md` in facade breve e separare checkpoint B3–B6 e Punto 1/runtime-writer-authority nei due child proposti, preservando owner, testo storico, stati e navigazione.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "AUDIT-CODE-P23-001",
+      "report_id": "TDUI-DOC-REPORT-054",
+      "document_path": "implementazioni/audit-codice/02-runtime-sessioni-betfair.md",
+      "priority": "high",
+      "type": "historical_audit_authority_registry_metadata_drift",
+      "action": "Riallineare temporal authority, supersession e metadata del modulo: chiarire che Punto 2 e Punto 3 sono snapshot sulle rispettive baseline, collegare le evidenze successive già owned e riconciliare il priority drift di FRONTEND-003 e FRONTEND-007 con la Todo corrente.",
+      "checkbox": "[x]",
+      "completed": true,
+      "status": "completed"
+    },
+    {
+      "change_id": "AUDIT-CODE-P23-002",
+      "report_id": "TDUI-DOC-REPORT-054",
+      "document_path": "implementazioni/audit-codice/02-runtime-sessioni-betfair.md",
+      "priority": "medium-high",
+      "type": "modularization_context_boundary",
+      "action": "Mantenere `02-runtime-sessioni-betfair.md` come facade stabile e separare Session Authority/Start-Stop e Betfair Lifecycle/Control Plane nei due child proposti, preservando baseline e owner ID.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "AUDIT-CODE-P7-001",
+      "report_id": "TDUI-DOC-REPORT-058",
+      "document_path": "implementazioni/audit-codice/06-validazione-e-test.md",
+      "priority": "high",
+      "type": "historical_audit_authority_post_implementation_supersession",
+      "action": "Rendere esplicito il boundary fra checkpoint originario del Punto 7 e stato post-IMPL-028: runner, manifest, cinque profili offline e artifact JSON iniziale sono implementati; test map completa, fixture/sandbox, frontend harness, ledger completo, persistence/benchmark/live e coverage restano aperti.",
+      "checkbox": "[x]",
+      "completed": true,
+      "status": "completed"
+    },
+    {
+      "change_id": "AUDIT-CODE-POST-001",
+      "report_id": "TDUI-DOC-REPORT-059",
+      "document_path": "implementazioni/audit-codice/07-post-audit-e-migrazione.md",
+      "priority": "high",
+      "type": "owner_status_drift_post_completion",
+      "action": "Riallineare gli owner post-completion: TEST-077/078/079 devono riflettere lo stato COMPLETATO già registrato nella Todo e §24.1 deve distinguere lo stato iniziale IMPL-028 'da validare' dallo stato finale 'implementata e validata localmente', preservando la cronologia.",
+      "checkbox": "[x]",
+      "completed": true,
+      "status": "completed"
+    },
+    {
+      "change_id": "DOC-AUDIT-P12-001",
+      "report_id": "TDUI-DOC-REPORT-060",
+      "document_path": "implementazioni/audit-documentazione/01-rilievi-iniziali-e-api.md",
+      "priority": "high",
+      "type": "owner_lifecycle_post_migration_reconciliation",
+      "action": "Aggiungere una reconciliation storico/current per B1/B2, distinguendo finding assorbiti dalla migrazione, finding ancora attivi, finding parzialmente migliorati e finding documentali risolti con bug code ancora aperti; correggere anche la coda API ancora pre-migrazione.",
+      "checkbox": "[x]",
+      "completed": true,
+      "status": "completed"
+    },
+    {
+      "change_id": "DOC-AUDIT-P12-002",
+      "report_id": "TDUI-DOC-REPORT-060",
+      "document_path": "implementazioni/audit-documentazione/01-rilievi-iniziali-e-api.md",
+      "priority": "medium-high",
+      "type": "modularization_context_boundary",
+      "action": "Mantenere il path corrente come facade e separare i rilievi iniziali B1 e l’audit API B2 nei due child proposti, preservando owner ID, checkpoint, test-not-executed qualifier e navigazione.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "DOC-AUDIT-B34-001",
+      "report_id": "TDUI-DOC-REPORT-061",
+      "document_path": "implementazioni/audit-documentazione/02-moduli-frontend-python.md",
+      "priority": "high",
+      "type": "owner_lifecycle_historical_current_reconciliation",
+      "action": "Aggiungere una overlay B3/B4 storico/current: mantenere DOC-014/015/016/017/019 aperti secondo lo stato verificato, marcare DOC-018 risolto lato documentazione e mantenere FRONTEND-002 come owner dell’implementation gap.",
+      "checkbox": "[x]",
+      "completed": true,
+      "status": "completed"
+    },
+    {
+      "change_id": "DOC-AUDIT-B34-002",
+      "report_id": "TDUI-DOC-REPORT-061",
+      "document_path": "implementazioni/audit-documentazione/02-moduli-frontend-python.md",
+      "priority": "medium-high",
+      "type": "modularization_context_boundary",
+      "action": "Mantenere `02-moduli-frontend-python.md` come facade e separare il checkpoint B3 moduli owner dal checkpoint B4 Frontend/Python nei due child proposti, senza duplicare owner o contenuto.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "DOC-AUDIT-B56-001",
+      "report_id": "TDUI-DOC-REPORT-062",
+      "document_path": "implementazioni/audit-documentazione/03-operations-roadmap-e-controlli.md",
+      "priority": "high",
+      "type": "historical_current_authority_supersession",
+      "action": "Aggiungere la reconciliation B5/B6 post-migrazione: DOC-020 risolto, DOC-021 precursore storico superseded da DOC-031, DOC-022 ancora aperto/parziale, DOC-023 risolto; aggiornare pointer current per IMPL-001/005, TEST-003, README index.mdx e roadmap future senza riscrivere il checkpoint.",
+      "checkbox": "[x]",
+      "completed": true,
+      "status": "completed"
+    },
+    {
+      "change_id": "DOC-AUDIT-B56-002",
+      "report_id": "TDUI-DOC-REPORT-062",
+      "document_path": "implementazioni/audit-documentazione/03-operations-roadmap-e-controlli.md",
+      "priority": "medium-high",
+      "type": "modularization_context_boundary",
+      "action": "Mantenere `03-operations-roadmap-e-controlli.md` come facade e separare B5 Operations/Roadmap e B6 Controlli trasversali nei due child proposti, preservando baseline, owner ID, provenance e current overlay.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "DOC-AUDIT-PROC-001",
+      "report_id": "TDUI-DOC-REPORT-063",
+      "document_path": "implementazioni/audit-documentazione/04-processo-e-materiali-storici.md",
+      "priority": "high",
+      "type": "historical_process_authority_migration_outcome_reconciliation",
+      "action": "Aggiungere una overlay post-migrazione alle sezioni 16–17 senza riscrivere il checkpoint storico: marcare i path `implementazioni/07-workflow-esecutivo.md` e `08-linee-guida-chat-e-ai.md` come proposta superseded dai documenti canonici AI correnti; registrare `docs/validations/` come implementata, `_work` e `percorsi.txt` come rimossi, i materiali legacy come temporaneamente archiviati, consolidati e poi rimossi; qualificare §17.6 come stato al checkpoint e rimandare lo stato corrente a Todo/owner.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "IMPL-BASE-001",
+      "report_id": "TDUI-DOC-REPORT-064",
+      "document_path": "implementazioni/implementazioni-proposte/01-utility-e-autorita-base.md",
+      "priority": "high",
+      "type": "implementation_registry_temporal_authority",
+      "action": "Riallineare la temporal authority del registro IMPL-001…015: distinguere problema originario, checkpoint, decisione successiva, stato corrente e closeout; marcare la frase `Manca però un controllo globale ripetibile` di IMPL-001 come problema originario, qualificare §13.1 e §14.1 come ordini storici e impedire che l’introduzione di §14 contraddica l’approvazione successiva di IMPL-006, senza cambiare gli stati tecnici correnti.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "IMPL-BASE-002",
+      "report_id": "TDUI-DOC-REPORT-064",
+      "document_path": "implementazioni/implementazioni-proposte/01-utility-e-autorita-base.md",
+      "priority": "medium-high",
+      "type": "modularization_context_boundary",
+      "action": "Mantenere `01-utility-e-autorita-base.md` come facade stabile e separare il registro in tre child per responsabilità: utility/controlli (IMPL-001…005), authority/boundary/supporto (IMPL-006/007/008/009/011/015) e offline/replay/strategy/performance (IMPL-010/012/013/014), preservando owner, provenance e closeout IMPL-015.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "IMPL-BETFAIR-001",
+      "report_id": "TDUI-DOC-REPORT-065",
+      "document_path": "implementazioni/implementazioni-proposte/02-runtime-betfair.md",
+      "priority": "high",
+      "type": "dependency_metadata_implementation_sequencing",
+      "action": "Normalizzare il dependency graph di IMPL-016…018 distinguendo hard prerequisites, supporting tools, validation/test dependencies, downstream consumers e future dependencies; chiarire in particolare che IMPL-002 non è implicitamente bloccante per IMPL-017 salvo decisione esplicita e definire il verso delle relazioni IMPL-018↔IMPL-012/013 senza introdurre cicli.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "IMPL-STORAGE-001",
+      "report_id": "TDUI-DOC-REPORT-066",
+      "document_path": "implementazioni/implementazioni-proposte/03-storage-recovery.md",
+      "priority": "high",
+      "type": "implementation_state_granularity_existing_recovery",
+      "action": "Registrare per IMPL-019…021 il boundary fra primitive già implementate dalla Task 6 e contratto residuo: preservare journal/recovery, target verification, reopen incomplete, recovery bootstrap, summary bounded e stati partial/recovery_failed; esplicitare invece come mancanti event-scoped authority, revision/headCommitId, digest/base revision, schema/identity verification, ambiguous storage e recovery control-plane persistente.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "IMPL-STORAGE-002",
+      "report_id": "TDUI-DOC-REPORT-066",
+      "document_path": "implementazioni/implementazioni-proposte/03-storage-recovery.md",
+      "priority": "high",
+      "type": "dependency_metadata_sequencing_contradiction",
+      "action": "Normalizzare dependency graph e sequencing di IMPL-019…021: rendere coerente la relazione IMPL-021↔IMPL-009 con l’ordine §18.2, chiarire il ruolo della baseline IMPL-013 rispetto all’evoluzione del formato introdotta da IMPL-020, classificare IMPL-008 come supporto di validazione e rimuovere ogni ciclo implicito senza eseguire implementazioni.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "IMPL-EVIDENCE-001",
+      "report_id": "TDUI-DOC-REPORT-067",
+      "document_path": "implementazioni/implementazioni-proposte/04-evidence-provenance.md",
+      "priority": "high",
+      "type": "owner_state_granularity_existing_evidence_primitives",
+      "action": "Sostituire per IMPL-022/023/024 la formula `STRUTTURA COMPLETAMENTE ASSENTE` con uno stato bounded `APPROVATA, NON COMPLETATA` che elenchi le primitive legacy/current già presenti e i contratti owner ancora mancanti; preservare temporal alignment, Market Reactions, causality false e comparazioni runner esistenti, esplicitando i limiti da sostituire come future timestamp clamp, name fallback e price-source comparability incompleta.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "IMPL-FRONTEND-001",
+      "report_id": "TDUI-DOC-REPORT-068",
+      "document_path": "implementazioni/implementazioni-proposte/05-frontend-session-polling.md",
+      "priority": "high",
+      "type": "owner_state_granularity_existing_frontend_primitives",
+      "action": "Riallineare IMPL-025/026/027 sostituendo `STRUTTURA COMPLETAMENTE ASSENTE` con uno stato bounded `APPROVATA, NON COMPLETATA`: registrare le primitive frontend già presenti (session input/confirmed state, Start/Stop actions, shell/bootstrap, poller esistenti, async guards Evidence/Source Identity, Market Reactions UI) e separarle dai contratti ancora mancanti (single live-session controller, trackingSessionId/command authority, shared session-scoped polling runtime, Stop di tutti i poller, retain policy e dedicated Market Reactions view model). Preservare le protezioni async già robuste e non promuovere TEST-044…059.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "IMPL-VALIDATION-001",
+      "report_id": "TDUI-DOC-REPORT-069",
+      "document_path": "implementazioni/implementazioni-proposte/06-validazione-e-fixture.md",
+      "priority": "high",
+      "type": "implementation_coverage_owner_dependency_reconciliation",
+      "action": "Riconciliare il boundary IMPL-028↔IMPL-031: mantenere IMPL-028 completata e attribuirle runner, manifest e v1 run artifact già implementati; mantenere IMPL-031 aperta come estensione del result contract/ledger storico, distinguendo i campi già presenti (SHA, profilo, timing, environment, workingTreeStatus, counts, warnings/limits, per-command results e output bounded/redacted) da quelli ancora mancanti (historical/latest-result authority, complete requirement coverage, blocked/planned/not-applicable semantics, buildResult, browserValidationStatus e top-level commands). Rendere non ciclica la dependency 028↔031 e non chiudere TEST-069/070.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "IMPL-VALIDATION-002",
+      "report_id": "TDUI-DOC-REPORT-069",
+      "document_path": "implementazioni/implementazioni-proposte/06-validazione-e-fixture.md",
+      "priority": "medium-high",
+      "type": "modularization_context_boundary",
+      "action": "Mantenere `06-validazione-e-fixture.md` come facade stabile e separare le tre responsabilità reali in child dedicati: runner + result ledger (IMPL-028/031), fixture + sandbox (IMPL-029) e frontend interaction harness (IMPL-030), preservando closeout IMPL-028, TEST-060…075, estensioni condivise e ordine approvato senza duplicare owner.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "IMPL-DOCNORM-001",
+      "report_id": "TDUI-DOC-REPORT-070",
+      "document_path": "implementazioni/implementazioni-proposte/07-documentazione-e-normalizzazione.md",
+      "priority": "high",
+      "type": "registry_provenance_post_modularization_owner_path_reconciliation",
+      "action": "Preservare la matrice owner della §24 come checkpoint pre-modularizzazione e aggiungere una overlay dei current owner path dopo lo split dei registri. I facade `02-audit-documentazione.md`, `03-audit-codice.md` e `06-implementazioni-proposte.md` non devono essere presentati come owner current quando le schede vivono nei child; risolvere ogni ID tramite la card owner reale, senza promuovere addenda, rinumerare ID, rifare il dedupe o riaprire IMPL-032/TEST-076…079.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    },
+    {
+      "change_id": "VALID-RUNNER-001",
+      "report_id": "TDUI-DOC-REPORT-071",
+      "document_path": "scripts/validation/README.md",
+      "priority": "high",
+      "type": "validation_runner_live_offline_safety_gate",
+      "action": "Rendere fail-closed il boundary live/offline del validation runner a livello di entry/capability selezionata: una entry `liveRequired:true` non deve poter essere eseguita senza consenso esplicito indipendentemente dal profilo che la seleziona; `full-offline` deve rifiutare `browser`, `credentials`, `external-network` e `tracking`, e backend/frontend/python devono avere una policy esplicita. Aggiungere self-test sintetici senza browser/rete reali e riallineare il README; TEST-073 resta completato perché copre correttamente il solo profilo `fast`.",
+      "checkbox": "[ ]",
+      "completed": false,
+      "status": "pending"
+    }
+  ]
+}

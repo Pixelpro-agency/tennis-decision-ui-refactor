@@ -1,6 +1,14 @@
+export function isCanonicalSofaTick(entry) {
+    return Boolean(
+        entry &&
+        entry.data &&
+        entry.data.source === 'sofa'
+    );
+}
+
 export function getRecentSofaTicks(sofaTimeline, maxCount) {
     const entries = sofaTimeline && Array.isArray(sofaTimeline.timeline) ? sofaTimeline.timeline : [];
-    const sofaEntries = entries.filter(e => e && e.data && e.data.source === 'sofa');
+    const sofaEntries = entries.filter(isCanonicalSofaTick);
     return sofaEntries.slice(-maxCount);
 }
 
@@ -10,7 +18,7 @@ export function getLatestSofaTick(sofaTimeline) {
 
     for (let i = entries.length - 1; i >= 0; i--) {
         const e = entries[i];
-        if (e && e.data && e.data.source === 'sofa') return e;
+        if (isCanonicalSofaTick(e)) return e;
     }
-    return entries[entries.length - 1] || null;
+    return null;
 }

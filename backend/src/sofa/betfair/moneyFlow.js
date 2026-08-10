@@ -3,9 +3,12 @@ export function isGraphCompatibleLadderSource(source) {
 }
 
 export function normalizeSelectionId(selectionId) {
-    return selectionId === null || selectionId === undefined
-        ? null
-        : String(selectionId);
+    if (typeof selectionId === 'number') {
+        return Number.isFinite(selectionId) ? String(selectionId) : null;
+    }
+    if (typeof selectionId !== 'string') return null;
+    const normalized = selectionId.trim();
+    return normalized || null;
 }
 
 export function getRunnerIdentity(runner, index) {

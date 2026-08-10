@@ -133,4 +133,84 @@ runTest('undefined bootstrap result keeps phase pending and does not retry', () 
     assert.equal(bootstrapAttempts, 1);
 });
 
+runTest('manual confirmation is persisted only after successful bootstrap', () => {
+    clearAllSourceIdentityGates();
+    let upserts = 0;
+    const dependencies = {
+        ...createFakeConfirmationDependencies(),
+        upsertSourceIdentityConfirmation() {
+            upserts += 1;
+            return { ok: true };
+        }
+    };
+    startSourceIdentityGate('event-manual-atomic', {
+        hasBetfairUrl: true,
+        dependencies,
+        onOpenRecording: () => ({ ok: false })
+    });
+    const sofa = {
+        snapshot: {
+            players: {
+                home: { name: 'John Smith' },
+                away: { name: 'Peter Smith' }
+            }
+        }
+    };
+    observeSofaSourceIdentitySample('event-manual-atomic', sofa);
+    observeBetfairSourceIdentitySample(
+        'event-manual-atomic', validBetfairSamplePending, 'tennis-market-pending'
+    );
+    const result = confirmActiveSourceIdentityGate('event-manual-atomic', {
+        confirmationText: CONFIRMATION_PHRASE,
+        selectedPairs: [
+            { sofaPlayer: 'John Smith', betfairRunner: 'John' },
+            { sofaPlayer: 'Peter Smith', betfairRunner: 'Peter' }
+        ]
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, 'bootstrap_persistence_failed');
+    assert.equal(upserts, 0);
+    assert.equal(getSourceIdentityGateStatus('event-manual-atomic').phase, 'pending');
+});
+
+runTest('confirmation persistence failure does not enter recording', () => {
+    clearAllSourceIdentityGates();
+    let bootstraps = 0;
+    const dependencies = {
+        ...createFakeConfirmationDependencies(),
+        upsertSourceIdentityConfirmation: () => ({ ok: false })
+    };
+    startSourceIdentityGate('event-manual-store-fail', {
+        hasBetfairUrl: true,
+        dependencies,
+        onOpenRecording: () => {
+            bootstraps += 1;
+            return { ok: true };
+        }
+    });
+    const sofa = {
+        snapshot: {
+            players: {
+                home: { name: 'John Smith' },
+                away: { name: 'Peter Smith' }
+            }
+        }
+    };
+    observeSofaSourceIdentitySample('event-manual-store-fail', sofa);
+    observeBetfairSourceIdentitySample(
+        'event-manual-store-fail', validBetfairSamplePending, 'tennis-market-pending'
+    );
+    const result = confirmActiveSourceIdentityGate('event-manual-store-fail', {
+        confirmationText: CONFIRMATION_PHRASE,
+        selectedPairs: [
+            { sofaPlayer: 'John Smith', betfairRunner: 'John' },
+            { sofaPlayer: 'Peter Smith', betfairRunner: 'Peter' }
+        ]
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, 'persistence_failed');
+    assert.equal(bootstraps, 1);
+    assert.equal(getSourceIdentityGateStatus('event-manual-store-fail').phase, 'pending');
+});
+
 finish();

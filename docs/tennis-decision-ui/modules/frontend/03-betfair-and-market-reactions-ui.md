@@ -2,176 +2,168 @@
 
 ## Scopo
 
-Questo modulo descrive la visualizzazione frontend di dati Betfair, health, Money Flow e Market Reactions.
+Questa pagina è la facade delle superfici frontend dedicate a Betfair Depth, Money Flow, health e Market Reactions.
 
-I componenti visualizzano dati già classificati dal backend, dagli hook e dallo snapshot Evidence. Non producono Evidence, non interpretano causalità e non diventano owner di persistenza, journal o recovery.
+I componenti visualizzano read model già prodotti da backend e hook. Non producono Evidence, non attribuiscono causalità, non leggono journal e non eseguono recovery.
 
-Le API espongono persistence integrity, ma il wiring UI corrente è incompleto: gli hook SofaScore e Betfair conservano `integrity`, mentre `App.jsx`, `useDashboardViewModel(...)`, `BetfairDepthCard.jsx` e `MarketReactionsPage.jsx` non la ricevono ancora come prop dedicata.
+Il lifecycle della sessione e di Source Identity appartiene a [Sessione e shell frontend](./01-session-shell.md); request safety, current/last-known e timestamp appartengono a [Polling e view model](./02-live-polling-and-view-model.md).
 
-## Betfair Depth
-
-Struttura:
+## Struttura
 
 ```txt
 frontend/src/components/
 ├── BetfairDepthCard.jsx
 ├── BetfairHealthToast.jsx
-└── betfair/
-    ├── BetfairRunnerDepth.jsx
-    ├── MoneyFlowChart.jsx
-    └── BetfairHealthDebugPanel.jsx
+├── MarketReactionsPage.jsx
+├── betfair/
+│   ├── BetfairRunnerDepth.jsx
+│   ├── MoneyFlowChart.jsx
+│   └── BetfairHealthDebugPanel.jsx
+└── marketReactions/
+    ├── FieldLedReactionCard.jsx
+    ├── MarketLedObservationCard.jsx
+    ├── SourceIdentityConfirmationModal.jsx
+    └── SourceIdentityControls.jsx
 ```
 
-| Componente                    | Responsabilità                                                                                         |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `BetfairDepthCard.jsx`        | Contenitore, stato vuoto, health, associazione runner tramite `selectionId`, griglia e scala condivise |
-| `BetfairRunnerDepth.jsx`      | Ladder, Best Back, Best Lay, total matched e grafico neutro del runner                                 |
-| `MoneyFlowChart.jsx`          | Barra neutra per tick e assenza di barra per slot invalidi, anomali o vuoti                           |
-| `BetfairHealthDebugPanel.jsx` | Pannello espandibile di diagnostica health                                                             |
-| `BetfairHealthToast.jsx`      | Toast per transizione health critica                                                                   |
+## Betfair Depth
 
-`BetfairDepthCard.jsx` riceve attualmente:
+| Componente                    | Responsabilità                                                                    |
+| ----------------------------- | --------------------------------------------------------------------------------- |
+| `BetfairDepthCard.jsx`        | Contenitore, stato vuoto, health, associazione history-runner e griglia condivisa |
+| `BetfairRunnerDepth.jsx`      | Ladder, Best Back/Lay, total matched e grafico del runner                         |
+| `MoneyFlowChart.jsx`          | Volume abbinato neutro nel tempo                                                  |
+| `BetfairHealthDebugPanel.jsx` | Diagnostica health read-only                                                      |
+| `BetfairHealthToast.jsx`      | Avviso sulle transizioni health                                                   |
+
+`BetfairDepthCard` riceve attualmente:
 
 ```txt
 data
+lastKnownData
 history
+lastKnownHistory
 health
 healthTransition
+persistenceViewState
+readStatus
+isPolling
+trackingStopped
+sourceUpdatedAt
 ```
 
-Non riceve:
+La card distingue autonomamente current, waiting, stopped, degraded, error e last-known. Health, persistence e Source Identity restano separati.
 
-```txt
-integrity
-serverStatus persistence
-persistenceComplete
-```
+## History Money Flow
 
-Di conseguenza la card non mostra ancora uno stato persistence separato dalla health.
-
-### Contratto history Money Flow
+Il contratto è:
 
 ```txt
 history.series[]
-→ ogni elemento usa selectionId, name e points
-→ BetfairDepthCard associa il runner con String(selectionId)
-→ name è soltanto label
-→ runner senza selectionId riceve history vuota
-```
-
-La griglia condivisa viene costruita da `series[].points`.
-
-```txt
-timestamp ISO completi
-→ ordinamento cronologico
-
-punti allineati validi
-→ shared max
-
-stesso nome
-→ non implica continuità storica
-```
-
-Lo stato persistence non viene ricostruito dal nome runner, dai point o dalla health.
-
-## Confine Money Flow
-
-Per modificare il grafico, il contesto minimo è:
-
-```txt
-BetfairDepthCard.jsx
-useDashboardViewModel.js
-utils/betfairMoneyFlow.js
-utils/betfairMoneyFlow.test.mjs
-MoneyFlowChart.jsx
-BetfairRunnerDepth.jsx
-```
-
-Contratto:
-
-```txt
-series
 → selectionId
+→ name come label
 → points
 ```
 
-`MoneyFlowChart.jsx` può:
-
-- allineare history alla griglia condivisa;
-- usare una scala condivisa;
-- usare `getDisplayMatchedVolume(point)`;
-- mostrare una barra soltanto per `matchedVolume` positivo e visualizzabile;
-- escludere punti invalidi, anomali, vuoti o assenti;
-- mantenere hover locale minimale.
-
-Non deve:
-
-- calcolare identità runner;
-- correggere delta market o runner;
-- usare `computeFlowWom`;
-- attribuire direzione Back o Lay;
-- mostrare WOM, pressure, trend o volume non attribuito come segnali;
-- dedurre intenzione dei trader;
-- generare punti sintetici;
-- creare richieste API.
-
-`BetfairRunnerDepth.jsx` può mostrare Best Back, Best Lay e quantità non abbinate come dati grezzi del book. Non deve trasformarli in direzione Money Flow.
-
-### Volume abbinato nel tempo
-
-Titolo:
+L'associazione con il runner usa `String(selectionId)`. Il nome non è un'identità tecnica:
 
 ```txt
-Volume abbinato nel tempo
+stesso selectionId + nome aggiornato
+→ stessa serie
+
+stesso nome + selectionId diverso
+→ nessuna continuità
+
+selectionId assente
+→ history vuota
 ```
 
-Regole:
+La griglia temporale condivisa deriva dai point di tutte le serie e mantiene l'allineamento tra runner.
+
+## Money Flow neutro
+
+Il grafico rappresenta soltanto volume abbinato osservato.
 
 ```txt
-matchedVolume positivo e validForDisplay
-→ una barra neutra sopra lo zero
+matchedVolume positivo + validForDisplay
+→ barra neutra sopra lo zero
 
-empty slot
-→ nessuna barra
-
-invalidVolume o anomaly
+empty / invalidVolume / anomaly
 → nessuna barra
 
 matchedVolume = 0
 → nessuna barra
 ```
 
-La scala condivisa usa soltanto volume visualizzabile e mantiene una base tecnica minima di 100.
+Non deve mostrare:
 
-Hover:
+- direzione Back/Lay;
+- WOM o pressure;
+- intenzione del trader;
+- volume non attribuito come segnale;
+- punti sintetici;
+- raccomandazioni operative.
+
+### Scala e osservabilità
+
+`getMoneyFlowAxisMax()` produce il massimo normalizzato condiviso usato sia dalle barre sia dall'asse.
+
+Hover e formattazione distinguono:
 
 ```txt
-VOLUME ABBINATO: <importo> EUR
+slot assente/invalid/anomaly
+≠ zero realmente osservato
 ```
 
-Non esistono tooltip o legende direzionali.
+Gli stati non osservabili non producono tooltip numerico; uno zero reale e valido resta `0 EUR`.
+
+## Valori Betfair mancanti
+
+Price, size e total matched sono dati osservati. `null` o assenza non equivalgono a zero.
+
+Contratto applicato dai formattatori condivisi:
+
+```txt
+price mancante → —
+size mancante → —
+runner matched mancante → —
+zero reale → 0 o 0.00 secondo il campo
+```
+
+I valori mancanti non vengono più convertiti implicitamente in zero.
+
+## Stato vuoto e polling
+
+Lo stato vuoto usa `isPolling`, `readStatus`, `trackingStopped` e `persistenceViewState`. Non contiene più un intervallo hard-coded e distingue polling attivo, inattivo, waiting, Stop, errore e persistence incompleta.
+
+## Current e last-known Betfair
+
+`useBetfairJson()` espone ora:
+
+```txt
+data
+lastKnownData
+readStatus
+integrity
+sourceUpdatedAt
+fetchedAt
+```
+
+Il fallback `/latest → /json` è atomico e non combina più data nuova con health/history precedenti.
+
+`App.jsx` inoltra read status, last-known, history e source timestamp alla card. Con `degraded` o `error`, la card può mostrare l'ultimo dato disponibile con label e timestamp espliciti, senza presentarlo come live.
 
 ## Health Betfair
 
-La UI riceve `health` e `healthTransition` dal livello hook.
+Health, persistence, freshness e Source Identity sono assi distinti.
 
-Health, freshness e autenticazione sono già classificati dal backend.
+`useBetfairHealthAlerts()` deriva transizioni, toast e audio dalla health backend senza modificarne lo status. I componenti non devono riclassificare persistence integrity come health.
 
-`useBetfairHealthAlerts(...)` deriva transizioni, toast e audio senza cambiare status o significato.
+L'avviso audio corrente considera sia flag strutturati sia testo in `message` e `reasons`; un refactor deve preservare o migrare consapevolmente questa dipendenza.
 
-I componenti non devono:
+### Debug panel
 
-- ricalcolare status backend;
-- trasformare errori tecnici in classificazioni nuove;
-- trasformare tick o ladder stale in stati diversi;
-- trasformare `partial_persistence` o `recovery_failed` in health;
-- attivare polling autonomo.
-
-L’avviso audio corrente combina flag strutturati con un controllo testuale su `message` e `reasons`. Un refactor deve preservare o migrare esplicitamente questa dipendenza.
-
-### Pannello diagnostico
-
-`BetfairHealthDebugPanel.jsx` espone in sola lettura:
+`BetfairHealthDebugPanel.jsx` mostra in sola lettura:
 
 ```txt
 lastScrapeAttemptAt
@@ -181,6 +173,7 @@ lastUsableLadderAt
 lastValidVolumeAt
 lastTechnicalErrorAt
 graphLoginRequiredAt
+graphLoginRequiredUrl
 computedAt
 technicalErrorActive
 lastTechnicalErrorReason
@@ -189,104 +182,25 @@ latestUsableLadderAgeSec
 betfairUrlOk
 ```
 
-Il pannello non ricalcola status, login, freshness, alert o integrity.
+Campi assenti sono resi come `null` o `—`. `graphLoginRequiredUrl` è un URL già redatto dal backend/scraper e deve restare tale; la UI non deve introdurre campi diagnostici raw, cookie, token o target CDP.
 
-Campi assenti:
+## Persistence Betfair
 
-```txt
-null
-—
-```
+`useBetfairJson()` conserva integrity e `App.jsx` la integra in `persistenceViewState`. `DashboardWorkspace` mostra un avviso comune per `degraded` ed `error`.
 
-## Persistence integrity nella UI Betfair
-
-Contratto backend e hook:
+Il wiring specifico della card è completato:
 
 ```txt
-GET /api/betfair/:eventId/latest oppure /json
-→ useBetfairJson(...)
-→ integrity conservata nello stato dell’hook
+useBetfairJson integrity/readStatus
+→ App e banner shell
+→ BetfairDepthCard persistence/read state
 ```
 
-Wiring corrente:
-
-```txt
-App.jsx
-→ destruttura data, health, moneyFlowHistory e lastUpdate
-→ non destruttura integrity
-
-useDashboardViewModel(...)
-→ non riceve integrity
-
-BetfairDepthCard.jsx
-→ non riceve integrity
-→ non mostra label persistence dedicata
-```
-
-Quindi non è corretto descrivere come già disponibile una UI Betfair che visualizza `partial_persistence` o `recovery_failed` separatamente dalla health.
-
-Il comportamento implementato resta:
-
-```txt
-409 persistence_integrity
-→ useBetfairJson setData(null)
-→ integrity preservata internamente
-→ health sicura eventualmente preservata
-→ nessun lastUpdate locale inventato
-→ nessun Money Flow sintetico
-```
-
-Il completamento futuro del wiring deve:
-
-- passare integrity in modo esplicito;
-- mantenere health e integrity separate;
-- non mostrare `commitId` come informazione utente;
-- non esporre path o payload journal;
-- non tentare recovery client-side;
-- non creare runner, ladder o barre mancanti.
-
-## Confine overview
-
-`OverviewDashboard.jsx` compone:
-
-- `MatchContextCard.jsx`;
-- `KeyStatsCard.jsx`;
-- `BetfairDepthCard.jsx`;
-- `TotManualInputPlaceholder.jsx`.
-
-`MatchOverviewBar.jsx` è renderizzato da `DashboardWorkspace.jsx` e appartiene alla shell.
-
-`MomentumEngineCard.jsx` non è presente e non deve comparire nella mappa.
+La card non deve mostrare `commitId`, path, contenuti journal o controlli di recovery.
 
 ## Market Reactions
 
-Struttura:
-
-```txt
-frontend/src/components/
-├── MarketReactionsPage.jsx
-├── Sidebar.jsx
-├── SourceIdentityGateIndicator.jsx
-├── SourceIdentityGateToast.jsx
-├── SourceIdentityGateWaitingScreen.jsx
-└── marketReactions/
-    ├── FieldLedReactionCard.jsx
-    ├── MarketLedObservationCard.jsx
-    ├── SourceIdentityConfirmationModal.jsx
-    └── SourceIdentityControls.jsx
-```
-
-| Componente                            | Responsabilità                                                                                     |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `MarketReactionsPage.jsx`             | Pagina presentazionale del solo `marketReactionEvidence` ricevuto                                 |
-| `Sidebar.jsx`                         | Navigazione, indicatore Source Identity e health Betfair                                           |
-| `SourceIdentityGateIndicator.jsx`     | Semaforo Source Identity                                                                           |
-| `SourceIdentityGateToast.jsx`         | Toast aligned o mismatch                                                                           |
-| `SourceIdentityGateWaitingScreen.jsx` | Stato centrale collecting, pending o errore bootstrap                                              |
-| `SourceIdentityConfirmationModal.jsx` | Mapping manuale pending ricevuto dal gate live                                                     |
-| `SourceIdentityControls.jsx`          | Componente legacy prop-driven, non montato come autorità globale                                   |
-
-`MarketReactionsPage.jsx` riceve:
+`MarketReactionsPage` riceve ora:
 
 ```txt
 eventId
@@ -294,43 +208,32 @@ evidence
 loading
 error
 reasons
+integrity
+sources
+persistenceComplete
+readStatus
 lastUpdate
 isPolling
 refresh
 ```
 
-Il valore `evidence` è soltanto:
+`useMarketReactionEvidence()` conserva il wrapper Evidence:
 
 ```txt
-payload.latest.marketReactionEvidence
-```
-
-perché `useMarketReactionEvidence(...)` non conserva il wrapper Evidence completo.
-
-La pagina non riceve attualmente:
-
-```txt
-integrity top-level
-sources.sofa
-sources.betfair
+latest
+marketReactionEvidence
+sources
+integrity
 latest.dataQuality.persistenceComplete
-snapshot Evidence completo
+sourceUpdatedAt
+fetchedAt
 ```
 
-Non deve:
+La pagina mostra un avviso separato quando `readStatus=degraded` o `persistenceComplete=false`. Non ricostruisce questi valori nel client.
 
-- creare polling;
-- confermare o revocare mapping direttamente;
-- determinare lo stato globale Source Identity;
-- dedurre causalità;
-- leggere journal;
-- avviare recovery.
+## Degradazione cross-source
 
-## Persistence integrity e Market Reactions
-
-Il backend Evidence è owner della degradazione cross-source.
-
-Quando persistence integrity è incompleta, il builder backend deve produrre:
+Il backend resta owner della degradazione. Con persistence incompleta deve produrre:
 
 ```txt
 marketReactionEvidence.available = false
@@ -340,80 +243,29 @@ fieldLedMarketResponseObserved = false
 causalityClaimed = false
 ```
 
-Il frontend riceve quindi un `marketReactionEvidence` già degradato e non deve riabilitarlo.
+Il frontend non riabilita un ramo dichiarato non disponibile.
 
-Limite corrente:
-
-```txt
-404 Evidence con integrity top-level
-→ useMarketReactionEvidence legge il body
-→ conserva payload.reasons oppure payload.error
-→ non conserva integrity
-```
-
-```txt
-200 Evidence
-→ conserva solo marketReactionEvidence
-→ non inoltra persistenceComplete o sources
-```
-
-La UI non può quindi mostrare oggi il motivo strutturato di persistence integrity come blocco separato. Può mostrare soltanto le `reasons` già incluse nel ramo Market Reactions oppure il messaggio del `404`.
-
-La reason canonica backend, quando presente nello snapshot, è:
+Reason canonica:
 
 ```txt
 Persistence incomplete: canonical cross-source evidence unavailable
 ```
 
-Non usare varianti testuali come contratto alternativo.
+La pagina visualizza availability e reasons ricevute. I mapping interni delle card Market-led e Field-led restano governati dal relativo view model e dai finding del modulo [Market Reactions](../evidence/04-market-reactions.md).
 
-Il completamento futuro del wiring deve preservare il wrapper Evidence e passare almeno:
+## Source Identity
 
-```txt
-integrity
-latest.dataQuality.persistenceComplete
-sources
-```
-
-senza ricostruire questi valori nel frontend.
-
-## Confine Source Identity
-
-Lo stato globale Source Identity usa esclusivamente:
+La pagina Market Reactions non determina collecting, pending, recording o mismatch. L'autorità globale è:
 
 ```txt
-GET /api/match/:eventId/source-identity-status
-→ useSourceIdentityGateStatus(...)
-→ useSourceIdentityGateUi(...)
+useSourceIdentityGateStatus
+→ useSourceIdentityGateUi
 → sidebar, waiting screen, modale e toast
 ```
 
-`MarketReactionsPage.jsx` non usa Evidence per decidere collecting, pending, recording o mismatch.
+`SourceIdentityControls.jsx` è un componente legacy prop-driven e non deve diventare una seconda autorità.
 
-La phase `recording/aligned` produce semaforo verde e toast, ma non sblocca direttamente la dashboard. Servono:
-
-```txt
-dashboardContentReady
-+ dashboardData
-```
-
-La modale pending mostra soltanto nomi, runner e motivi sanitizzati. Non mostra URL, market ID, selection ID, cookie, token, path o target journal.
-
-Il flusso globale espone la conferma manuale ma non una revoca visibile. `SourceIdentityControls.jsx` conserva una revoca legacy non montata e non deve diventare una seconda autorità UI.
-
-## Viste Strategy deprecate
-
-Le viste:
-
-```txt
-lay
-banca
-superbreak
-```
-
-sono superfici Strategy legacy e deprecate. Restano nel routing finché il codice non viene rimosso, ma non devono essere estese.
-
-Market Reactions e Match Evidence non appartengono alla deprecazione Strategy.
+La modale pending non mostra URL, market ID, selection ID, cookie, token, path o journal target.
 
 ## Regole interpretative
 
@@ -424,88 +276,57 @@ temporal proximity only
 causalityClaimed: false
 ```
 
-Non visualizzare Market Reactions come:
+Market Reactions non è:
 
-- causa certa;
-- segnale operativo;
-- raccomandazione;
-- prova di intenzione;
-- indicazione sul vincitore;
-- effetto certo di una recovery;
-- effetto certo di un errore health.
+- una causa certa;
+- un segnale di trading;
+- una raccomandazione;
+- una prova di intenzione;
+- un'indicazione sul vincitore.
 
-Quando il backend dichiara il ramo non disponibile, la UI mostra assenza o reasons, non osservazioni valide.
+## Confine overview
 
-## Test e verifica
+`OverviewDashboard.jsx` compone Match Context, Key Stats, Betfair Depth e il placeholder TOT manuale. `MatchOverviewBar` appartiene alla shell.
+
+Le viste Strategy legacy `lay`, `banca` e `superbreak` sono deprecate e non devono essere estese. Market Reactions e Match Evidence non appartengono a tale deprecazione.
+
+## Test
+
+Copertura esistente:
+
+```txt
+frontend/src/utils/betfairMoneyFlow.test.mjs
+frontend/src/hooks/useBetfairJson.test.mjs
+frontend/src/hooks/useMarketReactionEvidence.test.mjs
+frontend/src/hooks/pollingLifecycle.test.mjs
+frontend/src/components/marketReactions/marketReactionViewModel.test.mjs
+frontend/src/components/frontendComponents.test.jsx
+```
+
+La suite JSX copre MoneyFlowChart, valori null del runner, lifecycle e last-known della Betfair card, debug URL redatto e persistence incompleta in Market Reactions.
+
+Verifica:
 
 ```bash
-npm run build
-node src/utils/betfairMoneyFlow.test.mjs
-node src/hooks/useBetfairJson.test.mjs
+node --test <tutti i file frontend/src/**/*.test.mjs>
+npm.cmd run test:components
+npm.cmd run build
+python scripts/check_documentation_links.py
+python scripts/check_registry_consistency.py
 ```
 
-### Money Flow
+`npm.cmd run lint` non è disponibile finché manca una configurazione ESLint.
+
+## Modularizzazione prevista
+
+Questa pagina resta la facade. La separazione dettagliata proposta è:
 
 ```txt
-stesso selectionId con nome aggiornato
-→ stessa serie
-
-stesso nome con selectionId diverso
-→ nessuna continuità
-
-selectionId assente
-→ history vuota
-
-point valido positivo
-→ una barra neutra
-
-invalidVolume, anomaly o empty slot
-→ nessuna barra
-
-hover
-→ VOLUME ABBINATO: <importo> EUR
+[Betfair Depth e health UI](./05-betfair-depth-and-health-ui.md)
+[Market Reactions UI](./06-market-reactions-ui.md)
 ```
 
-### Health
-
-```txt
-aprire BetfairHealthDebugPanel
-→ confrontare tick, ladder, scrape e reason
-→ campi assenti null o —
-→ nessuna trasformazione persistence → health
-```
-
-### Persistence integrity
-
-Stato corrente da verificare:
-
-```txt
-useBetfairJson con 409
-→ integrity preservata internamente
-→ data null
-→ nessuna ora locale come lastUpdate
-
-App / BetfairDepthCard
-→ nessuna prop integrity dedicata
-→ nessuna label persistence dichiarata come implementata
-```
-
-### Market Reactions
-
-```txt
-backend con persistenceComplete:false
-→ marketReactionEvidence non disponibile
-→ causalityClaimed false
-
-useMarketReactionEvidence
-→ conserva solo marketReactionEvidence
-→ non conserva wrapper integrity/sources
-
-MarketReactionsPage
-→ non crea polling secondario
-→ non legge journal
-→ non esegue recovery
-```
+I due documenti sono owner derivati e non aggiungono voci alla sequenza originale dei 72 file. Il lifecycle Source Identity resta in `01-session-shell.md`.
 
 ## Documenti collegati
 

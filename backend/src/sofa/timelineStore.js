@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { isValidEventId } from '../utils/eventId.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,7 +25,7 @@ function createWriteResult(source, eventId, status, reason, file, commitId = nul
 }
 
 function hasValidEventId(eventId) {
-    return typeof eventId === 'string' && eventId.trim().length > 0;
+    return isValidEventId(eventId);
 }
 
 function atomicWriteJson(filePath, data) {
@@ -66,13 +67,15 @@ function getPrefix(source) {
     throw new Error(`Unknown timeline source: ${source}`);
 }
 
-function findTimelineFile(source, eventId) {
-    if (!eventId) return null;
+function discoverTimelineFile(source, eventId) {
+    if (!isValidEventId(eventId)) {
+        return { ok: false, reason: 'invalid_event_id', file: null };
+    }
 
     try {
         const prefix = getPrefix(source) + "_";
         const suffix = "_" + eventId + ".json";
-        const filename = fs.readdirSync(DATA_DIR)
+        const filenames = fs.readdirSync(DATA_DIR)
             .filter(file =>
                 typeof file === "string" &&
                 file.endsWith(".json") &&
@@ -80,12 +83,19 @@ function findTimelineFile(source, eventId) {
                 file.startsWith(prefix) &&
                 file.endsWith(suffix)
             )
-            .sort()[0];
+            .sort();
 
-        return filename ? path.join(DATA_DIR, filename) : null;
+        if (filenames.length > 1) {
+            return { ok: false, reason: 'ambiguous_storage_target', file: null };
+        }
+        return {
+            ok: true,
+            reason: null,
+            file: filenames[0] ? path.join(DATA_DIR, filenames[0]) : null
+        };
     } catch (e) {
         console.error(`[TimelineStore] Error finding ${source} timeline:`, e);
-        return null;
+        return { ok: false, reason: 'discovery_failed', file: null };
     }
 }
 
@@ -101,29 +111,49 @@ function createTimelineFile(source, eventId, metadata = {}) {
 }
 
 export function getTimelineFile(source, eventId, metadata = {}) {
-    return findTimelineFile(source, eventId) || createTimelineFile(source, eventId, metadata);
+    const discovery = discoverTimelineFile(source, eventId);
+    if (!discovery.ok) return null;
+    return discovery.file || createTimelineFile(source, eventId, metadata);
 }
 
-export function loadTimeline(source, eventId) {
-    const filepath = getTimelineFile(source, eventId);
-    if (!filepath) return null;
+export function loadTimelineResult(source, eventId) {
+    const discovery = discoverTimelineFile(source, eventId);
+    const base = { operation: 'timeline_read', source, eventId };
+    if (!discovery.ok) {
+        return { ...base, ok: false, status: 'failed', reason: discovery.reason, timeline: null, file: null };
+    }
+    const filepath = discovery.file;
+    if (!filepath) {
+        return { ...base, ok: true, status: 'missing', reason: null, timeline: null, file: null };
+    }
 
     try {
-        if (!fs.existsSync(filepath)) return null;
-
-        const data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
-        if (!Array.isArray(data.timeline)) {
-            data.timeline = [];
+        let data;
+        try {
+            data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+        } catch (error) {
+            const reason = error instanceof SyntaxError ? 'invalid_json' : 'read_failed';
+            return { ...base, ok: false, status: 'failed', reason, timeline: null, file: filepath };
         }
-
-        return {
+        if (!data || typeof data !== 'object' || Array.isArray(data) ||
+            !data.metadata || typeof data.metadata !== 'object' || Array.isArray(data.metadata) ||
+            !Array.isArray(data.timeline)) {
+            return { ...base, ok: false, status: 'failed', reason: 'invalid_shape', timeline: null, file: filepath };
+        }
+        const timeline = {
             ...data,
             latest: data.timeline[data.timeline.length - 1] || null
         };
+        return { ...base, ok: true, status: 'found', reason: null, timeline, file: filepath };
     } catch (e) {
         console.error(`[TimelineStore] Error loading ${source} timeline:`, e);
-        return null;
+        return { ...base, ok: false, status: 'failed', reason: 'read_failed', timeline: null, file: filepath };
     }
+}
+
+export function loadTimeline(source, eventId) {
+    const result = loadTimelineResult(source, eventId);
+    return result.status === 'found' ? result.timeline : null;
 }
 
 export function writeTimelineDocument(source, eventId, timelineObj, metadata = {}, target = null, commitId = null) {
@@ -156,7 +186,11 @@ export function saveTimeline(source, eventId, entryData, metadata = {}, commitId
 
     try {
         const now = new Date().toISOString();
-        const filepath = getTimelineFile(source, eventId, metadata);
+        const readResult = loadTimelineResult(source, eventId);
+        if (readResult.status === 'failed') {
+            return createWriteResult(source, eventId, 'failed', readResult.reason, readResult.file, commitId);
+        }
+        const filepath = readResult.file || getTimelineFile(source, eventId, metadata);
 
         let timelineObj = {
             metadata: {
@@ -171,11 +205,9 @@ export function saveTimeline(source, eventId, entryData, metadata = {}, commitId
             timeline: []
         };
 
-        if (fs.existsSync(filepath)) {
-            timelineObj = JSON.parse(fs.readFileSync(filepath, 'utf8'));
-            if (!Array.isArray(timelineObj.timeline)) {
-                timelineObj.timeline = [];
-            }
+        if (readResult.status === 'found') {
+            timelineObj = readResult.timeline;
+            delete timelineObj.latest;
         }
 
         timelineObj.metadata = mergeMetadata(timelineObj.metadata, metadata, source);

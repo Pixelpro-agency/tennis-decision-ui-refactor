@@ -11,11 +11,15 @@ const players = {
 
 function createAvailableContext() {
     return {
+        version: 1,
+        source: 'project-calculated',
+        purpose: 'descriptive-match-context',
         match: {
             pointShare: {
                 available: true,
                 homePoints: 38,
                 awayPoints: 52,
+                totalPoints: 90,
                 homePct: 42.2,
                 awayPct: 57.8
             }
@@ -25,12 +29,16 @@ function createAvailableContext() {
             reason: null,
             window: {
                 includedGames: 3,
-                excludedCurrentGame: true
+                requestedGames: 3,
+                excludedCurrentGame: true,
+                kind: 'completed-games',
+                games: [{}, {}, {}]
             },
             pointShare: {
                 available: true,
                 homePoints: 12,
                 awayPoints: 9,
+                totalPoints: 21,
                 homePct: 57.1,
                 awayPct: 42.9
             }
@@ -42,6 +50,34 @@ function createAvailableContext() {
             observedShift: true
         }
     };
+}
+
+for (const mutate of [
+    context => { context.match.pointShare.homePct = 80; },
+    context => { context.match.pointShare.totalPoints = 999; },
+    context => { context.match.pointShare.homePoints = 90; }
+]) {
+    const context = createAvailableContext();
+    mutate(context);
+    const viewModel = buildMatchContextViewModel(context, players);
+    assert.equal(viewModel.match.available, false);
+    assert.equal(viewModel.comparison.available, false);
+}
+
+{
+    const context = createAvailableContext();
+    context.version = 2;
+    const viewModel = buildMatchContextViewModel(context, players);
+    assert.equal(viewModel.match.available, false);
+    assert.equal(viewModel.recent.available, false);
+    assert.equal(viewModel.comparison.available, false);
+}
+
+{
+    const context = createAvailableContext();
+    context.comparison.homeDeltaPctPoints = 99;
+    const viewModel = buildMatchContextViewModel(context, players);
+    assert.equal(viewModel.comparison.available, false);
 }
 
 {

@@ -18,6 +18,9 @@ class ParseDirectLadderUrlTest(unittest.TestCase):
                 "ok": True,
                 "market_id": "1.259630216",
                 "selection_id": "20954982",
+                "canonical_url": (
+                    "https://graphs.betfair.it/1.259630216/20954982/0"
+                ),
             },
             result,
         )
@@ -31,6 +34,10 @@ class ParseDirectLadderUrlTest(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual("1.259630216", result["market_id"])
         self.assertEqual("20954982", result["selection_id"])
+        self.assertEqual(
+            "https://graphs.betfair.it/1.259630216/20954982/0",
+            result["canonical_url"],
+        )
 
     def test_invalid_scheme_host_path_and_view(self):
         invalid_urls = [
@@ -87,6 +94,22 @@ class ValidateLadderMappingTest(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual("20954982", result["selection_id"])
         self.assertIs(self.runner, result["runner"])
+        self.assertEqual(
+            "https://graphs.betfair.it/1.259630216/20954982/0",
+            result["canonical_url"],
+        )
+
+    def test_missing_upstream_market_identity_is_not_a_mismatch(self):
+        result = validate_ladder_mapping(
+            self.parsed_url, None, self.selection_map, set()
+        )
+        self.assertEqual(
+            {
+                "ok": False,
+                "reason": "bad_graph_url_market_identity_unavailable",
+            },
+            result,
+        )
 
     def test_market_id_mismatch(self):
         result = validate_ladder_mapping(
@@ -146,6 +169,25 @@ class ValidateLadderMappingTest(unittest.TestCase):
 
         self.assertNotIn("None", selection_map)
         self.assertIn("20954982", selection_map)
+
+    def test_duplicate_api_selection_identity_fails_closed(self):
+        selection_map = build_selection_map([
+            {"name": "Runner A", "selectionId": 20954982},
+            {"name": "Runner B", "selectionId": 20954982},
+        ])
+        result = validate_ladder_mapping(
+            self.parsed_url,
+            "1.259630216",
+            selection_map,
+            set(),
+        )
+        self.assertEqual(
+            {
+                "ok": False,
+                "reason": "bad_graph_url_selection_ambiguous",
+            },
+            result,
+        )
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import React from 'react';
+import { isBranchAvailable, shouldShowCausalityDisclaimer } from './marketReactionViewModel.js';
 
 function formatTs(ts) {
     if (!ts) return '—';
@@ -101,6 +102,9 @@ function ObservationWindowItem({ window: win }) {
             <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-semibold text-white">{safeValue(win.windowSec)}s window</span>
                 <ObservedBadge observed={win.marketResponseObserved} />
+                {win.marketResponseObserved && (
+                    <span className="text-xs text-[var(--muted)]">{win.marketResponseReliable ? 'reliable' : 'diagnostic'}</span>
+                )}
                 <QualityBadge value={win.dataQuality} />
             </div>
             <div className="space-y-0.5">
@@ -146,9 +150,9 @@ export default function FieldLedReactionCard({ evidence }) {
                         <h3 className="text-base font-bold text-white">Field → Exchange</h3>
                         <p className="text-xs text-[var(--muted)] mt-0.5">Post-event market observation</p>
                     </div>
-                    <AvailabilityBadge available={!!evidence} />
+                    <AvailabilityBadge available={isBranchAvailable(evidence)} />
                 </div>
-                {evidence?.causalityClaimed === false && (
+                {shouldShowCausalityDisclaimer(evidence) && (
                     <p className="mt-2 text-xs text-amber-400 font-medium">Causality not established</p>
                 )}
             </div>
@@ -187,6 +191,9 @@ export default function FieldLedReactionCard({ evidence }) {
                                         <ObservedBadge observed={summary.marketResponseObserved} />
                                     </div>
                                 )}
+                                {summary.marketResponseReliable !== undefined && (
+                                    <Row label="Response reliable" value={String(summary.marketResponseReliable)} />
+                                )}
                                 {summary.firstObservedResponseWindowSec !== undefined && (
                                     <Row
                                         label="First response window"
@@ -197,6 +204,14 @@ export default function FieldLedReactionCard({ evidence }) {
                                 )}
                             </div>
                         </section>
+                    )}
+
+                    {Array.isArray(summary?.reasons) && summary.reasons.length > 0 && (
+                        <ul className="space-y-1">
+                            {summary.reasons.slice(0, 5).map((reason, index) => (
+                                <li key={index} className="text-xs text-[var(--muted)]">{reason}</li>
+                            ))}
+                        </ul>
                     )}
 
                     {windows.length > 0 && (

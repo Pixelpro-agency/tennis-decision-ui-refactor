@@ -18,7 +18,10 @@ export async function runTest(name, callback) {
 
 export function createValidResult() {
     return {
-        runners: [{ name: 'Player A' }, { name: 'Player B' }],
+        runners: [
+            { name: 'Player A', selectionId: 101 },
+            { name: 'Player B', selectionId: 102 }
+        ],
         market_info: { total_matched: 1000 },
         event_status: { hasFinished: false }
     };

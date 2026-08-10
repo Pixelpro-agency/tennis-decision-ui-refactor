@@ -3,6 +3,7 @@ import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
+import http from 'node:http';
 import {
     createApp,
     createShutdownHandler,
@@ -238,9 +239,12 @@ await test('L47-health-exposes-safe-python-snapshot', async () => {
             entries: [{
                 executionId: 'opaque',
                 role: 'sofa_tracking',
-                pid: 42,
+                pid: null,
                 status: 'running',
-                startedAt: '2026-08-01T00:00:00.000Z'
+                startedAt: '2026-08-01T00:00:00.000Z',
+                ownerToken: 'private-owner',
+                cdpUrl: 'http://private',
+                profileDir: 'C:/private'
             }]
         })
     });
@@ -265,6 +269,8 @@ await test('L47-health-exposes-safe-python-snapshot', async () => {
         assert.equal(typeof payload.startedAt, 'string');
         assert.equal(typeof payload.timestamp, 'string');
         assert.equal(payload.pythonProcesses.active, 1);
+        assert.equal(payload.pythonProcesses.entries[0].pid, null);
+        assert.equal(response.headers.get('cache-control'), 'no-store');
         assert.equal(
             JSON.stringify(payload).includes('ownerToken'),
             false
@@ -279,6 +285,59 @@ await test('L47-health-exposes-safe-python-snapshot', async () => {
         );
     } finally {
         await new Promise(resolve => server.close(resolve));
+    }
+});
+
+await test('L47b-local-boundary-rejects-remote-host-and-origin', async () => {
+    const app = createApp();
+    const server = await new Promise(resolve => {
+        const value = app.listen(0, '127.0.0.1', () => resolve(value));
+    });
+    try {
+        const { port } = server.address();
+        const remoteHost = await new Promise((resolve, reject) => {
+            const request = http.request({
+                hostname: '127.0.0.1', port, path: '/api/health',
+                headers: { Host: `example.com:${port}` }
+            }, response => {
+                let body = '';
+                response.setEncoding('utf8');
+                response.on('data', chunk => { body += chunk; });
+                response.on('end', () => resolve({ status: response.statusCode, body: JSON.parse(body) }));
+            });
+            request.on('error', reject);
+            request.end();
+        });
+        assert.equal(remoteHost.status, 403);
+        assert.equal(remoteHost.body.code, 'host_not_allowed');
+
+        const remoteOrigin = await fetch(`http://127.0.0.1:${port}/api/health`, {
+            headers: { Origin: 'http://example.com:3000' }
+        });
+        assert.equal(remoteOrigin.status, 403);
+        assert.equal((await remoteOrigin.json()).code, 'origin_not_allowed');
+
+        const localOrigin = await fetch(`http://127.0.0.1:${port}/api/health`, {
+            headers: { Origin: 'http://localhost:3000' }
+        });
+        assert.equal(localOrigin.status, 200);
+    } finally {
+        await new Promise(resolve => server.close(resolve));
+    }
+});
+
+await test('L47c-startServer-default-bind-is-loopback', async () => {
+    const result = await testStartServer({
+        port: 0,
+        runRecoveryFn: async () => ({ ok: true, fatal: false }),
+        registerShutdownFn: () => {},
+        log: () => {},
+        logError: () => {}
+    });
+    try {
+        assert.equal(result.server.address().address, '127.0.0.1');
+    } finally {
+        await new Promise(resolve => result.server.close(resolve));
     }
 });
 
@@ -366,11 +425,15 @@ await test('EV1-recovery-complete-emitted-once', async () => {
         record => record.event === 'recovery_complete'
     );
     assert.equal(recovery.length, 1);
-    assert.deepEqual(recovery[0].fields, { ok: true });
-    assert.equal(
-        JSON.stringify(records).includes('scanned'),
-        false
-    );
+    assert.deepEqual(recovery[0].fields, {
+        ok: true,
+        scanned: 4,
+        recovered: 0,
+        cleaned: 0,
+        retryablePending: 0,
+        recoveryFailed: 0,
+        invalidJournal: 0
+    });
 });
 
 await test('EV2-recovery-fatal-emitted-before-throw', async () => {

@@ -15,7 +15,9 @@ export function cleanupCompletedResidual(journalStore, eventId, source) {
         return null;
     }
 
-    const cleanup = journalStore.removeCompletedCommit(residual.commitId);
+    const cleanup = typeof journalStore.verifyAndCleanupCompletedCommit === 'function'
+        ? journalStore.verifyAndCleanupCompletedCommit(residual.commitId)
+        : journalStore.removeCompletedCommit(residual.commitId);
 
     if (!hasSuccessfulResult(cleanup)) {
         return createCommitResult({

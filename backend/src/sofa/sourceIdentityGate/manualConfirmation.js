@@ -55,14 +55,6 @@ export function confirmGateSession(session, eventId, { selectedPairs, confirmati
         return { ok: false, code: validation.code };
     }
 
-    const upsertConfirmation = session.dependencies?.upsertSourceIdentityConfirmation
-        || upsertSourceIdentityConfirmation;
-
-    const persisted = upsertConfirmation(validation.record);
-    if (!persisted.ok) {
-        return { ok: false, code: 'persistence_failed' };
-    }
-
     const effectiveIdentity = applyManualConfirmation({
         sourceIdentity,
         context,
@@ -71,9 +63,20 @@ export function confirmGateSession(session, eventId, { selectedPairs, confirmati
 
     session.sourceIdentity = cloneSourceIdentity(effectiveIdentity);
 
+    const restorePending = code => {
+        session.sourceIdentity = cloneSourceIdentity(sourceIdentity);
+        session.phase = 'pending';
+        session.recordingCalled = false;
+        session.recordingGeneration = null;
+        session.attemptedBootstrapGeneration = null;
+        session.error = code === 'persistence_failed'
+            ? 'Confirmation persistence failed'
+            : 'Bootstrap persistence failed';
+        return code;
+    };
+
     if (effectiveIdentity.status === 'aligned') {
         if (session.attemptedBootstrapGeneration === session.bufferGeneration) {
-            session.phase = 'pending';
             return { ok: false, code: 'bootstrap_persistence_failed' };
         }
         session.attemptedBootstrapGeneration = session.bufferGeneration;
@@ -86,19 +89,23 @@ export function confirmGateSession(session, eventId, { selectedPairs, confirmati
                 sourceIdentity: effectiveIdentity
             });
             if (res?.ok !== true) {
-                session.phase = 'pending';
-                session.error = 'Bootstrap persistence failed';
-                return { ok: false, code: 'bootstrap_persistence_failed' };
+                return { ok: false, code: restorePending('bootstrap_persistence_failed') };
             }
-            session.phase = 'recording';
-            session.recordingCalled = true;
-            session.recordingGeneration = session.bufferGeneration;
-            session.error = null;
         } catch (_) {
-            session.phase = 'pending';
-            session.error = 'Bootstrap persistence failed';
-            return { ok: false, code: 'bootstrap_persistence_failed' };
+            return { ok: false, code: restorePending('bootstrap_persistence_failed') };
         }
+
+        const upsertConfirmation = session.dependencies?.upsertSourceIdentityConfirmation
+            || upsertSourceIdentityConfirmation;
+        const persisted = upsertConfirmation(validation.record);
+        if (!persisted.ok) {
+            return { ok: false, code: restorePending('persistence_failed') };
+        }
+
+        session.phase = 'recording';
+        session.recordingCalled = true;
+        session.recordingGeneration = session.bufferGeneration;
+        session.error = null;
     }
 
     return { ok: true, sourceIdentity: session.sourceIdentity, phase: session.phase };

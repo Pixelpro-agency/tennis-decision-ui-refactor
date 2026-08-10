@@ -1,304 +1,137 @@
 # Validazione Graph URL Betfair
 
-## Stato
-
-**Implementato, con percorso positivo osservato live e matrice completa ancora da validare.**
-
-Il parser, il mapping e i test unitari puri sono completati.
-
-Nel collaudo live `9B` è stato osservato almeno il percorso positivo:
-
-```txt
-mode=cdp reale
-→ Graph URL valida
-→ runner assegnato
-→ ladder utilizzabile
-→ matched volume aggiornato
-```
-
-Sono stati inoltre osservati live il requisito di login sulla pagina Graph e il successivo ritorno a `Connected` dopo autenticazione, nel flusso logout Graph documentato dagli owner Betfair.
-
-Restano da validare come matrice live dedicata:
-
-```txt
-URL sintatticamente invalide
-marketId non coerente
-selectionId assente
-selectionId duplicata
-login mancante all’avvio della sessione
-ladder vuota o temporaneamente non disponibile
-più Graph URL con combinazioni miste valide/invalide
-```
-
-I test puri non aprono browser o rete e non sostituiscono questa matrice live.
-
 ## Scopo
 
-Questo documento descrive esclusivamente:
+Questo documento descrive la grammatica delle Graph URL, il mapping tra mercato e runner e l’integrazione in `scrapers/betfair/scrape.py`.
 
-```txt
-scrapers/betfair/graph_url.py
-scrapers/betfair/graph_url_test.py
-integrazione Graph URL in scrapers/betfair/scrape.py
-```
+## Formato accettato
 
-Copre:
-
-```txt
-grammatica della URL diretta
-→ mapping marketId / selectionId / runner
-→ gestione duplicati
-→ failure reason diagnostici
-```
-
-Non descrive:
-
-```txt
-CLI Python
-endpoint HTTP
-cache
-Source Identity
-persistenza
-frontend
-semantica Back / Lay
-```
-
-## Formato diretto accettato
-
-La Graph URL diretta accettata è:
-
-```txt
+```text
 https://graphs.betfair.it/<marketId>/<selectionId>/0
 ```
 
-Query string, fragment e slash finale sono ammessi.
+Il parser richiede HTTPS, host esatto, nessuna credenziale o porta esplicita, `marketId` numerico con punto, `selectionId` numerico e vista `0`. `runnerChartData` è esplicitamente non supportato.
 
-Esempio sicuro:
+Query, fragment e slash finale sono tollerati in input. Il parser produce sempre:
 
-```txt
-https://graphs.betfair.it/1.23456789/101/0
+```text
+canonical_url=https://graphs.betfair.it/<marketId>/<selectionId>/0
 ```
 
-## Regole di parsing
+Soltanto `canonical_url` viene aperta dal browser; query e fragment forniti dall’utente non partecipano al mapping né alla navigazione.
 
-La URL deve rispettare:
+## Mapping fail-closed
 
-```txt
-schema
-→ esclusivamente https
+Il mapping usa esclusivamente `market_info.market_id` e `runners[].selectionId` ricevuti dall’API Betfair. Non usa nomi, posizione o ordine dei runner.
 
-host
-→ esclusivamente graphs.betfair.it
-→ nessuna credenziale
-→ nessuna porta esplicita
+Reason bounded:
 
-path
-→ marketId / selectionId / 0
+| Reason                                      | Significato                                                |
+| ------------------------------------------- | ---------------------------------------------------------- |
+| `bad_graph_url_invalid`                     | Grammatica non valida                                      |
+| `bad_graph_url_unsupported_endpoint`        | Endpoint non supportato                                    |
+| `bad_graph_url_market_identity_unavailable` | Identità mercato API assente o malformata                  |
+| `bad_graph_url_market_mismatch`             | Entrambe le identità esistono ma differiscono              |
+| `bad_graph_url_selection_not_found`         | Selection non presente nel payload API                     |
+| `bad_graph_url_selection_ambiguous`         | Più runner API espongono la stessa selection               |
+| `bad_graph_url_duplicate_selection`         | La selection è già stata riservata nella stessa esecuzione |
 
-marketId
-→ valore Betfair numerico con punto
+Runner con `selectionId` nullo vengono ignorati. Se una selection compare più volte nel payload API, nessun runner viene scelto: il mapping fallisce come ambiguo.
 
-selectionId
-→ sole cifre
+## Riserva e assegnazione
+
+Una selection viene riservata dopo il mapping riuscito e prima dell’apertura della pagina. Una seconda URL per la stessa selection viene quindi rifiutata anche se la prima pagina produce ladder vuota, login richiesto o errore temporaneo.
+
+Una URL respinta incrementa i contatori attempted/failed, registra una failure redatta e non apre una pagina. Il ciclo continua con la URL successiva, salvo `auth_required`, che interrompe le richieste successive.
+
+`event_status.hasFinished=true`, proveniente soltanto da evidenza strutturale authoritative, evita l’intero ciclo Graph.
+
+## Preflight e autorità runtime
+
+`POST /api/test/graph-urls` e il parser Python condividono la grammatica sintattica. Il preflight può validare forma, duplicati nella richiesta e uniformità dei market ID dichiarati.
+
+Restano responsabilità esclusiva del runtime Python:
+
+- disponibilità del market ID API;
+- confronto con il mercato effettivo;
+- unicità e risoluzione del runner API;
+- login, challenge e presenza delle righe ladder;
+- assegnazione della ladder.
+
+## Riferimenti implementativi
+
+| Passo                | Authority                            |
+| -------------------- | ------------------------------------ |
+| parsing e forma URL  | validator Graph URL Python           |
+| protocollo/host/path | allow-list Betfair                   |
+| riserva del target   | stato runtime della sessione scraper |
+| preflight HTTP       | route Preflight                      |
+| errore pubblico      | mapping bounded condiviso            |
+
+### Pipeline fail-closed
+
+```text
+stringa input
+→ parse URL
+→ protocollo HTTPS
+→ hostname Betfair consentito
+→ path Graph riconosciuto
+→ query ammessa senza esposizione
+→ canonicalizzazione
+→ reserve/assign una sola volta
 ```
 
-L’endpoint `runnerChartData` viene rifiutato con:
+| Input                                                | Risultato                                   |
+| ---------------------------------------------------- | ------------------------------------------- |
+| URL Betfair Graph valida                             | canonical target                            |
+| forma, protocollo, host, credenziali o path invalidi | `bad_graph_url_invalid`                     |
+| endpoint `runnerChartData` legacy                    | `bad_graph_url_unsupported_endpoint`        |
+| market identity API assente                          | `bad_graph_url_market_identity_unavailable` |
+| market diverso                                       | `bad_graph_url_market_mismatch`             |
+| `selectionId` ambiguo                                | `bad_graph_url_selection_ambiguous`         |
+| runner non trovato                                   | `bad_graph_url_selection_not_found`         |
+| `selectionId` duplicato nella stessa assegnazione    | `bad_graph_url_duplicate_selection`         |
 
-```txt
-bad_graph_url_unsupported_endpoint
+La canonicalizzazione non viene usata per rendere valido un target che non supera l'allow-list. Il valore completo non entra nei log.
+
+### Confine preflight/runtime
+
+```text
+preflight
+→ prova che l'input è accettabile adesso
+
+runtime assignment
+→ resta authority effettiva della sessione
+→ ripete i controlli necessari
 ```
 
-Ogni altro errore sintattico usa:
-
-```txt
-bad_graph_url_invalid
-```
-
-## Regole di mapping
-
-Flusso:
-
-```txt
-fetch_market_data_api(...)
-→ selection_map dei soli runner con selectionId non nullo
-→ expected_market_id da market_info.market_id
-→ seen_selection_ids per l’esecuzione corrente
-→ runner risolto
-```
-
-Failure reason:
-
-```txt
-bad_graph_url_market_mismatch
-bad_graph_url_selection_not_found
-bad_graph_url_duplicate_selection
-```
-
-## Invariante di assegnazione
-
-Una URL valida può risolvere un solo runner API.
-
-```txt
-URL valida
-→ runner API risolto
-→ ladder assegnata soltanto a quel runner
-→ graphUrlsSucceeded incrementato soltanto dopo l’assegnazione
-```
-
-Una selezione già validata viene riservata nella stessa esecuzione.
-
-```txt
-selectionId già visto
-→ URL successiva rifiutata
-→ nessuna sovrascrittura della ladder
-```
-
-La selezione viene riservata subito dopo il mapping riuscito, prima dell’apertura della pagina ladder.
-
-Se la prima URL produce ladder vuota, errore temporaneo o login richiesto, una URL successiva con la stessa `selectionId` resta duplicata e non viene ritentata.
-
-Non esiste fallback per:
-
-```txt
-nome runner
-indice runner
-ordine ricevuto dal payload
-```
-
-## Failure, stop e skip
-
-Una URL respinta dal parser o dal mapping non interrompe il ciclo sulle URL successive.
-
-```txt
-URL invalida o mapping non riuscito
-→ graphUrlsAttempted +1
-→ graphUrlsFailed +1
-→ failure diagnostica con motivo specifico
-→ nessuna context.new_page()
-→ nessuna extract_ladder_from_url()
-→ continuazione con la URL seguente
-```
-
-Le failure diagnostiche memorizzate sono limitate alle prime cinque; i contatori restano completi.
-
-URL e testo delle failure devono essere redatti prima dell’esposizione:
-
-```txt
-graph_diagnostics.failures[].url
-graph_diagnostics.failures[].text
-```
-
-La redazione avviene prima del troncamento e non cambia reason, contatori o decisione di skip.
-
-Il login richiesto è l’eccezione:
-
-```txt
-login_required dalla pagina Graph
-→ diagnostics nel risultato raw
-→ graph_diagnostics.authSuspected = true
-→ failure auth_suspected
-→ interruzione delle Graph URL rimanenti
-```
-
-Se `event_status.hasFinished` è `true`, lo scraper non tenta Graph URL:
-
-```txt
-skippedBecauseFinished = true
-graphUrlsAttempted = 0
-```
-
-Una URL sintatticamente valida non garantisce login attivo, ladder disponibile, righe ladder o Money Flow valido.
-
-## Preflight backend e parser Python
-
-Il preflight backend controlla una grammatica preliminare e distinta.
-
-```txt
-POST /api/test/graph-urls
-→ controllo leggero backend
-→ non prova l’accettazione definitiva dello scraper
-```
-
-L’accettazione definitiva appartiene a questo modulo Python:
-
-```txt
-https://graphs.betfair.it/<marketId>/<selectionId>/0
-→ parser Python
-→ marketId coerente
-→ selectionId presente
-→ duplicato escluso
-→ ladder assegnata
-```
+Un preflight positivo non trasferisce ownership, non avvia lo scraper e non garantisce che la sessione browser resterà disponibile.
 
 ## Confini
 
-Questo modulo non modifica:
+Questo owner valida e assegna il target Graph. Non governa login, lifecycle del processo, cattura di rete, persistenza canonica o qualità tecnica dei campioni.
 
-```txt
-CLI Python
-endpoint HTTP
-payload API
-timeline
-history
-Source Identity
-frontend
-lifecycle Node
-redazione diagnostica generale
-cache Betfair
+## Verifica automatica
+
+```powershell
+python -m unittest -v `
+  scrapers.betfair.graph_url_test `
+  scrapers.betfair.graph_loop_test
 ```
 
-Le regole generali di redazione appartengono allo scraper Betfair e al runbook diagnostico.
+I test offline coprono grammatica, canonicalizzazione, market identity assente, mismatch reale, selection mancante o ambigua, duplicati della richiesta, lista mista, contatori, page skip, assegnazione, ladder vuota e skip per evento terminato.
 
-## Verifica
+## Evidenza live
 
-Dalla cartella che contiene `scrapers/`:
+L’archivio [Betfair live validation 2026-07-04](../../../validations/betfair-live-validation-2026-07-04.md) registra due Graph URL tentate e riuscite, mapping ai runner, `ladderSource=graph_url` e matched volume positivo. Registra inoltre logout, `auth_suspected`, ripristino del login e ritorno a `Connected`.
 
-```bash
-python -m py_compile \
-  scrapers/betfair/graph_url.py \
-  scrapers/betfair/graph_url_test.py \
-  scrapers/betfair/scrape.py
+Lo stesso artefatto non identifica esplicitamente la sessione come `mode=cdp` né usa l’etichetta `9B`; questi dettagli non vengono quindi presentati come evidenza storica.
 
-python -m unittest -v scrapers.betfair.graph_url_test
-```
-
-I test puri devono verificare:
-
-```txt
-parser URL, incluse query string, fragment e slash finale
-endpoint runnerChartData non supportato
-market mismatch
-selection assente
-duplicati
-assenza della chiave "None"
-```
-
-Non devono aprire browser, rete o Betfair reale.
-
-### Verifica live già osservata
-
-```txt
-Graph URL valida
-→ mapping runner
-→ ladder utilizzabile
-→ matched volume aggiornato
-```
-
-### Verifica live ancora aperta
-
-```txt
-URL invalide
-market mismatch reale
-selection assente reale
-duplicato reale
-login inizialmente assente
-ladder vuota o temporanea
-lista mista di URL
-```
+Il collaudo live serve soltanto per aspetti dipendenti da browser e sorgente reale: autenticazione, challenge, compatibilità della pagina e disponibilità effettiva della ladder. Parser, mapping e contatori appartengono ai test deterministici.
 
 ## Documenti collegati
 
 - [Scraper Betfair](./03-betfair-scraper.md)
-- [Diagnostica Betfair](../../operations/03-betfair-diagnostics.md)
+- [Diagnostica e network capture](./05-betfair-diagnostics-and-network-capture.md)
+- [API Preflight](../../api/04-preflight.md)
 - [Validazione e rollback](../../operations/04-validation-and-rollback.md)
-- [API Preflight](../../api/05-preflight.md)

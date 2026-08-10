@@ -82,11 +82,11 @@ const { assert, finish } = createAssertionSuite('timelineStore/targetResolution.
 
         const firstResolved = getTimelineFile("sofa", eventId, metadata);
         const secondResolved = getTimelineFile("sofa", eventId, metadata);
-        assert("TC11-resolver-is-lexicographically-stable", firstResolved === canonicalTarget && secondResolved === canonicalTarget);
+        assert("TC11-ambiguous-resolver-fails-closed", firstResolved === null && secondResolved === null);
 
         const document = { metadata: { eventId, source: "sofa" }, timeline: [{ timestamp: "2026-06-26T12:00:00.000Z", data: { score: "1-0" } }] };
         const canonicalWrite = writeTimelineDocument("sofa", eventId, document, metadata, canonicalTarget);
-        assert("TC12-direct-writer-accepts-stable-canonical-target", canonicalWrite?.ok === true && canonicalWrite.file === canonicalTarget && fs.existsSync(canonicalTarget));
+        assert("TC12-direct-writer-rejects-ambiguous-target", canonicalWrite?.ok === false && canonicalWrite.reason === "write_failed");
 
         const filesBeforeRejectedTarget = originalReaddirSync.call(fs, DATA_DIR).filter(name => name.includes(eventId)).sort();
         const rejectedWrite = writeTimelineDocument("sofa", eventId, document, metadata, path.join(DATA_DIR, "wrong_" + eventId + ".json"));

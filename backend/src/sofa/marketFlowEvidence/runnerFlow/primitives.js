@@ -3,6 +3,7 @@ const RELIABLE_GH_STATUSES = new Set(['ok']);
 const RELIABLE_LADDER_SOURCES = new Set(['graph', 'mixed', 'graph_url']);
 
 const STABLE_PRICE_DELTA = 0.01;
+import { hasReliableLadder } from '../../matchEvidence/qualityPredicates.js';
 
 export function roundN(v, n) {
     if (typeof v !== 'number' || !isFinite(v)) return null;
@@ -56,7 +57,7 @@ export function isReliableEntry(entry, selectionId, name) {
     if (!RELIABLE_GH_STATUSES.has(ghStatus)) return false;
     const runner = findRunner(entry, selectionId, name);
     if (!runner) return false;
-    return isReliableLadderSource(runner.ladderSource);
+    return hasReliableLadder(runner);
 }
 
 
@@ -94,4 +95,3 @@ export function computePriceMove(currentRunner, previousRunner) {
 
     return { available: true, fromPrice, toPrice, direction, delta, pct, source };
 }
-

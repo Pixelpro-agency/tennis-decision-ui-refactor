@@ -27,7 +27,7 @@ La classificazione tecnica del risultato appartiene a [Validità tecnica dei cam
 | `matchTracker.js`          | Avvia scheduler e gate, gestisce bootstrap canonico e mismatch                                                                                     |
 | `betfair/trackerUpdate.js` | Richiede il campione, riconosce `event_status.hasFinished`, classifica l’utilizzabilità tecnica, aggiorna il runtime e delega a gate o persistenza |
 | `betfairFetch.js`          | Facade pubblica, chiave di deduplicazione, restore da history e collegamento tra lifecycle e processor                                             |
-| Lifecycle runner           | Spawn Python, deduplicazione, timeout, raccolta stdout/stderr, parsing JSON, cleanup e log strutturali sicuri                                      |
+| Lifecycle runner           | Spawn Python, deduplicazione, timeout, buffering stdout, drenaggio stderr, parsing JSON, cleanup e log strutturali sicuri                          |
 | `betfair_scraper.py`       | Browser, CDP, mercato, ladder e output JSON tecnico                                                                                                |
 | Processor Betfair          | Normalizzazione del risultato, validità tecnica, baseline, esito di commit strutturato, integrità timeline e persistenza                           |
 | Persistenza                | History, timeline, `commitId`, journal sidecar e recovery deterministica                                                                           |
@@ -66,7 +66,7 @@ backend/src/runtime/pythonProcessRegistry.js
 → possiede il child Python registrato
 
 lifecycle Betfair
-→ deduplica richieste per mercato e runtime identity
+→ deduplica richieste per scraper key URL e runtime identity
 ```
 
 Ruoli distinti:
@@ -86,7 +86,7 @@ tracker update
 → chiave di deduplicazione
 → eventuale restore stato da history
 → spawn betfair_scraper.py registrato
-→ raccolta stdout JSON e stderr diagnostico
+→ buffering stdout per il parsing JSON e drenaggio stderr
 → delega al processor Betfair
 → esito di commit strutturato
 → risultato pubblico
@@ -104,24 +104,38 @@ mode=cdp
 → identity con cdpUrl canonica
 
 mode=persistent
-→ identity con profileDir normalizzato
+→ identity con profileDir sottoposto soltanto a trim
 ```
 
 I valori reali non vengono esposti nella documentazione o nello snapshot pubblico.
 
 ```txt
-stesso mercato
+stessa scraper key URL
 + stessa runtime identity
 → stessa promise
 → nessun secondo spawn
 
-stesso mercato
+stessa scraper key URL
 + runtime identity incompatibile
 → scraper_runtime_conflict
 → nessun kill
 → nessun restart
 → nessun nuovo spawn
 ```
+
+`scraperKey()` rimuove alcuni parametri transitori dall'URL, ma non costituisce una market authority canonica: key diverse possono indicare lo stesso mercato.
+
+Il riuso locale non sostituisce quindi la command authority globale prevista da `IMPL-016`.
+
+In modalità `persistent`, alias, forme relative o assolute, slash equivalenti e differenze di case su Windows non vengono ricondotti alla stessa identità fisica. 
+
+Anche questa identità locale non va interpretata come autorità canonica del profilo.
+
+La promise viene riutilizzata soltanto quando coincidono key, runtime identity e `trackingSessionId`. 
+
+Una sessione diversa riceve `scraper_session_conflict` e non condivide il risultato in corso. 
+
+Dopo il fetch, `trackerUpdate.js` verifica inoltre che la sessione sia ancora corrente prima di aggiornare runtime, gate o persistenza.
 
 ## Spawn, promise pubblica e completion fisica
 
@@ -143,7 +157,11 @@ errore post-spawn
 → cleanup soltanto dopo close, exit o completion fisica
 ```
 
-Execution token e generation impediscono che una callback tardiva elimini una nuova entry. Errori di processo, timeout, JSON assente o invalido ed exit code non zero fanno fallire la promise, ma l’entry fisica viene rimossa soltanto dopo una terminazione confermata.
+L'`executionToken` impedisce che il cleanup JavaScript di una completion tardiva elimini una nuova entry con la stessa key. La generation del registry protegge invece spawn e ownership dei processi Python. 
+
+Nessuno dei due meccanismi è una tracking session authority end-to-end. 
+
+Errori di processo, timeout, JSON assente o invalido ed exit code non zero fanno fallire la promise, ma l’entry fisica viene rimossa soltanto dopo una terminazione confermata.
 
 ## Terminazione e scope
 
@@ -170,7 +188,9 @@ remaining
 errors
 ```
 
-`scope=tracking` termina `sofa_tracking` e `betfair_tracking` e preserva `betfair_login`. `scope=all`, usato dallo shutdown backend, termina anche il login-only. L’evento `error` non prova da solo l’uscita del processo.
+`scope=tracking` termina `sofa_tracking` e `betfair_tracking` e preserva `betfair_login`. `scope=all`, usato dallo shutdown backend, termina anche il login-only. 
+
+L’evento `error` non prova da solo l’uscita del processo.
 
 Non vengono terminati Chrome/CDP, processi Python esterni o processi non presenti nel registry.
 
@@ -193,30 +213,6 @@ richiesta incompatibile
 ```
 
 Il figlio usa il ruolo `betfair_login`. Resta attivo finché l’utente chiude le pagine/browser oppure fino allo shutdown backend con `scope=all`.
-
-## Stato Task 2
-
-Validato live nel collaudo `9B`:
-
-```txt
-login started
-login already_active
-un solo PID
-un solo executionId
-tracking senza sovrapposizione
-stop dei ruoli tracking senza respawn per 10 secondi
-shutdown completo
-```
-
-Il collaudo Stop e il collaudo login-only sono stati eseguiti in sequenze separate. Non è stata osservata direttamente, nella stessa sequenza live, la continuità `login già attivo → Stop → login ancora attivo`. L’esclusione di `betfair_login` da `scope=tracking` è coperta dal contratto e dai test automatici.
-
-Validato soltanto da test automatici:
-
-```txt
-login_runtime_conflict
-force-kill realmente necessario
-errore post-spawn reale
-```
 
 ## Restore stato e persistenza differita
 
@@ -309,7 +305,19 @@ Money Flow
 
 Le API Betfair possono esporre `integrity` come stato read-only, ma questo non deve essere confuso con `health` e non conferma né invalida da solo lo stato runtime dei runner.
 
-Le route read-only non eseguono repair, non scrivono journal, non avviano fetch e non modificano `marketState`.
+Le route read-only non avviano tracking o scraper Betfair, non eseguono repair, non scrivono journal e non modificano `marketState`. 
+
+`GET /api/betfair/:eventId/latest` può però effettuare un probe diagnostico verso `<cdpUrl>/json/version`: il target CDP viene validato come loopback e la lettura è bounded. 
+
+Read-only significa quindi assenza di mutazioni, non assenza assoluta di I/O di rete diagnostico.
+
+## Validazione degli URL Betfair
+
+Le route Start e login usano il validator backend-owned condiviso. 
+
+Il runner riceve invece un URL già accettato dal chiamante: `scraperKey()` normalizza la key di deduplicazione, ma non valida protocollo e host e non deve diventare un secondo validator. 
+
+Ogni nuovo consumer deve passare dal validator condiviso definito da `PREFLIGHT-API-003` e `DEC-020`.
 
 ## Cleanup legacy Betfair
 
@@ -319,7 +327,7 @@ Un fallimento del cleanup legacy resta osservabile tramite `legacyWarning`. `leg
 
 ## Terminazione da mismatch Source Identity
 
-Il gate rileva il mismatch, ferma i tracker logici e invalida la generation tracking prima del cleanup.
+Il gate rileva il mismatch, ferma i tracker logici e invalida la generation tracking prima della terminazione Betfair.
 
 ```txt
 campione Betfair valido
@@ -329,11 +337,15 @@ campione Betfair valido
 → stopAllMatchTrackers({ preserveGateEventId })
 → invalidatePythonGeneration("tracking")
 → terminazione del betfair_tracking attivo
-→ eventuale sofa_tracking in flight reso obsoleto dalla generation
+→ eventuale sofa_tracking già in flight non terminato esplicitamente
 → Chrome/CDP lasciato aperto
 ```
 
-Il callback di mismatch non esegue il cleanup globale `scope=tracking`: l’eventuale processo SofaScore in corso non può più produrre effetti della generation invalidata, mentre il lifecycle Betfair termina il proprio ruolo attivo.
+Il callback di mismatch non esegue il cleanup globale `scope=tracking`: termina il ruolo Betfair attivo, ma non il processo SofaScore già in corso. 
+
+Il gate mismatch impedisce la persistenza del campione causale. La generation Python non interrompe fisicamente una Promise JavaScript già avviata, ma gli update SofaScore e Betfair verificano ora la `trackingSessionId` corrente prima di applicare gate, runtime e persistenza: una callback della sessione precedente viene scartata anche dopo un nuovo Start.
+
+Il residuo end-to-end di `IMPL-006` riguarda gli artefatti e le letture persistite ancora indicizzati soltanto per `eventId`, non l’assenza della session authority nel lifecycle dello scraper.
 
 La terminazione non cancella cache, timeline, history o conferme Source Identity.
 
@@ -387,7 +399,19 @@ Il valore originale serve a preservare la decisione storica su `--no-cache`; non
 
 Con `ladderUrls`, `--no-cache` resta sempre presente.
 
+Nel tracking canonico `trackerUpdate.js` passa `networkCapture: false` e `noCache: true`; `--no-cache` è quindi sempre presente anche senza Graph URL.
+
+Le chiamate non canoniche possono adottare una policy esplicita diversa senza modificare il contratto del tracking.
+
 La policy Node controlla soltanto gli argomenti passati dal runner. Non modifica la semantica diretta della CLI Python.
+
+## Contratto output del processo figlio
+
+Lo stdout viene accumulato e, alla chiusura con exit code zero, il runner cerca il primo `{` e prova a interpretare il resto come JSON. 
+
+Lo stderr viene drenato e scartato: non è raccolto come diagnostica e non viene esposto raw.
+
+L'accumulo stdout è limitato per default a 4 MiB. Al superamento, il runner rigetta con l'errore statico `scraper_output_too_large`, richiede la terminazione del solo child registrato e non espone il body raw nei log.
 
 ## Verifica
 
@@ -403,7 +427,7 @@ node --check sofa/betfair/processor/persistenceDecision.js
 node --check sofa/betfair/processor/persistenceDocuments.js
 node --check sofa/betfair/processor/persistenceCommitWorkflow.js
 
-node sofa/betfair/scraperLifecycle/facadeIntegration.test.mjs
+node sofa/betfair/scraperLifecycle.test.mjs
 node sofa/betfair/trackerUpdate/technicalRecovery.test.mjs
 node sofa/betfair/processor/persistenceCommit.test.mjs
 node sofa/betfair/processor/persistenceRecovery.test.mjs
@@ -434,7 +458,8 @@ network capture
 → attiva solo con true booleano
 
 matrice --no-cache
-→ preservata con e senza ladder URL
+→ comportamento corrente verificato con e senza ladder URL
+→ tracking canonico sempre no-cache
 
 mismatch Source Identity
 → azione blocked

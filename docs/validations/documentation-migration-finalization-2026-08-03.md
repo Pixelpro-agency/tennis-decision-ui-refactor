@@ -72,7 +72,7 @@ File MDX residui:           0
 export const meta residui:  0 negli owner canonici
 ```
 
-Il confronto dimensionale dei 28 owner convertiti ha confermato che ciascun nuovo file conserva il corpo del sorgente, con variazioni limitate alla rimozione del blocco metadata e all'aggiornamento dei percorsi.
+Il confronto dimensionale dei 28 owner convertiti, con rapporto fra dimensioni compreso fra `0,998` e `1,001`, non ha indicato troncamenti sostanziali. Non costituisce una prova di identità esatta del corpo: questa richiederebbe un diff normalizzato per file con ogni differenza classificata.
 
 ## Limite della verifica
 

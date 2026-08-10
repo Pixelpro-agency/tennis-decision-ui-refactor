@@ -73,7 +73,7 @@ export function createHistoryStorage({
 
         try {
             const suffix = `_${eventId}.json`;
-            const filename = fs.readdirSync(historyDir)
+            const filenames = fs.readdirSync(historyDir)
                 .filter(file =>
                     typeof file === 'string' &&
                     file.endsWith('.json') &&
@@ -82,12 +82,16 @@ export function createHistoryStorage({
                     !file.startsWith('betfair_') &&
                     file.endsWith(suffix)
                 )
-                .sort()[0];
+                .sort();
+
+            if (filenames.length > 1) {
+                return { ok: false, reason: 'ambiguous_storage_target', file: null };
+            }
 
             return {
                 ok: true,
                 reason: null,
-                file: filename ? path.join(historyDir, filename) : null
+                file: filenames[0] ? path.join(historyDir, filenames[0]) : null
             };
         } catch (e) {
             console.error('[MatchHistory] Error finding history file:', e);
@@ -122,6 +126,11 @@ export function createHistoryStorage({
 
             try {
                 const history = JSON.parse(content);
+                if (!history || typeof history !== 'object' || Array.isArray(history) ||
+                    !history.metadata || typeof history.metadata !== 'object' || Array.isArray(history.metadata) ||
+                    !Array.isArray(history.history)) {
+                    return createReadResult(eventId, 'failed', 'invalid_shape', null, discovery.file);
+                }
                 return createReadResult(
                     eventId,
                     'found',

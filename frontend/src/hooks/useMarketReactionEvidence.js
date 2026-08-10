@@ -1,181 +1,191 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+function validDate(value) {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function normalizeEvidencePayload(payload, fetchedAt = new Date()) {
+    const latest = payload?.latest || null;
+    return {
+        latest,
+        evidence: latest?.marketReactionEvidence ?? null,
+        sources: payload?.sources ?? null,
+        integrity: payload?.integrity ?? null,
+        persistenceComplete: latest?.dataQuality?.persistenceComplete ?? null,
+        sourceUpdatedAt: validDate(latest?.metadata?.updatedAt),
+        fetchedAt
+    };
+}
+
 export function useMarketReactionEvidence(eventId, pollingInterval = 5000) {
+    const [latest, setLatest] = useState(null);
     const [evidence, setEvidence] = useState(null);
+    const [sources, setSources] = useState(null);
+    const [integrity, setIntegrity] = useState(null);
+    const [persistenceComplete, setPersistenceComplete] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [reasons, setReasons] = useState(null);
-    const [lastUpdate, setLastUpdate] = useState(null);
+    const [sourceUpdatedAt, setSourceUpdatedAt] = useState(null);
+    const [fetchedAt, setFetchedAt] = useState(null);
+    const [readStatus, setReadStatus] = useState('inactive');
     const [isPolling, setIsPolling] = useState(false);
 
-    // Incremented on every eventId change; each async path captures its own copy.
-    const sessionId = useRef(0);
-    const pollTimeout = useRef(null);
+    const pollGenerationRef = useRef(0);
+    const pollTimeoutRef = useRef(null);
+    const activeRequestRef = useRef(null);
+    const requestIdRef = useRef(0);
 
-    // Tracks the single active fetch: { sessionId, requestId, controller }.
-    // A fetch from a different session must never consult or modify this lock.
-    const activeFetch = useRef(null);
-
-    // Monotonically increasing request counter; never reset, only incremented.
-    const requestCounter = useRef(0);
-
-    const clearPollTimeout = () => {
-        if (pollTimeout.current) {
-            clearTimeout(pollTimeout.current);
-            pollTimeout.current = null;
-        }
-    };
-
-    const fetchOnce = useCallback(async (isAuto, capturedSession, capturedEventId) => {
-        if (!capturedEventId) return;
-
-        // Block only if there is already an active fetch for THIS session.
-        if (activeFetch.current && activeFetch.current.sessionId === capturedSession) return;
-
-        requestCounter.current += 1;
-        const myRequestId = requestCounter.current;
-        const controller = new AbortController();
-
-        activeFetch.current = { sessionId: capturedSession, requestId: myRequestId, controller };
-
-        if (!isAuto && sessionId.current === capturedSession) {
-            setLoading(true);
-        }
-
-        try {
-            const res = await fetch(
-                `/api/evidence/${encodeURIComponent(capturedEventId)}/latest`,
-                { signal: controller.signal }
-            );
-
-            if (sessionId.current !== capturedSession) return;
-
-            if (res.status === 404) {
-                let payload = null;
-                try { payload = await res.json(); } catch (_) {}
-                if (sessionId.current !== capturedSession) return;
-                setEvidence(null);
-                setError(null);
-                setReasons(payload?.reasons ?? payload?.error ?? null);
-                return;
-            }
-
-            if (!res.ok) {
-                if (sessionId.current !== capturedSession) return;
-                setEvidence(null);
-                setReasons(null);
-                setError('Unable to load evidence data.');
-                return;
-            }
-
-            const payload = await res.json();
-
-            if (sessionId.current !== capturedSession) return;
-
-            if (payload?.ok !== true) {
-                setEvidence(null);
-                setError(null);
-                setReasons(payload?.reasons ?? payload?.error ?? null);
-                return;
-            }
-
-            setEvidence(payload.latest?.marketReactionEvidence ?? null);
-            setError(null);
-            setReasons(null);
-            setLastUpdate(new Date());
-        } catch (err) {
-            if (err.name === 'AbortError') return;
-            if (sessionId.current !== capturedSession) return;
-            setEvidence(null);
-            setReasons(null);
-            setError('Unable to load evidence data.');
-        } finally {
-            // Release the lock only if this request is still the active one.
-            if (activeFetch.current && activeFetch.current.requestId === myRequestId) {
-                activeFetch.current = null;
-                if (sessionId.current === capturedSession && !isAuto) {
-                    setLoading(false);
-                }
-            }
+    const clearPollTimeout = useCallback(() => {
+        if (pollTimeoutRef.current) {
+            clearTimeout(pollTimeoutRef.current);
+            pollTimeoutRef.current = null;
         }
     }, []);
 
-    useEffect(() => {
-        if (!eventId) {
-            setEvidence(null);
-            setError(null);
-            setReasons(null);
-            setLastUpdate(null);
-            setIsPolling(false);
-            setLoading(false);
-            return;
-        }
-
-        sessionId.current += 1;
-        const currentSession = sessionId.current;
-
-        clearPollTimeout();
-
-        // Abort and discard any fetch belonging to the previous session.
-        if (activeFetch.current && activeFetch.current.sessionId !== currentSession) {
-            activeFetch.current.controller.abort();
-            activeFetch.current = null;
-        }
-
+    const clearCurrentEvidence = useCallback(() => {
+        setLatest(null);
         setEvidence(null);
+        setSources(null);
+        setPersistenceComplete(null);
+        setSourceUpdatedAt(null);
+    }, []);
+
+    const fetchOnce = useCallback(async ({ isAuto, generation, currentEventId }) => {
+        if (!currentEventId || generation !== pollGenerationRef.current) return null;
+        if (activeRequestRef.current?.generation === generation) return activeRequestRef.current.promise;
+        const requestId = ++requestIdRef.current;
+        const controller = new AbortController();
+        if (!isAuto) setLoading(true);
+
+        const promise = (async () => {
+            try {
+                const response = await fetch(
+                    `/api/evidence/${encodeURIComponent(currentEventId)}/latest`,
+                    { signal: controller.signal }
+                );
+                const payload = await response.json().catch(() => null);
+                if (generation !== pollGenerationRef.current) return null;
+                const now = new Date();
+                setFetchedAt(now);
+
+                if (response.status === 404) {
+                    clearCurrentEvidence();
+                    setIntegrity(payload?.integrity ?? null);
+                    setReasons(payload?.reasons ?? payload?.error ?? null);
+                    setError(null);
+                    setReadStatus(payload?.integrity ? 'degraded' : 'waiting');
+                    return null;
+                }
+
+                if (!response.ok) {
+                    clearCurrentEvidence();
+                    setIntegrity(payload?.integrity ?? null);
+                    setReasons(null);
+                    setError('Unable to load evidence data.');
+                    setReadStatus('error');
+                    return null;
+                }
+
+                if (payload?.ok !== true) {
+                    clearCurrentEvidence();
+                    setIntegrity(payload?.integrity ?? null);
+                    setReasons(payload?.reasons ?? payload?.error ?? null);
+                    setError(null);
+                    setReadStatus('waiting');
+                    return null;
+                }
+
+                const model = normalizeEvidencePayload(payload, now);
+                setLatest(model.latest);
+                setEvidence(model.evidence);
+                setSources(model.sources);
+                setIntegrity(model.integrity);
+                setPersistenceComplete(model.persistenceComplete);
+                setSourceUpdatedAt(model.sourceUpdatedAt);
+                setFetchedAt(model.fetchedAt);
+                setError(null);
+                setReasons(null);
+                setReadStatus(model.persistenceComplete === false ? 'degraded' : 'current');
+                return model;
+            } catch (requestError) {
+                if (requestError?.name === 'AbortError' || generation !== pollGenerationRef.current) return null;
+                clearCurrentEvidence();
+                setIntegrity(null);
+                setReasons(null);
+                setError('Unable to load evidence data.');
+                setReadStatus('error');
+                return null;
+            } finally {
+                if (activeRequestRef.current?.requestId === requestId) activeRequestRef.current = null;
+                if (!isAuto && generation === pollGenerationRef.current) setLoading(false);
+            }
+        })();
+
+        activeRequestRef.current = { generation, requestId, controller, promise };
+        return promise;
+    }, [clearCurrentEvidence]);
+
+    useEffect(() => {
+        pollGenerationRef.current += 1;
+        const generation = pollGenerationRef.current;
+        clearPollTimeout();
+        activeRequestRef.current?.controller.abort();
+        activeRequestRef.current = null;
+        clearCurrentEvidence();
+        setIntegrity(null);
+        setFetchedAt(null);
         setError(null);
         setReasons(null);
-        setLastUpdate(null);
+
+        if (!eventId) {
+            setReadStatus('inactive');
+            setIsPolling(false);
+            setLoading(false);
+            return undefined;
+        }
+
+        setReadStatus('waiting');
         setIsPolling(true);
 
         const loop = async () => {
-            await fetchOnce(true, currentSession, eventId);
-            if (sessionId.current === currentSession) {
-                pollTimeout.current = setTimeout(loop, pollingInterval);
+            await fetchOnce({ isAuto: true, generation, currentEventId: eventId });
+            if (generation === pollGenerationRef.current) {
+                pollTimeoutRef.current = setTimeout(loop, pollingInterval);
             }
         };
 
-        fetchOnce(false, currentSession, eventId);
-        pollTimeout.current = setTimeout(loop, pollingInterval);
+        void fetchOnce({ isAuto: false, generation, currentEventId: eventId });
+        pollTimeoutRef.current = setTimeout(loop, pollingInterval);
 
         return () => {
-            sessionId.current += 1;
+            pollGenerationRef.current += 1;
             clearPollTimeout();
-            if (activeFetch.current && activeFetch.current.sessionId === currentSession) {
-                activeFetch.current.controller.abort();
-                activeFetch.current = null;
+            if (activeRequestRef.current?.generation === generation) {
+                activeRequestRef.current.controller.abort();
+                activeRequestRef.current = null;
             }
         };
-    }, [eventId, pollingInterval, fetchOnce]);
+    }, [clearCurrentEvidence, clearPollTimeout, eventId, fetchOnce, pollingInterval]);
 
     const refresh = useCallback(() => {
-        if (!eventId) return;
-        fetchOnce(false, sessionId.current, eventId);
+        if (!eventId) return Promise.resolve(null);
+        return fetchOnce({ isAuto: false, generation: pollGenerationRef.current, currentEventId: eventId });
     }, [eventId, fetchOnce]);
 
     const confirmSourceIdentity = useCallback(async (selectedPairs, confirmationText) => {
-        if (!eventId) {
-            return { ok: false, error: 'Unable to confirm source identity.' };
-        }
-
+        if (!eventId) return { ok: false, error: 'Unable to confirm source identity.' };
         try {
-            const response = await fetch(
-                `/api/evidence/${encodeURIComponent(eventId)}/source-identity/confirm`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ selectedPairs, confirmationText })
-                }
-            );
-
-            let payload = null;
-            try { payload = await response.json(); } catch (_) {}
-
-            if (!response.ok || payload?.ok !== true) {
-                return { ok: false, error: 'Unable to confirm source identity.' };
-            }
-
-            refresh();
+            const response = await fetch(`/api/evidence/${encodeURIComponent(eventId)}/source-identity/confirm`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ selectedPairs, confirmationText })
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok || payload?.ok !== true) return { ok: false, error: 'Unable to confirm source identity.' };
+            await refresh();
             return { ok: true };
         } catch (_) {
             return { ok: false, error: 'Unable to confirm source identity.' };
@@ -183,24 +193,12 @@ export function useMarketReactionEvidence(eventId, pollingInterval = 5000) {
     }, [eventId, refresh]);
 
     const revokeSourceIdentityConfirmation = useCallback(async () => {
-        if (!eventId) {
-            return { ok: false, error: 'Unable to revoke source identity confirmation.' };
-        }
-
+        if (!eventId) return { ok: false, error: 'Unable to revoke source identity confirmation.' };
         try {
-            const response = await fetch(
-                `/api/evidence/${encodeURIComponent(eventId)}/source-identity/confirm`,
-                { method: 'DELETE' }
-            );
-
-            let payload = null;
-            try { payload = await response.json(); } catch (_) {}
-
-            if (!response.ok || payload?.ok !== true) {
-                return { ok: false, error: 'Unable to revoke source identity confirmation.' };
-            }
-
-            refresh();
+            const response = await fetch(`/api/evidence/${encodeURIComponent(eventId)}/source-identity/confirm`, { method: 'DELETE' });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok || payload?.ok !== true) return { ok: false, error: 'Unable to revoke source identity confirmation.' };
+            await refresh();
             return { ok: true, revoked: payload.revoked === true };
         } catch (_) {
             return { ok: false, error: 'Unable to revoke source identity confirmation.' };
@@ -208,11 +206,18 @@ export function useMarketReactionEvidence(eventId, pollingInterval = 5000) {
     }, [eventId, refresh]);
 
     return {
+        latest,
         evidence,
+        sources,
+        integrity,
+        persistenceComplete,
         loading,
         error,
         reasons,
-        lastUpdate,
+        lastUpdate: sourceUpdatedAt,
+        sourceUpdatedAt,
+        fetchedAt,
+        readStatus,
         isPolling,
         refresh,
         confirmSourceIdentity,

@@ -61,10 +61,10 @@ export function buildCanonicalRunners(processedRunners) {
             lastTradedPrice: parseFloat(runner.state?.lastPriceTraded) ||
                 parseFloat(runner.market_graph?.lastTradedPrice) ||
                 0,
-            matchedTotal: typeof runner.matchedTotal === 'number' ? runner.matchedTotal : 0,
+            matchedTotal: typeof runner.matchedTotal === 'number' ? runner.matchedTotal : null,
             totalMatchedOnSelection: typeof runner.totalMatchedOnSelection === 'number'
                 ? runner.totalMatchedOnSelection
-                : 0,
+                : null,
             bestBack: parseFloat(bestBack.price) || 0,
             bestBackSize: normalizeMoney(bestBack.vol),
             bestLay: parseFloat(bestLay.price) || 0,

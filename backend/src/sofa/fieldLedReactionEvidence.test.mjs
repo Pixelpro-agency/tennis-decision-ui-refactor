@@ -113,6 +113,7 @@ console.log('\n=== fieldLedReactionEvidence.test.mjs ===\n');
         String(r.sourceFieldEvent?.type));
     assert('T03-windows-count', r.observationWindows.length === 6, String(r.observationWindows.length));
     assert('T03-marketResponseObserved', r.summary.marketResponseObserved === true);
+    assert('T03-observed-is-distinct-from-reliable', typeof r.summary.marketResponseReliable === 'boolean');
     // first response should be within the 10s window
     assert('T03-firstResponse-10', r.summary.firstObservedResponseWindowSec <= 30,
         String(r.summary.firstObservedResponseWindowSec));

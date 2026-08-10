@@ -1137,6 +1137,7 @@ def write_manifest(data: dict):
                 Path(tmp).unlink(missing_ok=True)
             except OSError:
                 pass
+        raise
 
 
 def read_manifest() -> dict | None:

@@ -185,6 +185,7 @@ scrapers/
 launcher/
 ├── app.py
 ├── config.py
+├── session.py
 ├── services.py
 └── system.py
 ```
@@ -193,7 +194,8 @@ launcher/
 | ------------------- | ------------------------------------------------------------------ |
 | `scrapers/sofa/`    | URL, cache, browser e JSON SofaScore                               |
 | `scrapers/betfair/` | Browser, mercato, Graph URL, ladder, cache e diagnostica           |
-| `launcher/`         | Configurazione, processi, attese HTTP, apertura browser e shutdown |
+| `launcher/session.py` | Lock, manifest e identità della sessione launcher                |
+| `launcher/app.py`, `services.py`, `system.py`, `config.py` | Orchestrazione, servizi, primitive di sistema e configurazione |
 
 I wrapper root restano facade compatibili. Non spostare logica di dominio nei wrapper.
 
@@ -219,11 +221,13 @@ frontend/src/
 | Polling dati    | `useMatchPolling.js`, `useBetfairJson.js`, `useMarketReactionEvidence.js` | Letture Match, Betfair ed Evidence       |
 | View model      | `useDashboardViewModel.js`, `utils/dashboard*`                            | Adattamento dei payload per i componenti |
 | Contesto punti  | `MatchContextCard.jsx`, `matchContextViewModel.js`                        | Rendering descrittivo di `localContext`  |
+| Betfair UI      | `BetfairDepthCard.jsx`, `components/betfair/`                             | Depth, Money Flow, health e persistence  |
+| Market UI       | `MarketReactionsPage.jsx`, `components/marketReactions/`                  | Presentazione Evidence e availability    |
 | API client      | `services/liveSessionApi.js` e utility richieste                          | Chiamate HTTP della sessione live        |
 
 Il frontend non legge filesystem, journal o writer authority, non esegue recovery e non ricostruisce Evidence o Source Identity dai link inseriti dall'utente.
 
-Owner correnti: documenti sotto `modules/frontend/`. Questi documenti contengono gap già registrati; per sessione, polling e integrity prevale il codice corrente.
+Owner correnti: documenti sotto `modules/frontend/`, inclusi [Betfair Depth e health UI](../modules/frontend/05-betfair-depth-and-health-ui.md) e [Market Reactions UI](../modules/frontend/06-market-reactions-ui.md). Per lifecycle condivisi prevalgono rispettivamente session shell e polling/view model.
 
 ## Dati generati, runtime e sensibili
 
@@ -234,6 +238,7 @@ Escludere dal normale contesto e dai commit:
 | `backend/match_history/`                           | Dati canonici locali; usare solo per task esplicite        |
 | `.pending_commits/`                                | Journal di recovery; non cancellare manualmente            |
 | `.writer_authority/`                               | Sidecar authority; non cancellare o modificare manualmente |
+| `backend/source_identity_confirmations.json`       | Conferme Source Identity persistite; non è cache, non versionare e non cancellare automaticamente |
 | `backend/scraper_cache/`, `backend/betfair_cache/` | Cache non canoniche                                        |
 | profili browser                                    | Sensibili e non condivisibili                              |
 | `backend/betfair_network_dump/`                    | Diagnostica potenzialmente sensibile                       |
@@ -269,7 +274,7 @@ scripts/validation/
 
 `run.mjs` è il comando canonico per i profili offline registrati. Valida prima l'intero manifest, poi esegue ogni entry in un processo separato, in serie, con timeout e output bounded. Gli artefatti locali vengono scritti sotto `test-results/`, già esclusa da Git.
 
-Il manifest iniziale copre la superficie verificata durante il Punto 7 e i checker documentali. Non sostituisce ancora la mappa completa `IMPL-003`, il sandbox persistence `IMPL-008`, il frontend interaction harness `IMPL-030` o il ledger `IMPL-031`.
+Il manifest iniziale copre la superficie verificata durante il Punto 7 e i checker documentali. Non sostituisce la matrice test ↔ modulo ↔ documento prevista da `IMPL-003`, il sandbox persistence `IMPL-008`, il frontend interaction harness `IMPL-030` o il ledger `IMPL-031`.
 
 I test automatici IMPL-015 pubblicati sono:
 

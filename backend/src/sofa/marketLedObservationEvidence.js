@@ -24,11 +24,14 @@ function roundN(v, n) {
 export function buildMarketLedObservationEvidence({
     sourceMarketEvent = null,
     sofaTicks = [],
-    now = new Date(),
+    now = null,
     config = {}
 } = {}) {
     const cfg = mergeConfig(config);
-    const nowDate = now instanceof Date ? now : new Date(now);
+    const fallbackNowTs = Array.isArray(sofaTicks) && sofaTicks.length > 0
+        ? (sofaTicks[sofaTicks.length - 1]?.timestamp || sofaTicks[sofaTicks.length - 1]?.data?.timestamp)
+        : null;
+    const nowDate = now instanceof Date ? now : new Date(now || fallbackNowTs || Date.now());
 
     const emptyResult = {
         available: false,
@@ -36,7 +39,8 @@ export function buildMarketLedObservationEvidence({
         sourceMarketEvent: null,
         config: {
             observationWindowsSec: cfg.observationWindowsSec,
-            includeCurrentGameContext: cfg.includeCurrentGameContext
+            includeCurrentGameContext: cfg.includeCurrentGameContext,
+            maxSourceAgeSec: cfg.maxSourceAgeSec
         },
         observationWindows: [],
         summary: {
@@ -89,6 +93,22 @@ export function buildMarketLedObservationEvidence({
                 ...emptyResult.summary,
                 reasons: ['Source market event has invalid timestamp']
             }
+        };
+    }
+
+    const sourceAgeSec = (nowDate.getTime() - sourceD.getTime()) / 1000;
+    if (sourceAgeSec < -5) {
+        return {
+            ...emptyResult,
+            sourceMarketEvent: safeSourceMarketEvent,
+            summary: { ...emptyResult.summary, reasons: ['Source market event timestamp is in the future'] }
+        };
+    }
+    if (sourceAgeSec > cfg.maxSourceAgeSec) {
+        return {
+            ...emptyResult,
+            sourceMarketEvent: safeSourceMarketEvent,
+            summary: { ...emptyResult.summary, reasons: [`Source market event is older than maxSourceAgeSec (${cfg.maxSourceAgeSec}s)`] }
         };
     }
 

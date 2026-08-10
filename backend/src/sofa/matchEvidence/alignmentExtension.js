@@ -2,7 +2,7 @@ import { ageSec } from './time.js';
 import { buildLastSofaMarkerAlignment, buildLastBetfairMoveAlignment, computeMarketReactionOrder } from '../marketFlowEvidence.js';
 import { buildTemporalAlignment } from '../temporalAlignmentEvidence.js';
 
-export function buildAlignmentExtension({ sofaEvidence, marketEvidence, betfairTick, now, allSofaTicks, allBetfairTicks }) {
+export function buildAlignmentExtension({ sofaEvidence, marketEvidence, betfairTick, now, allSofaTicks, allBetfairTicks, dataQuality }) {
     const eventMarkers = sofaEvidence?.eventMarkers || [];
     const lastSofaMarkerRaw = buildLastSofaMarkerAlignment(eventMarkers, null);
 
@@ -41,7 +41,8 @@ export function buildAlignmentExtension({ sofaEvidence, marketEvidence, betfairT
     const temporal = buildTemporalAlignment({
         sofaTicks: Array.isArray(allSofaTicks) ? allSofaTicks : [],
         betfairTicks: Array.isArray(allBetfairTicks) ? allBetfairTicks : [],
-        now
+        now,
+        dataQuality
     });
 
     return {
@@ -49,6 +50,13 @@ export function buildAlignmentExtension({ sofaEvidence, marketEvidence, betfairT
         lastBetfairMove,
         eventMarketGapSec,
         marketReactionOrder,
+        latestSnapshotMarkerOrder: {
+            windowSec: 10,
+            gapSec: eventMarketGapSec,
+            relation: marketReactionOrder,
+            causalityClaimed: false
+        },
+        temporalLookbackReactionWindow: temporal.reactionWindows,
         temporal
     };
 }

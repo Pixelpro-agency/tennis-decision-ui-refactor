@@ -20,11 +20,7 @@ export function parseTs(ts) {
     return isNaN(d.getTime()) ? null : d;
 }
 
-export function ageSec(ts, now) {
-    const d = parseTs(ts);
-    if (!d) return null;
-    return Math.max(0, (now.getTime() - d.getTime()) / 1000);
-}
+export { ageSec } from '../../matchEvidence/time.js';
 
 export function roundN(v, n) {
     if (typeof v !== 'number' || !isFinite(v)) return null;

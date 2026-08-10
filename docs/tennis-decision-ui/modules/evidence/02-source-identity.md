@@ -1,42 +1,5 @@
 # Source Identity
 
-## Stato
-
-**Implementato, da validare live.**
-
-Task 1A implementa il gate Source Identity fra polling live e persistenza canonica.
-
-Task 1B implementa il consumer frontend dello status live.
-
-Sono già verificati live:
-
-```txt
-collecting
-→ recording/aligned automatico
-
-mismatch
-→ ritorno al form con campi preservati
-
-mismatch
-→ correzione link
-→ nuovo Start
-→ aligned
-```
-
-Restano da validare live:
-
-```txt
-pending reale
-→ conferma manuale reale
-→ recording/aligned
-
-pending reale
-→ stop o decline
-→ ritorno al form
-```
-
-I dettagli di presentazione frontend appartengono ai documenti `modules/frontend/`.
-
 ## Scopo
 
 Source Identity gestisce due responsabilità separate:
@@ -88,6 +51,10 @@ backend/src/sofa/sourceIdentityGate/
 
 `sourceIdentityGate.js` resta la facade pubblica. I file sotto `sourceIdentityGate/` separano validazione campioni, sessione runtime, store in memoria, status read-only, evaluator del lifecycle e conferma manuale.
 
+Il gate è indicizzato per `eventId`, ma ogni nuovo Start crea anche una `trackingSessionId` distinta. L'identificativo viene conservato nel tracker e nel gate, raggiunge gli observer SofaScore e Betfair, è restituito dallo Start ed è richiesto dalla conferma manuale live. Una callback appartenente a una sessione precedente viene bloccata prima del gate e della persistenza.
+
+`bufferGeneration` distingue i contesti osservati all'interno della stessa sessione gate e non sostituisce `trackingSessionId`.
+
 ## Fasi del gate live
 
 | Fase             | Persistenza | Significato                                                               |
@@ -122,7 +89,7 @@ buffered
 persist-current
 bootstrapped
 blocked
-no-gate
+gate_unavailable
 ```
 
 | Azione            | Significato                                                          |
@@ -131,9 +98,11 @@ no-gate
 | `persist-current` | Il campione può essere persistito dal tracker                        |
 | `bootstrapped`    | Il callback di apertura ha già persistito il primo contesto canonico |
 | `blocked`         | Il gate è in mismatch o terminale; nessuna persistenza               |
-| `no-gate`         | Non esiste una sessione gate per l’evento                            |
+| `gate_unavailable`| Non esiste una sessione gate valida; il campione viene bloccato      |
 
 `bootstrapped` evita la doppia persistenza del campione che apre `recording`.
+
+Nel tracking canonico l'assenza imprevista del gate è fail-closed e produce `blocked` con reason `gate_unavailable`. Sofa-only usa esplicitamente `not-applicable` e può persistere senza dipendere dal gate Betfair.
 
 Nel bootstrap il tracker mantiene l’ordine:
 
@@ -252,8 +221,11 @@ Una conferma esistente è applicabile soltanto se tutti gli elementi del contest
 conferma pending valida
 → bootstrap SofaScore
 → bootstrap Betfair
+→ persistenza confirmation
 → recording
 ```
+
+La confirmation viene resa durevole soltanto dopo un bootstrap riuscito. Se il bootstrap fallisce non viene eseguito alcun upsert; se l'upsert fallisce, la sessione resta `pending` e non entra in `recording`.
 
 Una conferma con lo stesso fingerprint è idempotente.
 
@@ -290,7 +262,13 @@ error
 → Bootstrap persistence failed
 ```
 
-Non esiste rollback cross-source automatico e il gate non ritenta automaticamente lo stesso bootstrap.
+Non esiste rollback cross-source automatico. Il gate non ritenta automaticamente lo stesso bootstrap nella stessa `bufferGeneration`; un cambio di contesto incrementa la generazione e consente un nuovo tentativo deterministico. La conferma manuale fallita ripristina uno stato pending ritentabile.
+
+### POST senza gate live
+
+Se non esiste un gate live, il POST di conferma viene rifiutato con `409 confirmation_session_changed`. Una confirmation persistita resta disponibile per lettura o revoca diagnostica, ma non può autorizzare il bootstrap né portare una nuova sessione in `recording`.
+
+Gli errori di input/contesto usano status `400`, `409` o `422`. Failure di store, bootstrap e persistenza sono mappate su `500` con code bounded come `confirmation_persistence_failed` e `confirmation_bootstrap_failed`, senza error message raw.
 
 ## Mismatch e cleanup
 
@@ -301,7 +279,8 @@ campione causale non persistito
 → callback onMismatch
 → stop dei tracker live
 → preservazione del gate mismatch dell’evento
-→ SIGTERM ai soli scraper Betfair figli del progetto
+→ terminazione scoped e bounded del ruolo betfair_tracking nel process registry
+→ eventuale escalation sul solo PID registrato se l'uscita non è confermata
 → Chrome e CDP lasciati aperti
 ```
 
@@ -312,6 +291,8 @@ Il mismatch non deve:
 * cancellare conferme manuali;
 * terminare Chrome;
 * terminare processi Python esterni al progetto.
+
+La terminazione preserva anche il ruolo `betfair_login`; Chrome e CDP non sono owned dal cleanup del tracking.
 
 Stop manuale, untrack e nuovo start puliscono i gate nel proprio scope. Il gate mismatch viene preservato soltanto nel percorso di mismatch per permettere la lettura dello status terminale.
 
@@ -444,6 +425,8 @@ status route
 input
 → immutabili
 ```
+
+La matrice automatica copre stesso `eventId` con tracking session diversa, callback SofaScore e Betfair stale, gate assente fail-closed, Sofa-only not-applicable, conferma stale o senza gate, failure di store e bootstrap e recovery dopo cambio contesto. I risultati live storici appartengono alla validation collegata e non costituiscono automaticamente un PASS del checkpoint corrente.
 
 ## Documenti collegati
 

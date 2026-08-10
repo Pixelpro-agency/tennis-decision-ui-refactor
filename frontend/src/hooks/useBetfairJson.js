@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 export function toValidDate(value) {
     if (!value) return null;
-
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? null : date;
 }
@@ -17,18 +16,12 @@ export function getLatestPayloadTimestamp(payload) {
 }
 
 export function getLatestJsonTimestamp(payload) {
-    const latestTimelineEntry = getLatestTimelineEntry(payload);
-
-    return toValidDate(latestTimelineEntry?.timestamp) ||
-        toValidDate(payload?.latest?.timestamp);
+    return toValidDate(getLatestTimelineEntry(payload)?.timestamp) || toValidDate(payload?.latest?.timestamp);
 }
 
 export function normalizeBetfairTimelinePayload(payload) {
     const timelineLatest = getLatestTimelineEntry(payload);
-    const latest = payload?.latest?.data
-        ? payload.latest
-        : timelineLatest || payload?.latest || null;
-
+    const latest = payload?.latest?.data ? payload.latest : timelineLatest || payload?.latest || null;
     return latest?.data || payload;
 }
 
@@ -36,240 +29,247 @@ export function isPersistenceIntegrityError(payload) {
     return payload?.error === 'persistence_integrity';
 }
 
+async function readJson(response) {
+    try { return await response.json(); } catch (_) { return null; }
+}
+
+function persistenceError(payload) {
+    const error = new Error('persistence_integrity');
+    error.status = 409;
+    error.persistenceIntegrity = true;
+    error.integrity = payload?.integrity || null;
+    return error;
+}
+
+export function buildBetfairReadModel(payload, source) {
+    if (source === 'latest') {
+        const latest = payload?.latest || null;
+        return {
+            data: latest ? { ...latest, ...(payload?.health ? { health: payload.health } : {}), ...(payload?.moneyFlowHistory ? { moneyFlowHistory: payload.moneyFlowHistory } : {}) } : null,
+            health: payload?.health || null,
+            moneyFlowHistory: payload?.moneyFlowHistory || null,
+            sourceUpdatedAt: getLatestPayloadTimestamp(payload),
+            fetchedAt: new Date(),
+            integrity: payload?.integrity || null,
+            source: 'latest'
+        };
+    }
+
+    return {
+        data: normalizeBetfairTimelinePayload(payload),
+        health: null,
+        moneyFlowHistory: null,
+        sourceUpdatedAt: getLatestJsonTimestamp(payload),
+        fetchedAt: new Date(),
+        integrity: payload?.integrity || null,
+        source: 'timeline'
+    };
+}
+
+export async function readBetfairCycle({ eventId, latestUrl, signal }) {
+    const latestResponse = await fetch(latestUrl, { signal });
+    const latestPayload = await readJson(latestResponse);
+
+    if (latestResponse.status === 409 && isPersistenceIntegrityError(latestPayload)) {
+        throw persistenceError(latestPayload);
+    }
+
+    if (latestResponse.ok && latestPayload?.ok === true) {
+        return buildBetfairReadModel(latestPayload, 'latest');
+    }
+
+    if (latestResponse.status !== 404) {
+        const error = new Error('Betfair latest unavailable');
+        error.status = latestResponse.status;
+        throw error;
+    }
+
+    const timelineResponse = await fetch(`/api/betfair/${eventId}/json`, { signal });
+    const timelinePayload = await readJson(timelineResponse);
+    if (timelineResponse.status === 409 && isPersistenceIntegrityError(timelinePayload)) {
+        throw persistenceError(timelinePayload);
+    }
+    if (!timelineResponse.ok) {
+        const error = new Error('Betfair timeline unavailable');
+        error.status = timelineResponse.status;
+        throw error;
+    }
+    return buildBetfairReadModel(timelinePayload, 'timeline');
+}
+
 export function useBetfairJson(url, sofaEventId, pollingInterval = 5000, options = {}) {
     const { mode, cdpUrl } = options;
-
     const [data, setData] = useState(null);
+    const [lastKnownData, setLastKnownData] = useState(null);
     const [health, setHealth] = useState(null);
     const [moneyFlowHistory, setMoneyFlowHistory] = useState(null);
+    const [lastKnownMoneyFlowHistory, setLastKnownMoneyFlowHistory] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [isPolling, setIsPolling] = useState(false);
-    const [lastUpdate, setLastUpdate] = useState(null);
+    const [sourceUpdatedAt, setSourceUpdatedAt] = useState(null);
+    const [fetchedAt, setFetchedAt] = useState(null);
     const [integrity, setIntegrity] = useState(null);
+    const [readStatus, setReadStatus] = useState('inactive');
 
-    const pollTimeout = useRef(null);
-    const shouldPoll = useRef(false);
+    const pollTimeoutRef = useRef(null);
+    const shouldPollRef = useRef(false);
+    const pollGenerationRef = useRef(0);
+    const requestIdRef = useRef(0);
+    const activeRequestRef = useRef(null);
 
-    const buildLatestUrl = useCallback(() => {
+    const latestUrl = (() => {
         const params = new URLSearchParams();
         if (mode) params.set('mode', mode);
         if (cdpUrl) params.set('cdpUrl', cdpUrl);
         const query = params.toString();
         return `/api/betfair/${sofaEventId}/latest${query ? `?${query}` : ''}`;
-    }, [sofaEventId, mode, cdpUrl]);
+    })();
 
-    const applyLatestPayload = useCallback((payload) => {
-        const latestData = payload?.latest || null;
-        const payloadHealth = payload?.health || null;
-
-        if (latestData && payloadHealth) {
-            latestData.health = payloadHealth;
+    const clearTimer = useCallback(() => {
+        if (pollTimeoutRef.current) {
+            clearTimeout(pollTimeoutRef.current);
+            pollTimeoutRef.current = null;
         }
-
-        if (payload?.moneyFlowHistory) {
-            if (latestData) {
-                latestData.moneyFlowHistory = payload.moneyFlowHistory;
-            }
-
-            setMoneyFlowHistory(payload.moneyFlowHistory);
-        }
-
-        setData(latestData);
-        setHealth(payloadHealth);
-        setLastUpdate(getLatestPayloadTimestamp(payload));
-        setIntegrity(payload?.integrity || null);
-        setError(null);
-
-        return latestData;
     }, []);
 
-    const fetchLatestCompact = useCallback(async () => {
-        if (!sofaEventId) {
-            const err = new Error('Sofa event ID missing');
-            err.status = 400;
-            throw err;
-        }
+    const abortActiveRequest = useCallback(() => {
+        activeRequestRef.current?.controller.abort();
+        activeRequestRef.current = null;
+    }, []);
 
-        const res = await fetch(buildLatestUrl());
-        let payload = null;
-        const contentType = res.headers.get('content-type') || '';
-
-        if (contentType.includes('application/json')) {
-            try {
-                payload = await res.json();
-            } catch (_error) {
-                payload = null;
-            }
-        }
-
-        if (payload?.health) {
-            setHealth(payload.health);
-        }
-
-        if (res.status === 409 && isPersistenceIntegrityError(payload)) {
-            const err = new Error('persistence_integrity');
-            err.status = 409;
-            err.persistenceIntegrity = true;
-            err.integrity = payload?.integrity || null;
-            err.health = payload?.health || null;
-            throw err;
-        }
-
-        if (!res.ok) {
-            const err = new Error(payload?.error || `Betfair latest not found (${res.status})`);
-            err.status = res.status;
-            err.payload = payload;
-            throw err;
-        }
-
-        if (payload?.ok !== true) {
-            const err = new Error(payload?.error || 'Betfair latest unavailable');
-            err.status = 404;
-            err.payload = payload;
-            throw err;
-        }
-
-        applyLatestPayload(payload);
-        return payload?.latest || null;
-    }, [sofaEventId, buildLatestUrl, applyLatestPayload]);
-
-    const fetchJsonTimeline = useCallback(async () => {
-        const res = await fetch(`/api/betfair/${sofaEventId}/json`);
-
-        if (res.status === 409) {
-            const payload = await res.json().catch(() => ({}));
-
-            if (isPersistenceIntegrityError(payload)) {
-                const err = new Error('persistence_integrity');
-                err.status = 409;
-                err.persistenceIntegrity = true;
-                err.integrity = payload?.integrity || null;
-                throw err;
-            }
-
-            const err = new Error(`Betfair JSON not found (${res.status})`);
-            err.status = res.status;
-            throw err;
-        }
-
-        if (!res.ok) {
-            const err = new Error(`Betfair JSON not found (${res.status})`);
-            err.status = res.status;
-            throw err;
-        }
-
-        const payload = await res.json();
-        const latestData = normalizeBetfairTimelinePayload(payload);
-
-        setData(latestData);
-        setLastUpdate(getLatestJsonTimestamp(payload));
-        setIntegrity(payload?.integrity || null);
+    const applyReadModel = useCallback((model) => {
+        setData(model.data);
+        setLastKnownData(model.data);
+        setHealth(model.health);
+        setMoneyFlowHistory(model.moneyFlowHistory);
+        setLastKnownMoneyFlowHistory(model.moneyFlowHistory);
+        setSourceUpdatedAt(model.sourceUpdatedAt);
+        setFetchedAt(model.fetchedAt);
+        setIntegrity(model.integrity);
         setError(null);
+        setReadStatus('current');
+    }, []);
 
-        return latestData;
-    }, [sofaEventId]);
-
-    const fetchData = useCallback(async (isAuto = false) => {
-        if (!sofaEventId) return;
+    const fetchOnce = useCallback(async ({ generation, isAuto = false }) => {
+        if (!sofaEventId || generation !== pollGenerationRef.current) return null;
+        if (activeRequestRef.current?.generation === generation) return activeRequestRef.current.promise;
+        const requestId = ++requestIdRef.current;
+        const controller = new AbortController();
         if (!isAuto) setLoading(true);
 
-        try {
-            await fetchLatestCompact();
-        } catch (err) {
-            if (err?.persistenceIntegrity) {
+        const promise = (async () => {
+            try {
+                const model = await readBetfairCycle({ eventId: sofaEventId, latestUrl, signal: controller.signal });
+                if (generation !== pollGenerationRef.current) return null;
+                applyReadModel(model);
+                return model;
+            } catch (requestError) {
+                if (requestError?.name === 'AbortError' || generation !== pollGenerationRef.current) return null;
                 setData(null);
-                setIntegrity(err?.integrity || null);
-                if (err?.health) {
-                    setHealth(err.health);
+                setHealth(null);
+                setMoneyFlowHistory(null);
+                setSourceUpdatedAt(null);
+                if (requestError?.persistenceIntegrity) {
+                    setIntegrity(requestError.integrity);
+                    setError(null);
+                    setReadStatus('degraded');
+                } else {
+                    setIntegrity(null);
+                    setError('Unable to load Betfair data.');
+                    setReadStatus(requestError?.status === 404 ? 'waiting' : 'error');
                 }
-                setError(null);
-            } else {
-                if (!isAuto) {
-                    console.error('Betfair latest polling error:', err);
-                }
-
-                if (err.status === 404) {
-                    try {
-                        await fetchJsonTimeline();
-                    } catch (fallbackErr) {
-                        if (fallbackErr?.persistenceIntegrity) {
-                            setData(null);
-                            setIntegrity(fallbackErr?.integrity || null);
-                            setError(null);
-                        } else if (!isAuto) {
-                            console.error('Betfair fallback JSON polling error:', fallbackErr);
-                            setError(fallbackErr.message);
-                        }
-                    }
-                } else if (!isAuto) {
-                    setError(err.message);
-                }
+                return null;
+            } finally {
+                if (activeRequestRef.current?.requestId === requestId) activeRequestRef.current = null;
+                if (!isAuto && generation === pollGenerationRef.current) setLoading(false);
             }
-        } finally {
-            if (!isAuto) setLoading(false);
-        }
-    }, [sofaEventId, fetchLatestCompact, fetchJsonTimeline]);
+        })();
 
-    const load = useCallback(() => {
-        setData(null);
-        setHealth(null);
-        setMoneyFlowHistory(null);
-        setError(null);
-        setLastUpdate(null);
-        setIntegrity(null);
-        shouldPoll.current = true;
-        setIsPolling(true);
-        fetchData(false);
-    }, [fetchData]);
+        activeRequestRef.current = { generation, requestId, controller, promise };
+        return promise;
+    }, [applyReadModel, latestUrl, sofaEventId]);
+
+    const scheduleNext = useCallback((generation) => {
+        clearTimer();
+        if (!shouldPollRef.current || generation !== pollGenerationRef.current) return;
+        pollTimeoutRef.current = setTimeout(async () => {
+            await fetchOnce({ generation, isAuto: true });
+            if (shouldPollRef.current && generation === pollGenerationRef.current) scheduleNext(generation);
+        }, pollingInterval);
+    }, [clearTimer, fetchOnce, pollingInterval]);
 
     useEffect(() => {
+        pollGenerationRef.current += 1;
+        const generation = pollGenerationRef.current;
+        clearTimer();
+        abortActiveRequest();
         setData(null);
+        setLastKnownData(null);
         setHealth(null);
         setMoneyFlowHistory(null);
+        setLastKnownMoneyFlowHistory(null);
         setError(null);
-        setLastUpdate(null);
+        setSourceUpdatedAt(null);
+        setFetchedAt(null);
         setIntegrity(null);
-        shouldPoll.current = true;
+
+        if (!url || !sofaEventId) {
+            shouldPollRef.current = false;
+            setIsPolling(false);
+            setLoading(false);
+            setReadStatus('inactive');
+            return undefined;
+        }
+
+        shouldPollRef.current = true;
         setIsPolling(true);
-        fetchData(false);
+        setReadStatus('waiting');
+        void fetchOnce({ generation });
+        scheduleNext(generation);
 
-        const loop = async () => {
-            if (shouldPoll.current) {
-                await fetchData(true);
-            }
-
-            pollTimeout.current = setTimeout(loop, pollingInterval);
-        };
-
-        pollTimeout.current = setTimeout(loop, pollingInterval);
         return () => {
-            if (pollTimeout.current) clearTimeout(pollTimeout.current);
+            shouldPollRef.current = false;
+            pollGenerationRef.current += 1;
+            clearTimer();
+            abortActiveRequest();
         };
-    }, [sofaEventId, url, fetchData, pollingInterval]);
+    }, [abortActiveRequest, clearTimer, fetchOnce, scheduleNext, sofaEventId, url]);
 
-    const stopPolling = () => {
-        shouldPoll.current = false;
+    const stopPolling = useCallback(() => {
+        shouldPollRef.current = false;
+        pollGenerationRef.current += 1;
+        clearTimer();
+        abortActiveRequest();
         setIsPolling(false);
-    };
+    }, [abortActiveRequest, clearTimer]);
 
-    const resumePolling = () => {
+    const resumePolling = useCallback(() => {
+        if (!url || !sofaEventId || shouldPollRef.current) return;
+        pollGenerationRef.current += 1;
+        const generation = pollGenerationRef.current;
+        shouldPollRef.current = true;
         setError(null);
-        shouldPoll.current = true;
         setIsPolling(true);
-        fetchData(true);
-    };
+        void fetchOnce({ generation, isAuto: true });
+        scheduleNext(generation);
+    }, [fetchOnce, scheduleNext, sofaEventId, url]);
 
     return {
         data,
+        lastKnownData,
         health,
         moneyFlowHistory,
+        lastKnownMoneyFlowHistory,
         loading,
         error,
-        lastUpdate,
+        lastUpdate: sourceUpdatedAt,
+        sourceUpdatedAt,
+        fetchedAt,
         isPolling,
         integrity,
-        startPolling: load,
+        readStatus,
+        startPolling: resumePolling,
         stopPolling,
         resumePolling
     };

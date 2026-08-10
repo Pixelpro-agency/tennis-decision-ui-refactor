@@ -137,6 +137,23 @@ import {
 }
 
 {
+    const result = buildLatestMatchEvidenceFromTimelines({
+        eventId: 'canonical-boundary',
+        now: new Date('2026-06-21T12:00:05.000Z'),
+        sofaTimeline: {
+            timeline: [{ timestamp: '2026-06-21T12:00:00.000Z', data: { source: 'legacy' } }]
+        },
+        betfairTimeline: {
+            timeline: [
+                { timestamp: '2026-06-21T12:00:00.000Z', data: { source: 'betfair', seq: NaN, runners: [] } },
+                { timestamp: '2026-06-21T12:00:01.000Z', data: { source: 'betfair', seq: 1, runners: [null] } }
+            ]
+        }
+    });
+    assert(result.missing === true, 'wrong-source and malformed ticks are not found');
+}
+
+{
     const now = new Date('2026-06-21T12:00:05.000Z');
     const result = buildLatestMatchEvidenceFromTimelines({
         eventId: 'synthetic-mismatch',

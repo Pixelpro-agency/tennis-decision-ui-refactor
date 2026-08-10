@@ -1,5 +1,7 @@
 ## 16. Decisioni documentali e materiali di processo
 
+> **Checkpoint storico:** le sezioni 16–17 conservano decisioni e inventari precedenti alla migrazione. I percorsi `.mdx`, `docs/_work`, `docs/planning` e le strutture “future” descritte sotto non sono istruzioni operative correnti. Migrazione Markdown, assorbimento dei materiali unici e cleanup sono conclusi; per lo stato corrente prevalgono `docs/tennis-decision-ui/ai/`, `DEC-027`, il closeout della migrazione e la Todo.
+
 ### 16.1 `context-selection.mdx`
 
 Il documento corrente conserva principi utili:

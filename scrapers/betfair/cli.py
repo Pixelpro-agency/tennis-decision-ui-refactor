@@ -6,6 +6,10 @@ from .cache import get_cached_result, set_cached_result
 from .cdp_url import require_cdp_base_url
 from .config import log_event
 from .parsing import normalize_betfair_url
+from .diagnostic_redaction import redact_value
+
+
+SCRAPE_TIMEOUT_SECONDS = 120
 
 
 def parse_args(argv=None):
@@ -86,6 +90,19 @@ def main():
     ]
 
     network_capture = not args.no_network_capture
+    cache_allowed = (
+        not args.no_cache
+        and not args.login_only
+        and not ladder_urls
+        and not network_capture
+    )
+    cache_identity = {
+        "mode": args.mode,
+        "cdp_url": args.cdp_url if args.mode == "cdp" else "",
+        "profile_dir": args.profile_dir if args.mode == "persistent" else "",
+        "network_capture": False,
+        "ladder_urls": [],
+    }
 
     log_event(
         "betfair_cli",
@@ -96,8 +113,8 @@ def main():
         status="network_capture" if network_capture else "no_network_capture",
     )
 
-    if not args.no_cache and not args.login_only:
-        cached = get_cached_result(url)
+    if cache_allowed:
+        cached = get_cached_result(url, cache_identity)
 
         if cached:
             log_event("betfair_cli", "cache_hit", status="cached")
@@ -115,19 +132,29 @@ def main():
         )
         return
 
-    results = asyncio.run(
-        scrape_betfair(
+    try:
+        results = asyncio.run(asyncio.wait_for(
+            scrape_betfair(
             url,
             mode=args.mode,
             profile_dir=args.profile_dir or None,
             cdp_url=args.cdp_url or None,
             ladder_urls=ladder_urls,
             network_capture=network_capture,
-        )
-    )
+            ),
+            timeout=SCRAPE_TIMEOUT_SECONDS,
+        ))
+    except TimeoutError:
+        results = {
+            "runners": [],
+            "market_info": {},
+            "error": "scraper_timeout",
+        }
 
-    if not args.no_cache:
-        set_cached_result(url, results)
+    results = redact_value(results)
+
+    if cache_allowed:
+        set_cached_result(url, results, cache_identity)
 
     print(json.dumps(results))
 

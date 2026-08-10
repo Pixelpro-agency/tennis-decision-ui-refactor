@@ -15,10 +15,14 @@ function pointsTotal(homeValue, awayValue) {
     };
 }
 
+function normalizeWithCurrent(sets, set, game) {
+    return normalizePointByPoint({ sets, currentGame: { set, game } });
+}
+
 function createSnapshot(
     homeValue,
     awayValue,
-    pointByPoint = normalizePointByPoint(verifiedPointByPointFixture)
+    pointByPoint = normalizeWithCurrent(verifiedPointByPointFixture, 2, 10)
 ) {
     return {
         stats: {
@@ -32,7 +36,7 @@ function createSnapshot(
     const snapshot = createSnapshot(
         38,
         52,
-        normalizePointByPoint(verifiedHomeLeadingPointByPointFixture)
+        normalizeWithCurrent(verifiedHomeLeadingPointByPointFixture, 3, 9)
     );
     const before = structuredClone(snapshot);
     const context = buildLocalContext(snapshot);
@@ -83,7 +87,10 @@ function createSnapshot(
     });
 
     assert.deepEqual(context.dataQuality, {
-        level: 'complete',
+        level: 'derivation_complete',
+        freshness: 'unknown',
+        provenance: 'normalized_provider_payload',
+        temporalAlignment: 'unknown',
         sources: {
             statistics: true,
             pointByPoint: true
@@ -131,7 +138,10 @@ function createSnapshot(
     });
 
     assert.deepEqual(context.dataQuality, {
-        level: 'partial',
+        level: 'derivation_partial',
+        freshness: 'unknown',
+        provenance: 'normalized_provider_payload',
+        temporalAlignment: 'unknown',
         sources: {
             statistics: true,
             pointByPoint: false
@@ -145,7 +155,7 @@ function createSnapshot(
         stats: {
             match: [pointsTotal(0, 0)]
         },
-        pointByPoint: normalizePointByPoint(verifiedPointByPointFixture)
+        pointByPoint: normalizeWithCurrent(verifiedPointByPointFixture, 2, 10)
     });
 
     assert.equal(context.available, false);
@@ -154,6 +164,35 @@ function createSnapshot(
     assert.equal(context.match.pointShare.awayPct, null);
     assert.equal(context.match.pointShare.leadingSide, null);
     assert.equal(context.comparison.available, false);
+}
+
+{
+    const raw = structuredClone(verifiedPointByPointFixture);
+    raw[0].games[1].points = [
+        { homePoint: '40', awayPoint: '40' }
+    ];
+    const context = buildLocalContext(createSnapshot(
+        38,
+        52,
+        normalizeWithCurrent(raw, 2, 10)
+    ));
+
+    assert.equal(context.recent.available, false);
+    assert.equal(
+        context.recent.reason,
+        'unsupported_or_ambiguous_score_transition'
+    );
+}
+
+{
+    const fractional = buildLocalContext(createSnapshot(3.5, 4));
+    assert.equal(fractional.match.pointShare.available, false);
+
+    const duplicate = buildLocalContext({
+        stats: { match: [pointsTotal(3, 4), pointsTotal(3, 4)] },
+        pointByPoint: normalizeWithCurrent(verifiedPointByPointFixture, 2, 10)
+    });
+    assert.equal(duplicate.match.pointShare.available, false);
 }
 
 console.log('localContext: OK');

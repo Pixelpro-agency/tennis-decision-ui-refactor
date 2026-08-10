@@ -544,10 +544,9 @@ class TestBackendHealthNoProjectMarker(unittest.TestCase):
         call_count = [0]
         def fake_is_free(p):
             # First call: port is free (we start backend). Subsequent calls: occupied.
-            if call_count[0] == 0:
-                call_count[0] += 1
-                return True
-            return False
+            current = call_count[0]
+            call_count[0] += 1
+            return current in {0, 5}
 
         # wait_for_service returns failure — simulates validator rejecting {ok:true, no project}
         with patch.object(services, "_start_node_backend", side_effect=fake_start), \
@@ -1046,7 +1045,10 @@ class TestTaskAFinalFixes(unittest.TestCase):
         self.assertEqual(manifest["services"]["cdp"]["url"], url)
         self.assertEqual(manifest["services"]["cdp"]["status"], "starting")
         launch.assert_called_once_with(alternative)
-        self.assertEqual(probe.call_count, services._MAX_PORT_ATTEMPTS + 1)
+        self.assertEqual(
+            probe.call_count,
+            services._MAX_PORT_ATTEMPTS + services._CDP_READY_RECONCILIATION_ATTEMPTS,
+        )
 
     def test_cdp_without_any_free_port_is_unavailable(self):
         """A2: no reusable CDP and no free candidate is explicitly unavailable."""
@@ -1130,11 +1132,13 @@ class TestTaskAFinalFixes(unittest.TestCase):
         """B3: the backend route returns HTTP 400 and never invokes the tracker."""
         tracking = (_PROJECT_ROOT / "backend/src/routes/match/trackingResponses.js").read_text(encoding="utf-8")
         cdp_url = (_PROJECT_ROOT / "backend/src/utils/cdpUrl.js").read_text(encoding="utf-8")
+        betfair_url = (_PROJECT_ROOT / "backend/src/utils/betfairUrl.js").read_text(encoding="utf-8")
         _run_node_module_test({
             "backend/src/routes/match/trackingResponses.js": tracking,
             "backend/src/utils/cdpUrl.js": cdp_url,
+            "backend/src/utils/betfairUrl.js": betfair_url,
             "backend/src/sofa/extractEventId.js": "export function extractEventId() { return 'default'; }\n",
-            "backend/src/sofa/matchTracker.js": "export function trackMatch() {} export function untrackMatch() {} export function stopAllMatchTrackers() {}\n",
+            "backend/src/sofa/matchTracker.js": "export function trackMatch() {} export function untrackMatch() {} export function stopAllMatchTrackers() {} export function getTrackingSessionId() { return null; }\n",
             "backend/src/sofa/betfairFetch.js": "export function getBetfairScraperRuntimeConflict() { return null; }\n",
             "backend/src/runtime/pythonProcessRegistry.js": "export async function terminatePythonProcesses() { return { ok: true, scope: 'tracking', requested: 0, graceful: 0, forceKilled: 0, alreadyExited: 0, remaining: 0, errors: [] }; }\n",
             "backend/src/runtime/runtimeLogger.js": "export const runtimeLog = { info() {}, error() {}, warn() {}, debug() {} };\n",
@@ -1800,6 +1804,8 @@ class TestCanonicalRuntimeManifest(unittest.TestCase):
                      "instanceId": "backend-reused",
                      "pid": 72001,
                      "startedAt": "2026-01-01T00:00:02Z",
+                     "repositoryIdentity": services._EXPECTED_REPOSITORY_IDENTITY,
+                     "storageIdentity": services._EXPECTED_STORAGE_IDENTITY,
                  },
              )):
             ok, url = services.resolve_backend(manifest)
@@ -4190,7 +4196,7 @@ class TestDeterministicCDPDiscovery(unittest.TestCase):
     def test_cd32_foreign_port_race_continues_to_next_free_candidate(self):
         services = self.services
         manifest = _new_runtime_manifest("cd32")
-        probes = [(False, {})] * 8
+        probes = [(False, {})] * 12
         helper_results = [
             self._helper_result("port_occupied", 9222),
             self._helper_result("launch_requested", 9223),

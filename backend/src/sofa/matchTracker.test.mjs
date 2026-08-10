@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
     getTrackedMatches,
+    getTrackingSessionId,
     persistBootstrapTrackingSamples,
     stopAllMatchTrackers,
     stopAndDrainAllMatchTrackers,
@@ -300,6 +301,8 @@ await runAsyncTest('MT1-stop-ordinario-consente-un-nuovo-start', async () => {
         { updateSofaFn }
     );
     assert.equal(first, '7100001');
+    const firstSessionId = getTrackingSessionId(first);
+    assert.equal(typeof firstSessionId, 'string');
 
     stopAllMatchTrackers();
 
@@ -313,6 +316,7 @@ await runAsyncTest('MT1-stop-ordinario-consente-un-nuovo-start', async () => {
         { updateSofaFn }
     );
     assert.equal(second, '7100002');
+    assert.notEqual(getTrackingSessionId(second), firstSessionId);
     assert.deepEqual(getTrackedMatches(), ['7100002']);
     assert.equal(updateCalls, 2);
 

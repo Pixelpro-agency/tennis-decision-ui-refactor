@@ -89,7 +89,8 @@ import {
             listed.invalid.length === 1 &&
             listed.invalid[0].file === invalidFile &&
             listed.invalid[0].reason === 'invalid_journal' &&
-            integrity.status === 'no_known_partial' &&
+            integrity.status === 'integrity_unavailable' &&
+            integrity.reason === 'invalid_journal' &&
             integrity.commitId === null
     );
 }

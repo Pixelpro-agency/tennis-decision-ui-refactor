@@ -146,7 +146,10 @@ console.log('buildSofaAnalysis local context: OK');
                     ]
                 },
                 [endpoints.pbp]: {
-                    pointByPoint: verifiedHomeLeadingPointByPointFixture
+                    pointByPoint: {
+                        sets: verifiedHomeLeadingPointByPointFixture,
+                        currentGame: { set: 3, game: 9 }
+                    }
                 }
             }
         })
@@ -164,7 +167,10 @@ console.log('buildSofaAnalysis local context: OK');
         true
     );
     assert.deepEqual(integrationResult.localContext.dataQuality, {
-        level: 'complete',
+        level: 'derivation_complete',
+        freshness: 'unknown',
+        provenance: 'normalized_provider_payload',
+        temporalAlignment: 'unknown',
         sources: {
             statistics: true,
             pointByPoint: true

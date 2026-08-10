@@ -7,7 +7,7 @@
 | Data | 4 luglio 2026 |
 | Tipo | Osservazione live manuale |
 | SHA | Non registrato nel documento sorgente |
-| Sorgente migrata | `docs/validations/betfair-live-validation-2026-07-04.md` |
+| Sorgente migrata | `docs/tennis-decision-ui/operations/07-betfair-live-validation.mdx` |
 | Stato | Completata con limiti documentati |
 
 ## Scopo
@@ -93,6 +93,7 @@ Non è stato archiviato un payload `/latest` post-fix e non risultava un test au
 
 Sessione A:
 
+- la route `/api/match/:eventId/json` ha restituito `200`, con TopBar `Sofa: Connected`;
 - due risposte Betfair `404` iniziali, non ripetute dopo la stabilizzazione;
 - successiva fase con risposte `200/304`.
 
@@ -127,6 +128,7 @@ Il caso SofaScore `404` durante Source Identity buffering è stato riferito come
 | Recovery dopo login | `live_observed` |
 | Login già scaduto all'avvio | non eseguito |
 | Graph URL malformate | non eseguito |
+| Mismatch `marketId` | non eseguito |
 | Errore rete/API reale | non eseguito |
 | Mercato finished reale | non eseguito |
 

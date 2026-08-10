@@ -2,6 +2,8 @@
 > Secondo audit — Punto 7: runner, manifest, fixture, sandbox, harness frontend, result ledger e TEST-060…075.
 > [Indice](../03-audit-codice.md) · [Parte 5](05-frontend-session-shell.md) · [Parte 7](07-post-audit-e-migrazione.md)
 
+> **Autorità temporale:** il Punto 7 sotto è uno snapshot sulla baseline indicata. Dopo quel checkpoint, `IMPL-028` ha introdotto e validato runner, manifest, comando canonico, cinque profili offline, process isolation, timeout e result artifact JSON bounded. Restano aperti inventario `IMPL-003`, sandbox/harness/ledger `IMPL-029…031`, profili persistence/benchmark/live, coverage e i TEST-ID indicati come mancanti o parziali.
+
 ## 22. Secondo audit del codice — Punto 7: Test e strutture mancanti
 
 **Baseline:** `275008a5cd6451f24c6895068639ee3055395986`
@@ -519,7 +521,7 @@ Non sono ammessi:
 
 Le factory piccole e locali restano accanto al test quando non rappresentano un contratto condiviso.
 
-### Result artifact machine-readable assente
+### Finding storico — result artifact machine-readable assente al checkpoint
 
 **Classificazione:** `STRUTTURA COMPLETAMENTE ASSENTE`
 **Stato:** `IMPL-031 APPROVATA`

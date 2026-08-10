@@ -3,9 +3,16 @@ import {
     buildProfilePath,
     startMatchTracking,
     stopMatchTracking
-} from '../services/liveSessionApi';
+} from '../services/liveSessionApi.js';
 import { buildMatchTrackingRequest } from '../utils/liveSessionRequests.js';
 import { frontendRuntimeLog } from '../utils/runtimeLog.js';
+
+export function readTrackingSessionAuthority(payload) {
+    const trackingSessionId = typeof payload?.trackingSessionId === 'string'
+        ? payload.trackingSessionId.trim()
+        : '';
+    return trackingSessionId || null;
+}
 
 export function useLiveTrackingActions({
     sofaEventId,
@@ -15,6 +22,9 @@ export function useLiveTrackingActions({
     resetSourceIdentityUi,
     setActiveView,
     setSessionShellVisible,
+    setSessionActive,
+    setTrackingSessionId,
+    setStartTrackingError,
     setTrackingStopped,
     setStopSofaStatus,
     beginDashboardBootstrap,
@@ -26,7 +36,6 @@ export function useLiveTrackingActions({
         graphUrls = '',
         mode = 'persistent',
         cProfile = '',
-        _cProfileName = 'Default',
         cdp = ''
     ) => {
         const fullProfilePath = buildProfilePath(cProfile);
@@ -39,38 +48,59 @@ export function useLiveTrackingActions({
             cdpUrl: cdp
         });
 
-        applySearchSession({
-            sofaUrl: sUrl,
-            betfairUrl: bUrl,
-            betfairGraphUrls: graphUrls,
-            betfairMode: mode,
-            chromeProfileInput: cProfile,
-            fullChromeProfilePath: fullProfilePath,
-            cdpUrl: cdp
-        });
-
         resetSourceIdentityUi();
         setActiveView('overview');
         setSessionShellVisible(true);
+        setSessionActive(false);
+        setTrackingSessionId(null);
+        setStartTrackingError(null);
         setTrackingStopped(false);
         setStopSofaStatus('');
-        beginDashboardBootstrap();
-
         try {
-            await startMatchTracking(trackingRequest);
-        } catch (_error) {
+            const payload = await startMatchTracking(trackingRequest);
+            const nextTrackingSessionId = readTrackingSessionAuthority(payload);
+            if (!nextTrackingSessionId) {
+                throw Object.assign(new Error('tracking_session_missing'), {
+                    code: 'tracking_session_missing'
+                });
+            }
+
+            applySearchSession({
+                sofaUrl: sUrl,
+                betfairUrl: bUrl,
+                betfairGraphUrls: graphUrls,
+                betfairMode: mode,
+                chromeProfileInput: cProfile,
+                fullChromeProfilePath: fullProfilePath,
+                cdpUrl: cdp
+            });
+            setTrackingSessionId(nextTrackingSessionId);
+            setSessionActive(true);
+            beginDashboardBootstrap(nextTrackingSessionId);
+            return { ok: true, trackingSessionId: nextTrackingSessionId };
+        } catch (error) {
             resetDashboardBootstrap();
+            clearConfirmedSession();
+            setSessionActive(false);
+            setTrackingSessionId(null);
             setSessionShellVisible(false);
-            frontendRuntimeLog('error', 'tracking_start_failed', { code: 'tracking_request_failed' });
+            const code = error?.code || 'tracking_request_failed';
+            setStartTrackingError(code);
+            frontendRuntimeLog('error', 'tracking_start_failed', { code });
+            return { ok: false, code, error: 'Unable to start live tracking.' };
         }
     }, [
         applySearchSession,
         beginDashboardBootstrap,
+        clearConfirmedSession,
         resetDashboardBootstrap,
         resetSourceIdentityUi,
         setActiveView,
         setSessionShellVisible,
+        setSessionActive,
+        setStartTrackingError,
         setStopSofaStatus,
+        setTrackingSessionId,
         setTrackingStopped
     ]);
 
@@ -87,6 +117,8 @@ export function useLiveTrackingActions({
 
             stopSofaPolling();
             clearConfirmedSession();
+            setSessionActive(false);
+            setTrackingSessionId(null);
             setSessionShellVisible(false);
             setActiveView('overview');
             setTrackingStopped(true);
@@ -103,7 +135,9 @@ export function useLiveTrackingActions({
         clearConfirmedSession,
         resetDashboardBootstrap,
         setActiveView,
+        setSessionActive,
         setSessionShellVisible,
+        setTrackingSessionId,
         setTrackingStopped,
         sofaEventId,
         stopSofaPolling
@@ -115,18 +149,20 @@ export function useLiveTrackingActions({
         try {
             const data = await stopMatchTracking(sofaEventId || null);
 
-            if (data.ok) {
-                setStopSofaStatus('Live tracking stopped');
-                stopSofaPolling();
-                setTrackingStopped(true);
-            } else {
-                setStopSofaStatus('Stop failed: ' + (data.error || 'unknown'));
-            }
-        } catch (error) {
-            setStopSofaStatus('Stop failed: ' + error.message);
+            setStopSofaStatus('Live tracking stopped');
+            stopSofaPolling();
+            setSessionActive(false);
+            setTrackingSessionId(null);
+            setTrackingStopped(true);
+            return { ok: true, data };
+        } catch (_error) {
+            setStopSofaStatus('Unable to stop live tracking.');
+            return { ok: false, code: 'tracking_stop_failed', error: 'Unable to stop live tracking.' };
         }
     }, [
         setStopSofaStatus,
+        setSessionActive,
+        setTrackingSessionId,
         setTrackingStopped,
         sofaEventId,
         stopSofaPolling

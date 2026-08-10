@@ -10,7 +10,6 @@ export function useAnalysisSessionState() {
     const [betfairGraphUrls, setBetfairGraphUrls] = useState('');
     const [betfairMode, setBetfairMode] = useState('persistent');
     const [chromeProfilePath, setChromeProfilePath] = useState('');
-    const [chromeProfileName, setChromeProfileName] = useState('Default');
     const [cdpUrl, setCdpUrl] = useState(INITIAL_CDP_URL);
 
     const [confirmedUrl, setConfirmedUrl] = useState('');
@@ -18,7 +17,6 @@ export function useAnalysisSessionState() {
     const [confirmedBetfairGraphUrls, setConfirmedBetfairGraphUrls] = useState('');
     const [confirmedBetfairMode, setConfirmedBetfairMode] = useState('persistent');
     const [confirmedChromeProfilePath, setConfirmedChromeProfilePath] = useState('');
-    const [confirmedChromeProfileName, setConfirmedChromeProfileName] = useState('Default');
     const [confirmedCdpUrl, setConfirmedCdpUrl] = useState(INITIAL_CDP_URL);
 
     const applySearchSession = useCallback(({
@@ -74,8 +72,6 @@ export function useAnalysisSessionState() {
         setBetfairMode,
         chromeProfilePath,
         setChromeProfilePath,
-        chromeProfileName,
-        setChromeProfileName,
         cdpUrl,
         setCdpUrl,
         confirmedUrl,
@@ -88,8 +84,6 @@ export function useAnalysisSessionState() {
         setConfirmedBetfairMode,
         confirmedChromeProfilePath,
         setConfirmedChromeProfilePath,
-        confirmedChromeProfileName,
-        setConfirmedChromeProfileName,
         confirmedCdpUrl,
         setConfirmedCdpUrl,
         applySearchSession,

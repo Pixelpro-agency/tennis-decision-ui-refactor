@@ -109,9 +109,10 @@ function createHandler({ history = null, loadHistoryResult } = {}) {
             result.document.history[0].latestBetfairState.runners[0].ladder.length === 1
     );
     check(
-        'preparation-updates-only-in-memory-betfair-state',
-        latestBetfairState.get('event-new')?._repr &&
-            latestBetfairState.get('event-new').runners.length === 2
+        'preparation-returns-state-without-promoting-it',
+        latestBetfairState.has('event-new') === false &&
+            result.committedState?._repr &&
+            result.committedState.runners.length === 2
     );
 }
 
@@ -131,8 +132,8 @@ function createHandler({ history = null, loadHistoryResult } = {}) {
             betfair: {
                 totalMatched: 1000,
                 runners: [
-                    { name: 'Player A', moneyFlow: { back: 12, lay: 4 }, wom: undefined },
-                    { name: 'Player B', moneyFlow: { back: 3, lay: 8 }, wom: undefined }
+                    { name: 'Player A', selectionId: '101', moneyFlow: { back: 12, lay: 4 }, wom: undefined },
+                    { name: 'Player B', selectionId: '102', moneyFlow: { back: 3, lay: 8 }, wom: undefined }
                 ]
             }
         }]

@@ -1,11 +1,11 @@
+import React from 'react';
 import {
     Activity,
     BarChart3
 } from 'lucide-react';
 import {
     buildSharedGrid,
-    getDisplayMatchedVolume,
-    toNumber
+    getDisplayMatchedVolume
 } from '../utils/betfairMoneyFlow.js';
 import BetfairHealthDebugPanel from './betfair/BetfairHealthDebugPanel.jsx';
 import BetfairRunnerDepth from './betfair/BetfairRunnerDepth.jsx';
@@ -45,17 +45,60 @@ function getSharedMaxVal(series) {
     return sharedMaxVal;
 }
 
+export function formatMarketTotalMatched(data) {
+    const directValue = data?.market?.totalMatched;
+    const fallbackValue = data?.market_info?.total_matched;
+    const value = directValue ?? fallbackValue;
+    if (value === null || value === undefined || value === '') return '—';
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue)
+        ? `${numberValue.toLocaleString('it-IT', { maximumFractionDigits: 0 })} EUR`
+        : '—';
+}
+
+export function getBetfairCardStateLabel({
+    readStatus,
+    isPolling,
+    trackingStopped,
+    persistenceStatus,
+    isLastKnown
+} = {}) {
+    if (trackingStopped) return 'Live tracking stopped';
+    if (isLastKnown) return 'Last known Betfair data — not current';
+    if (persistenceStatus === 'degraded' || readStatus === 'degraded') return 'Persistence incomplete';
+    if (readStatus === 'error') return 'Unable to load current Betfair data';
+    if (readStatus === 'waiting') return 'Waiting for Betfair Exchange data';
+    if (isPolling) return 'Polling active';
+    return 'Betfair polling inactive';
+}
+
 export default function BetfairDepthCard({
     data,
     history,
+    lastKnownHistory,
     health,
-    healthTransition
+    healthTransition,
+    persistenceViewState,
+    readStatus,
+    isPolling,
+    trackingStopped,
+    lastKnownData,
+    sourceUpdatedAt
 }) {
-    const healthInfo = health || data?.health || null;
+    const canShowLastKnown = !data && Boolean(lastKnownData) && ['degraded', 'error'].includes(readStatus);
+    const displayData = data || (canShowLastKnown ? lastKnownData : null);
+    const healthInfo = health || displayData?.health || null;
+    const stateLabel = getBetfairCardStateLabel({
+        readStatus,
+        isPolling,
+        trackingStopped,
+        persistenceStatus: persistenceViewState?.status,
+        isLastKnown: canShowLastKnown
+    });
     const latestBetfairAt = healthInfo?.timestamps?.latestBetfairAt || null;
     const latestUsableLadderAt = healthInfo?.timestamps?.latestUsableLadderAt || null;
 
-    if (!data || !data.runners) {
+    if (!displayData || !displayData.runners) {
         const isRed = healthInfo?.status === 'red';
         const defaultMessage = 'Betfair logout detected — graph page requires login';
         const detailMessage = healthInfo?.metrics?.graphLoginRequiredText ||
@@ -79,10 +122,10 @@ export default function BetfairDepthCard({
                     <>
                         <BarChart3 className="w-12 h-12 mb-4 opacity-20" />
                         <p className="text-sm">
-                            {'Waiting for Betfair Exchange data' + '.' + '.' + '.'}
+                            {stateLabel}
                         </p>
                         <p className="text-[10px] uppercase tracking-tighter mt-2 opacity-50">
-                            Polling active (5s)
+                            {isPolling ? 'Polling active' : 'No active polling'}
                         </p>
                     </>
                 )}
@@ -96,12 +139,23 @@ export default function BetfairDepthCard({
         );
     }
 
-    const series = Array.isArray(history?.series) ? history.series : [];
+    const displayedHistory = canShowLastKnown ? lastKnownHistory : history;
+    const series = Array.isArray(displayedHistory?.series) ? displayedHistory.series : [];
     const sharedGrid = buildSharedGrid(series.map(item => item.points));
     const sharedMaxVal = getSharedMaxVal(series);
 
     return (
         <div className="dashboardCard overflow-hidden flex flex-col h-full">
+            {(canShowLastKnown || persistenceViewState?.status === 'degraded' || readStatus === 'error') && (
+                <div className="px-5 py-3 border-b border-amber-500/30 bg-amber-500/10 text-xs text-amber-300" role="status">
+                    {stateLabel}
+                    {canShowLastKnown && sourceUpdatedAt && (
+                        <span className="ml-2 text-[10px] opacity-80">
+                            {formatHealthTimestamp(sourceUpdatedAt)}
+                        </span>
+                    )}
+                </div>
+            )}
             <div className="px-5 py-4 border-b border-[var(--card-border)] flex justify-between items-center bg-blue-500/5">
                 <div className="flex items-center gap-2">
                     <Activity className="w-4 h-4 text-[var(--accent-blue)]" />
@@ -111,11 +165,7 @@ export default function BetfairDepthCard({
                 </div>
 
                 <div className="text-[10px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
-                    Total Matched: {toNumber(data.market?.totalMatched) > 0
-                        ? `${toNumber(data.market.totalMatched).toLocaleString('it-IT', {
-                            maximumFractionDigits: 0
-                        })} EUR`
-                        : (data.market_info?.total_matched || '0 EUR')}
+                    Total Matched: {formatMarketTotalMatched(displayData)}
                 </div>
             </div>
 
@@ -165,7 +215,7 @@ export default function BetfairDepthCard({
             <BetfairHealthDebugPanel health={healthInfo} />
 
             <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-8 flex-1">
-                {data.runners.map((runner, index) => {
+                {displayData.runners.map((runner, index) => {
                     const selectionId = runner?.selectionId == null
                         ? null
                         : String(runner.selectionId);

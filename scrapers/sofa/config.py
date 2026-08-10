@@ -1,6 +1,8 @@
 ﻿import sys
 from pathlib import Path
 
+from scrapers.betfair.diagnostic_redaction import redact_text
+
 
 file_name = "_" * 2 + "file" + "_" * 2
 
@@ -14,5 +16,5 @@ CACHE_TTL_SECONDS = 5
 
 
 def log(message):
-    sys.stderr.write(f"{message}\n")
+    sys.stderr.write(f"{redact_text(str(message))}\n")
     sys.stderr.flush()

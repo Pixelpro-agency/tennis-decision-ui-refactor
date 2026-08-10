@@ -77,6 +77,11 @@ export function createFakeConfirmationDependencies() {
             };
             records.push(copied);
             return { ok: true };
+        },
+        revokeSourceIdentityConfirmation(fingerprint) {
+            const before = records.length;
+            records = records.filter(record => record.fingerprint !== fingerprint);
+            return { ok: true, revoked: records.length !== before };
         }
     };
 }

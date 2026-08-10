@@ -1,38 +1,32 @@
-
 import { parseGraphUrls, safeFetchJson } from '../utils/preflight.js';
 import { normalizeCdpBaseUrl } from '../utils/cdpUrl.js';
 import { frontendRuntimeLog } from '../utils/runtimeLog.js';
 
 export function usePreflightChecks({
-  apiBase,
-  cdpUrl,
-  matchUrl,
-  betfairUrl,
-  betfairGraphUrls,
-  betfairMode,
-  setChecks
+  apiBase, cdpUrl, matchUrl, betfairUrl, betfairGraphUrls, betfairMode, setChecks
 }) {
-    const setCheck = (key, status, message) => {
-        setChecks(prev => ({
-            ...prev,
-            [key]: { status, message }
-        }));
+    const setCheck = (key, status, message) => setChecks(previous => ({
+        ...previous,
+        [key]: { status, message }
+    }));
+
+    const failed = (source, key, message) => {
+        frontendRuntimeLog('warn', 'preflight_failed', { source });
+        setCheck(key, 'error', message);
+        return false;
     };
 
     const testBackend = async () => {
         setCheck('backend', 'checking', '');
         try {
             const { data } = await safeFetchJson(`${apiBase}/api/health`);
-            if (data.ok) {
+            if (data.ok === true && data.service === 'backend' && data.project === 'tennis-decision-ui') {
                 setCheck('backend', 'ok', 'Backend OK');
                 return true;
             }
-            setCheck('backend', 'error', 'Backend ERRORE âEUR” risposta non valida');
-            return false;
-        } catch (e) {
-            frontendRuntimeLog('warn', 'preflight_failed', { source: 'backend' });
-            setCheck('backend', 'error', `Backend ERRORE âEUR” ${e.message}`);
-            return false;
+            return failed('backend', 'backend', 'Backend non riconosciuto.');
+        } catch (_) {
+            return failed('backend', 'backend', 'Backend non raggiungibile.');
         }
     };
 
@@ -45,70 +39,60 @@ export function usePreflightChecks({
         }
         try {
             const { data } = await safeFetchJson(`${apiBase}/api/test/cdp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cdpUrl: targetCdp })
             });
             if (data.ok) {
-                setCheck('cdp', 'ok', `CDP OK âEUR” Chrome debug attivo (${data.browser || targetCdp})`);
+                setCheck('cdp', 'ok', `CDP OK — Chrome debug attivo${data.browser ? ` (${data.browser})` : ''}`);
                 return true;
             }
-            setCheck('cdp', 'error', `CDP ERRORE âEUR” ${data.error || 'Chrome non raggiungibile'} (${data.checkedUrl || targetCdp})`);
-            return false;
-        } catch (e) {
-            frontendRuntimeLog('warn', 'preflight_failed', { source: 'cdp' });
-            setCheck('cdp', 'error', `CDP ERRORE âEUR” ${e.message} su ${targetCdp}`);
-            return false;
+            return failed('cdp', 'cdp', data.code === 'cdp_timeout'
+                ? 'CDP non disponibile: tempo di attesa superato.'
+                : 'CDP non raggiungibile o non valido.');
+        } catch (_) {
+            return failed('cdp', 'cdp', 'CDP non raggiungibile.');
         }
     };
 
     const testSofaUrl = async () => {
         setCheck('sofa', 'checking', '');
         if (!matchUrl) {
-            setCheck('sofa', 'error', 'Sofa ERRORE âEUR” URL mancante');
+            setCheck('sofa', 'error', 'SofaScore: URL mancante.');
             return false;
         }
         try {
             const { data } = await safeFetchJson(`${apiBase}/api/test/sofa-url`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sofaUrl: matchUrl })
             });
             if (data.ok) {
-                setCheck('sofa', 'ok', `Sofa OK âEUR” eventId ${data.eventId}`);
+                setCheck('sofa', 'ok', `SofaScore OK — eventId ${data.eventId}`);
                 return true;
             }
-            setCheck('sofa', 'error', `Sofa ERRORE âEUR” ${data.error || 'eventId non trovato'}`);
-            return false;
-        } catch (e) {
-            frontendRuntimeLog('warn', 'preflight_failed', { source: 'sofa' });
-            setCheck('sofa', 'error', `Sofa ERRORE âEUR” ${e.message}`);
-            return false;
+            return failed('sofa', 'sofa', 'SofaScore: URL non valida o eventId assente.');
+        } catch (_) {
+            return failed('sofa', 'sofa', 'SofaScore: controllo non disponibile.');
         }
     };
 
     const testBetfairUrl = async () => {
         setCheck('betfair', 'checking', '');
         if (!betfairUrl) {
-            setCheck('betfair', 'idle', 'Betfair URL non fornito');
+            setCheck('betfair', 'idle', 'Betfair URL non fornita.');
             return null;
         }
         try {
             const { data } = await safeFetchJson(`${apiBase}/api/test/betfair-url`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ betfairUrl })
             });
             if (data.ok) {
-                setCheck('betfair', 'ok', `Betfair URL OK âEUR” eventId ${data.eventId}`);
+                setCheck('betfair', 'ok', `Betfair URL OK — eventId ${data.eventId}`);
                 return true;
             }
-            setCheck('betfair', 'error', `Betfair URL ERRORE âEUR” ${data.error || 'URL non valido'}`);
-            return false;
-        } catch (e) {
-            frontendRuntimeLog('warn', 'preflight_failed', { source: 'betfair' });
-            setCheck('betfair', 'error', `Betfair URL ERRORE âEUR” ${e.message}`);
-            return false;
+            return failed('betfair', 'betfair', 'Betfair: URL non valida o eventId assente.');
+        } catch (_) {
+            return failed('betfair', 'betfair', 'Betfair: controllo non disponibile.');
         }
     };
 
@@ -116,50 +100,37 @@ export function usePreflightChecks({
         setCheck('graphs', 'checking', '');
         const urls = parseGraphUrls(betfairGraphUrls);
         if (urls.length === 0) {
-            setCheck('graphs', 'idle', 'Graph URLs non forniti');
+            setCheck('graphs', 'idle', 'Graph URL non fornite.');
             return null;
         }
         try {
             const { data } = await safeFetchJson(`${apiBase}/api/test/graph-urls`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ graphUrls: urls })
             });
             if (data.ok) {
-                const marketId = data.graphs && data.graphs[0] ? data.graphs[0].marketId : null;
-                const selectionIds = data.graphs.map(g => g.selectionId).filter(Boolean).join(' / ');
-                setCheck('graphs', 'ok', `Graph URLs OK âEUR” marketId ${marketId}, selections ${selectionIds}`);
+                const marketId = data.graphs?.[0]?.marketId || null;
+                const selectionIds = data.graphs.map(graph => graph.selectionId).filter(Boolean).join(' / ');
+                setCheck('graphs', 'ok', `Graph URL OK — marketId ${marketId}, selections ${selectionIds}`);
                 return true;
             }
-            const firstError = data.graphs && data.graphs.find(g => !g.valid);
-            setCheck('graphs', 'error', `Graph URLs ERRORE âEUR” ${firstError ? firstError.error : (data.error || 'formato non valido')}`);
-            return false;
-        } catch (e) {
-            frontendRuntimeLog('warn', 'preflight_failed', { source: 'graphs' });
-            setCheck('graphs', 'error', `Graph URLs ERRORE âEUR” ${e.message}`);
-            return false;
+            const duplicate = data.graphs?.some(graph => graph.error === 'bad_graph_url_duplicate_selection');
+            return failed('graphs', 'graphs', duplicate
+                ? 'Graph URL: selectionId duplicato.'
+                : 'Graph URL non valida.');
+        } catch (_) {
+            return failed('graphs', 'graphs', 'Graph URL: controllo non disponibile.');
         }
     };
 
     const runAllChecks = async () => {
         await testBackend();
-        if (betfairMode === 'cdp') {
-            await testCdp();
-        } else {
-            setCheck('cdp', 'idle', 'CDP non richiesto in modalitÃ  persistent');
-        }
+        if (betfairMode === 'cdp') await testCdp();
+        else setCheck('cdp', 'idle', 'CDP non richiesto in modalità Persistent.');
         await testSofaUrl();
         await testBetfairUrl();
         await testGraphUrls();
     };
 
-
-  return {
-    testBackend,
-    testCdp,
-    testSofaUrl,
-    testBetfairUrl,
-    testGraphUrls,
-    runAllChecks
-  };
+    return { testBackend, testCdp, testSofaUrl, testBetfairUrl, testGraphUrls, runAllChecks };
 }

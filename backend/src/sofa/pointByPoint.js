@@ -26,14 +26,14 @@ function createUnavailableGame() {
     };
 }
 
-function createUnavailableWindow() {
+function createUnavailableWindow(reason = 'insufficient_verified_completed_games') {
     return {
         available: false,
-        reason: 'insufficient_verified_completed_games',
+        reason,
         kind: 'completed-games',
         requestedGames: 3,
         includedGames: 0,
-        excludedCurrentGame: true,
+        excludedCurrentGame: false,
         games: [],
         homePoints: null,
         awayPoints: null,
@@ -46,6 +46,10 @@ function createUnavailableWindow() {
 
 function isFiniteNumber(value) {
     return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isCanonicalOrdinal(value) {
+    return Number.isInteger(value) && value > 0;
 }
 
 function normalizeToken(value) {
@@ -129,32 +133,51 @@ function roundToOneDecimal(value) {
 }
 
 export function normalizePointByPoint(rawPointByPoint) {
-    if (!Array.isArray(rawPointByPoint) || rawPointByPoint.length === 0) {
+    const rawSets = Array.isArray(rawPointByPoint)
+        ? rawPointByPoint
+        : rawPointByPoint?.sets;
+    const rawCurrentGame = Array.isArray(rawPointByPoint)
+        ? null
+        : rawPointByPoint?.currentGame;
+
+    if (!Array.isArray(rawSets) || rawSets.length === 0) {
         return createUnavailablePointByPoint();
     }
 
     const sets = [];
+    const identities = new Set();
+    let previousSet = 0;
 
-    for (const rawSet of rawPointByPoint) {
+    for (const rawSet of rawSets) {
         if (
             !rawSet ||
-            !isFiniteNumber(rawSet.set) ||
+            !isCanonicalOrdinal(rawSet.set) ||
+            rawSet.set <= previousSet ||
             !Array.isArray(rawSet.games)
         ) {
             return createUnavailablePointByPoint();
         }
+        previousSet = rawSet.set;
 
         const games = [];
+        let previousGame = 0;
 
         for (const rawGame of rawSet.games) {
             if (
                 !rawGame ||
-                !isFiniteNumber(rawGame.game) ||
+                !isCanonicalOrdinal(rawGame.game) ||
+                rawGame.game <= previousGame ||
                 !Array.isArray(rawGame.points) ||
                 rawGame.points.length === 0
             ) {
                 return createUnavailablePointByPoint();
             }
+            previousGame = rawGame.game;
+            const identity = `${rawSet.set}:${rawGame.game}`;
+            if (identities.has(identity)) {
+                return createUnavailablePointByPoint();
+            }
+            identities.add(identity);
 
             const points = [];
 
@@ -185,6 +208,21 @@ export function normalizePointByPoint(rawPointByPoint) {
         });
     }
 
+    let currentGame = null;
+    if (rawCurrentGame !== null && rawCurrentGame !== undefined) {
+        if (
+            !isCanonicalOrdinal(rawCurrentGame?.set) ||
+            !isCanonicalOrdinal(rawCurrentGame?.game) ||
+            !identities.has(`${rawCurrentGame.set}:${rawCurrentGame.game}`)
+        ) {
+            return createUnavailablePointByPoint();
+        }
+        currentGame = {
+            set: rawCurrentGame.set,
+            game: rawCurrentGame.game
+        };
+    }
+
     return {
         available: true,
         reason: null,
@@ -192,7 +230,8 @@ export function normalizePointByPoint(rawPointByPoint) {
             source: 'home-away-point-transitions',
             representation: 'after-point'
         },
-        sets
+        sets,
+        currentGame
     };
 }
 
@@ -264,15 +303,27 @@ export function buildRecentCompletedGamesWindow(pointByPoint) {
             left.set - right.set || left.game - right.game
         ));
 
-    if (games.length < 4) {
+    if (!pointByPoint.currentGame) {
+        return createUnavailableWindow('current_game_identity_unavailable');
+    }
+
+    const currentIndex = games.findIndex(game =>
+        game.set === pointByPoint.currentGame.set &&
+        game.game === pointByPoint.currentGame.game
+    );
+    if (currentIndex < 3) {
         return createUnavailableWindow();
     }
 
-    const candidateGames = games.slice(-4, -1);
+    const candidateGames = games.slice(currentIndex - 3, currentIndex);
     const decodedGames = candidateGames.map(decodeCompletedGame);
 
-    if (decodedGames.some(game => !game.available)) {
-        return createUnavailableWindow();
+    const unavailableGame = decodedGames.find(game => !game.available);
+
+    if (unavailableGame) {
+        return createUnavailableWindow(
+            unavailableGame.reason || 'unsupported_or_ambiguous_score_transition'
+        );
     }
 
     const homePoints = decodedGames.reduce(

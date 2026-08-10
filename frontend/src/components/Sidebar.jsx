@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Layout, Zap, Repeat, Activity } from 'lucide-react';
+import { Home, Activity } from 'lucide-react';
 import SourceIdentityGateIndicator from './SourceIdentityGateIndicator';
 
 const Sidebar = ({
@@ -14,9 +14,6 @@ const Sidebar = ({
     const menuItems = [
         { id: 'overview', label: 'Overview', icon: Home },
         { id: 'market-reactions', label: 'Market Reactions', icon: Activity },
-        { id: 'lay', label: 'Lay the Winner', icon: Layout },
-        { id: 'banca', label: 'Banca Servizio', icon: Repeat },
-        { id: 'superbreak', label: 'Superbreak', icon: Zap }
     ];
 
     return (

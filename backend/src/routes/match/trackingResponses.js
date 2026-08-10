@@ -3,6 +3,7 @@ import {
 } from '../../sofa/extractEventId.js';
 import {
     trackMatch as trackMatchDefault,
+    getTrackingSessionId as getTrackingSessionIdDefault,
     untrackMatch as untrackMatchDefault,
     stopAllMatchTrackers as stopAllMatchTrackersDefault
 } from '../../sofa/matchTracker.js';
@@ -12,6 +13,7 @@ import {
 import { terminatePythonProcesses } from '../../runtime/pythonProcessRegistry.js';
 import { classifyCdpBaseUrl } from '../../utils/cdpUrl.js';
 import { runtimeLog } from '../../runtime/runtimeLogger.js';
+import { classifyBetfairUrl } from '../../utils/betfairUrl.js';
 
 export function buildTrackMatchResponse(payload = {}, dependencies = {}) {
     const extractEventId = typeof dependencies.extractEventId === 'function'
@@ -20,6 +22,9 @@ export function buildTrackMatchResponse(payload = {}, dependencies = {}) {
     const trackMatch = typeof dependencies.trackMatch === 'function'
         ? dependencies.trackMatch
         : trackMatchDefault;
+    const getTrackingSessionId = typeof dependencies.getTrackingSessionId === 'function'
+        ? dependencies.getTrackingSessionId
+        : getTrackingSessionIdDefault;
     const getConflict = typeof dependencies.getBetfairScraperRuntimeConflict === 'function'
         ? dependencies.getBetfairScraperRuntimeConflict
         : getBetfairScraperRuntimeConflictDefault;
@@ -49,6 +54,16 @@ export function buildTrackMatchResponse(payload = {}, dependencies = {}) {
         };
     }
 
+    const classifiedBetfair = classifyBetfairUrl(betfairUrl, { allowEmpty: true });
+    if (!classifiedBetfair.ok) {
+        log('tracking_request_rejected', { reason: classifiedBetfair.code });
+        return {
+            httpStatus: 400,
+            body: { code: classifiedBetfair.code, error: 'Invalid Betfair URL' }
+        };
+    }
+
+    const normalizedBetfairUrl = classifiedBetfair.value;
     const mode = betfairMode === 'cdp' ? 'cdp' : 'persistent';
     let normalizedCdpUrl = '';
     if (mode === 'cdp') {
@@ -69,8 +84,8 @@ export function buildTrackMatchResponse(payload = {}, dependencies = {}) {
     }
 
     const normalizedProfileDir = String(chromeProfilePath || '').trim();
-    if (betfairUrl) {
-        const conflict = getConflict(betfairUrl, {
+    if (normalizedBetfairUrl) {
+        const conflict = getConflict(normalizedBetfairUrl, {
             mode,
             profileDir: normalizedProfileDir,
             cdpUrl: normalizedCdpUrl
@@ -98,18 +113,24 @@ export function buildTrackMatchResponse(payload = {}, dependencies = {}) {
     log('tracking_start', {
         eventId,
         mode,
-        hasBetfairUrl: Boolean(betfairUrl),
+        hasBetfairUrl: Boolean(normalizedBetfairUrl),
         graphUrlCount
     });
-    trackMatch(
+    const trackedEventId = trackMatch(
         sofaUrl,
-        betfairUrl || '',
+        normalizedBetfairUrl,
         betfairGraphUrls || '',
         normalizedProfileDir,
         mode,
         normalizedCdpUrl
     );
-    return { httpStatus: 200, body: { ok: true, eventId } };
+    if (!trackedEventId) {
+        return { httpStatus: 409, body: { ok: false, eventId, code: 'tracking_start_rejected' } };
+    }
+    return {
+        httpStatus: 200,
+        body: { ok: true, eventId, trackingSessionId: getTrackingSessionId(eventId) }
+    };
 }
 
 export function buildUntrackMatchResponse(payload = {}, dependencies = {}) {
@@ -140,9 +161,11 @@ export async function buildStopMatchResponse(
 
     log('tracking_stop', { eventId, scope: 'tracking' });
 
+    let trackerStopped = true;
     try {
         stopAllMatchTrackers();
     } catch (_error) {
+        trackerStopped = false;
         logError('tracker_cleanup_failed', { reason: 'cleanup_failed' });
     }
 
@@ -173,12 +196,16 @@ export async function buildStopMatchResponse(
         ok: pythonCleanup?.ok === true
     });
 
+    const physicalCleanupComplete = pythonCleanup?.ok === true &&
+        (pythonCleanup?.remaining ?? 0) === 0;
+    const ok = trackerStopped && physicalCleanupComplete;
+
     return {
         httpStatus: 200,
         body: {
-            ok: true,
+            ok,
             eventId,
-            stopped: true,
+            stopped: trackerStopped,
             scope: 'all-live-tracking',
             pythonCleanup
         }

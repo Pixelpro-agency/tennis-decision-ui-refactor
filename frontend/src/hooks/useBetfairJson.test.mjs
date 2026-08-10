@@ -5,6 +5,8 @@ import {
     getLatestTimelineEntry,
     normalizeBetfairTimelinePayload,
     isPersistenceIntegrityError,
+    buildBetfairReadModel,
+    readBetfairCycle,
     toValidDate
 } from './useBetfairJson.js';
 
@@ -112,6 +114,40 @@ runTest('isPersistenceIntegrityError rejects ordinary errors', () => {
     assert.equal(isPersistenceIntegrityError(null), false);
     assert.equal(isPersistenceIntegrityError({}), false);
 });
+
+runTest('timeline fallback creates an atomic model without stale health/history', () => {
+    const model = buildBetfairReadModel({
+        timeline: [{ timestamp: '2026-07-01T10:00:00.000Z', data: { price: 2.1 } }],
+        integrity: { status: 'complete' }
+    }, 'timeline');
+    assert.deepEqual(model.data, { price: 2.1 });
+    assert.equal(model.health, null);
+    assert.equal(model.moneyFlowHistory, null);
+    assert.equal(model.source, 'timeline');
+});
+
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async (requestUrl) => {
+    if (String(requestUrl).includes('/latest')) {
+        return { status: 404, ok: false, json: async () => ({ ok: false }) };
+    }
+    return {
+        status: 200,
+        ok: true,
+        json: async () => ({
+            timeline: [{ timestamp: '2026-07-01T10:03:00.000Z', data: { price: 1.9 } }]
+        })
+    };
+};
+
+const fallbackModel = await readBetfairCycle({
+    eventId: '123',
+    latestUrl: '/api/betfair/123/latest'
+});
+assert.deepEqual(fallbackModel.data, { price: 1.9 });
+assert.equal(fallbackModel.health, null);
+assert.equal(fallbackModel.moneyFlowHistory, null);
+globalThis.fetch = originalFetch;
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===\n`);
 

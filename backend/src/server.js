@@ -1,10 +1,10 @@
 import express from 'express';
 import cors from 'cors';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import matchRouter from './routes/match.js';
-import strategyRouter from './routes/strategy.js';
 import betfairRouter from './routes/betfair.js';
 import testRouter from './routes/test.js';
 import evidenceRouter from './routes/evidence.js';
@@ -18,13 +18,23 @@ import {
     terminatePythonProcesses
 } from './runtime/pythonProcessRegistry.js';
 import { runtimeLog, runtimeErrorCode } from './runtime/runtimeLogger.js';
+import { localHttpBoundary } from './runtime/localHttpBoundary.js';
+import { buildHealthResponse } from './routes/healthResponse.js';
 import {
     createMatchHistoryWriterAuthority
 } from './runtime/matchHistoryWriterAuthority.js';
 
 const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const INSTANCE_ID = randomUUID();
 const STARTED_AT = new Date().toISOString();
+function pathIdentity(target) {
+    const canonical = fs.realpathSync(path.resolve(target));
+    const normalized = process.platform === 'win32' ? path.normalize(canonical).toLowerCase() : path.normalize(canonical);
+    return `sha256:${createHash('sha256').update(normalized).digest('hex')}`;
+}
+const REPOSITORY_IDENTITY = pathIdentity(path.resolve(__dirname, '../..'));
+const STORAGE_IDENTITY = pathIdentity(path.resolve(__dirname, '../match_history'));
 const BOUNDED_TOKEN_PATTERN = /^[a-z0-9_:-]{1,80}$/i;
 
 function boundedToken(value, fallback) {
@@ -194,25 +204,25 @@ export function createApp(options = {}) {
     const getSnapshot = options.getPythonProcessSnapshot ||
         getPythonProcessSnapshot;
 
-    app.use(cors());
+    app.use(localHttpBoundary);
+    app.use(cors({ origin: true }));
     app.use(express.json());
     app.use('/api/match', matchRouter);
-    app.use('/api/strategy', strategyRouter);
     app.use('/api/betfair', betfairRouter);
     app.use('/api/test', testRouter);
     app.use('/api/evidence', evidenceRouter);
 
     app.get('/api/health', (_req, res) => {
-        res.json({
-            ok: true,
-            service: 'backend',
-            project: 'tennis-decision-ui',
+        res.setHeader('Cache-Control', 'no-store');
+        res.json(buildHealthResponse({
             instanceId: INSTANCE_ID,
             pid: process.pid,
             startedAt: STARTED_AT,
             timestamp: new Date().toISOString(),
-            pythonProcesses: getSnapshot()
-        });
+            pythonSnapshot: getSnapshot(),
+            repositoryIdentity: REPOSITORY_IDENTITY,
+            storageIdentity: STORAGE_IDENTITY
+        }));
     });
     app.get('/', (_req, res) => {
         res.send('Tennis Decision UI Backend is running');
@@ -388,7 +398,9 @@ export async function startServer(options = {}) {
         createMatchHistoryWriterAuthority;
     const runRecoveryFn = options.runRecoveryFn ||
         runPendingCommitRecovery;
-    const listenFn = options.listenFn || app.listen.bind(app);
+    const bindHost = options.bindHost || '127.0.0.1';
+    const listenFn = options.listenFn || ((listenPort, callback) =>
+        app.listen(listenPort, bindHost, callback));
     const registerShutdownFn = options.registerShutdownFn ||
         defaultRegisterShutdown;
     const log = options.log ||
@@ -462,9 +474,17 @@ export async function startServer(options = {}) {
             'recovery_fatal'
         );
     }
-    log('recovery_complete', { ok: true });
+    log('recovery_complete', {
+        ok: recoverySummary?.ok === true,
+        scanned: Number.isInteger(recoverySummary?.scanned) ? recoverySummary.scanned : 0,
+        recovered: Number.isInteger(recoverySummary?.recovered) ? recoverySummary.recovered : 0,
+        cleaned: Number.isInteger(recoverySummary?.cleaned) ? recoverySummary.cleaned : 0,
+        retryablePending: Number.isInteger(recoverySummary?.retryablePending) ? recoverySummary.retryablePending : 0,
+        recoveryFailed: Number.isInteger(recoverySummary?.recoveryFailed) ? recoverySummary.recoveryFailed : 0,
+        invalidJournal: Number.isInteger(recoverySummary?.invalidJournal) ? recoverySummary.invalidJournal : 0
+    });
 
-    log('backend_starting', { port });
+    log('backend_starting', { port, bindHost });
     let server;
     try {
         const listener = waitForListenerReady(listenFn, port);

@@ -168,6 +168,15 @@ function buildWindow({ anchorD, windowSec, betfairTicks, now }) {
         if (runnerPriceChanges.length === 0) reasons.push('No comparable runner prices found for this window');
     }
 
+    const latestData = latestTick?.data || null;
+    const latestRunners = Array.isArray(latestData?.runners) ? latestData.runners : [];
+    const technicalReliable = latestData?.graphHealth?.status === 'ok' &&
+        latestRunners.some(runner => hasReliableLadder(runner) && isTradableBook(runner));
+    const reliabilityReasons = [];
+    if (marketResponseObserved && dataQuality !== 'good') reliabilityReasons.push('Observation coverage is not good');
+    if (marketResponseObserved && !technicalReliable) reliabilityReasons.push('Betfair technical quality is not reliable');
+    const marketResponseReliable = marketResponseObserved && dataQuality === 'good' && technicalReliable;
+
     return {
         windowSec,
         windowStart,
@@ -182,6 +191,8 @@ function buildWindow({ anchorD, windowSec, betfairTicks, now }) {
         priceChangeObserved,
         matchedVolumeIncreaseObserved,
         marketResponseObserved,
+        marketResponseReliable,
+        reliabilityReasons,
         dataQuality,
         reasons,
         interpretation: 'temporal_proximity_only',
@@ -221,6 +232,7 @@ export function buildFieldLedReactionEvidence({
         summary: {
             sourceFieldEventAvailable: false,
             marketResponseObserved: false,
+            marketResponseReliable: false,
             firstObservedResponseWindowSec: null,
             dataQuality: 'unknown',
             causalityClaimed: false,
@@ -286,6 +298,7 @@ export function buildFieldLedReactionEvidence({
     );
 
     const marketResponseObserved = observationWindows.some(w => w.marketResponseObserved);
+    const marketResponseReliable = observationWindows.some(w => w.marketResponseReliable);
     const firstResponseWindow = observationWindows.find(w => w.marketResponseObserved);
     const firstObservedResponseWindowSec = firstResponseWindow?.windowSec ?? null;
     const dq = bestQuality(observationWindows);
@@ -305,6 +318,7 @@ export function buildFieldLedReactionEvidence({
         summary: {
             sourceFieldEventAvailable: true,
             marketResponseObserved,
+            marketResponseReliable,
             firstObservedResponseWindowSec,
             dataQuality: dq,
             causalityClaimed: false,
@@ -314,3 +328,4 @@ export function buildFieldLedReactionEvidence({
         causalityClaimed: false
     };
 }
+import { hasReliableLadder, isTradableBook } from './matchEvidence/qualityPredicates.js';

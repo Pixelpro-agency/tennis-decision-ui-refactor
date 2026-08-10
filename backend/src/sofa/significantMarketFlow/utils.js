@@ -8,7 +8,9 @@ export function ageSec(ts, now) {
     const d = parseTs(ts);
     if (!d || !now) return null;
     const n = now instanceof Date ? now : new Date(now);
-    return Math.max(0, (n.getTime() - d.getTime()) / 1000);
+    const age = (n.getTime() - d.getTime()) / 1000;
+    if (age < -5) return null;
+    return Math.max(0, age);
 }
 
 export function roundN(v, n) {

@@ -248,9 +248,9 @@ import {
     const expected = path.join(historyDir, 'a_event-9.json');
 
     assert(
-        'T12-discovery-is-stable-across-readdir-order',
-        storage.getHistoryFile('event-9') === expected &&
-            storage.getHistoryFile('event-9') === expected
+        'T12-ambiguous-discovery-fails-closed',
+        storage.getHistoryFile('event-9') === null &&
+            storage.loadHistoryResult('event-9').reason === 'ambiguous_storage_target'
     );
 }
 
@@ -399,7 +399,7 @@ import {
     const fake = createFakeFs({ initialDirs: [historyDir] });
     const expected = path.join(historyDir, '2026-01-01_Open_Home_vs_Away_event-discovery.json');
 
-    fake.seed(expected, '{"history":[]}');
+    fake.seed(expected, '{"metadata":{},"history":[]}');
     fake.seed(path.join(historyDir, 'sofa_2026-01-01_Open_Home_vs_Away_event-discovery.json'), '{"timeline":[]}');
     fake.seed(path.join(historyDir, 'betfair_2026-01-01_Open_Home_vs_Away_event-discovery.json'), '{"timeline":[]}');
     fake.seed(path.join(historyDir, '.2026-01-01_Open_Home_vs_Away_event-discovery.json.91.123.tmp'), '{"history":[]}');

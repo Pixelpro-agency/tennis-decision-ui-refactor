@@ -17,6 +17,7 @@ from .graph_url import (
 from .ladder import extract_ladder_from_url
 from .market_api import fetch_market_data_api
 from .network_capture import (
+    drain_network_capture,
     ensure_network_dump_dir,
     install_network_capture,
     summarize_network_capture,
@@ -201,6 +202,7 @@ async def scrape_betfair(
                         continue
 
                     selection_id = mapping_result["selection_id"]
+                    navigation_url = mapping_result["canonical_url"]
                     runner = mapping_result["runner"]
                     seen_selection_ids.add(selection_id)
                     ladder_page = None
@@ -217,7 +219,7 @@ async def scrape_betfair(
 
                         ladder_result = await extract_ladder_from_url(
                             ladder_page,
-                            ladder_url,
+                            navigation_url,
                         )
 
                         if (
@@ -234,7 +236,7 @@ async def scrape_betfair(
                             add_graph_failure(
                                 graph_diagnostics,
                                 ladder_url,
-                                "auth_suspected",
+                                "auth_required",
                                 ladder_result["login_required"].get(
                                     "graphLoginRequiredText",
                                     "",
@@ -330,6 +332,7 @@ async def scrape_betfair(
             else:
                 log("[Browser] Leaving CDP context open")
 
+    await drain_network_capture(collector)
     results["network_capture"] = summarize_network_capture(collector)
     results["graph_diagnostics"] = graph_diagnostics
 

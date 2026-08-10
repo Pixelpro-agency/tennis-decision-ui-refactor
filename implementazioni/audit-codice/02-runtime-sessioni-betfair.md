@@ -1052,3 +1052,8 @@ IMPL-015 — writer authority
 ```
 
 ---
+## Autorità temporale e overlay corrente
+
+Punto 2 e Punto 3 sono snapshot di audit sulle baseline dichiarate nelle rispettive sezioni. `COMPLETATO E APPROVATO` significa audit eseguito e approvato, non implementazione automatica di ogni finding. L'ordine tecnico riportato è quello del checkpoint.
+
+Gli owner correnti che prevalgono per lo stato operativo sono le famiglie `SOFA-LIVE-*`, `LIVE-CTRL-*`, `GRAPH-URL-*`, `BETFAIR-SCRAPER-*`, `BETFAIR-DIAG-*` e `RETENTION-*`. Per `FRONTEND-003` e `FRONTEND-007`, la priorità al checkpoint resta parte dello storico; la priorità corrente nella Todo è `critical`.

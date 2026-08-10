@@ -22,19 +22,19 @@ runTest('returns missing-input error for undefined input', () => {
 runTest('parses comma and newline separated URLs from one string', () => {
     assert.deepEqual(
         validateGraphUrls(
-            'https://graphs.betfair.com/1.23456789/101,\nhttps://graphs.betfair.com/1.23456789/202'
+            'https://graphs.betfair.it/1.23456789/101/0,\nhttps://graphs.betfair.it/1.23456789/202/0'
         ),
         {
             ok: true,
             graphs: [
                 {
-                    url: 'https://graphs.betfair.com/1.23456789/101',
+                    url: 'https://graphs.betfair.it/1.23456789/101/0',
                     marketId: '1.23456789',
                     selectionId: '101',
                     valid: true
                 },
                 {
-                    url: 'https://graphs.betfair.com/1.23456789/202',
+                    url: 'https://graphs.betfair.it/1.23456789/202/0',
                     marketId: '1.23456789',
                     selectionId: '202',
                     valid: true
@@ -51,20 +51,20 @@ runTest('parses comma and newline separated URLs from one string', () => {
 runTest('marks valid graphs from different markets as valid and different', () => {
     assert.deepEqual(
         validateGraphUrls([
-            'https://graphs.betfair.com/1.23456789/101',
-            'https://graphs.betfair.com/1.98765432/202'
+            'https://graphs.betfair.it/1.23456789/101/0',
+            'https://graphs.betfair.it/1.98765432/202/0'
         ]),
         {
             ok: true,
             graphs: [
                 {
-                    url: 'https://graphs.betfair.com/1.23456789/101',
+                    url: 'https://graphs.betfair.it/1.23456789/101/0',
                     marketId: '1.23456789',
                     selectionId: '101',
                     valid: true
                 },
                 {
-                    url: 'https://graphs.betfair.com/1.98765432/202',
+                    url: 'https://graphs.betfair.it/1.98765432/202/0',
                     marketId: '1.98765432',
                     selectionId: '202',
                     valid: true
@@ -81,7 +81,7 @@ runTest('marks valid graphs from different markets as valid and different', () =
 runTest('reports mixed valid and invalid URLs without changing details', () => {
     assert.deepEqual(
         validateGraphUrls([
-            'https://graphs.betfair.com/1.23456789/101',
+            'https://graphs.betfair.it/1.23456789/101/0',
             'https://example.com/1.23456789/202',
             'not a url'
         ]),
@@ -89,7 +89,7 @@ runTest('reports mixed valid and invalid URLs without changing details', () => {
             ok: false,
             graphs: [
                 {
-                    url: 'https://graphs.betfair.com/1.23456789/101',
+                    url: 'https://graphs.betfair.it/1.23456789/101/0',
                     marketId: '1.23456789',
                     selectionId: '101',
                     valid: true
@@ -99,14 +99,14 @@ runTest('reports mixed valid and invalid URLs without changing details', () => {
                     marketId: null,
                     selectionId: null,
                     valid: false,
-                    error: 'Not a graphs.betfair.* domain'
+                    error: 'bad_graph_url_invalid'
                 },
                 {
                     url: 'not a url',
                     marketId: null,
                     selectionId: null,
                     valid: false,
-                    error: 'Invalid URL'
+                    error: 'bad_graph_url_invalid'
                 }
             ],
             sameMarket: true,
@@ -119,16 +119,16 @@ runTest('reports mixed valid and invalid URLs without changing details', () => {
 
 runTest('reports invalid market and selection formats', () => {
     assert.deepEqual(
-        validateGraphUrls('https://graphs.betfair.com/market/selection'),
+        validateGraphUrls('https://graphs.betfair.it/market/selection/0'),
         {
             ok: false,
             graphs: [
                 {
-                    url: 'https://graphs.betfair.com/market/selection',
+                    url: 'https://graphs.betfair.it/market/selection/0',
                     marketId: null,
                     selectionId: null,
                     valid: false,
-                    error: 'marketId or selectionId format invalid'
+                    error: 'bad_graph_url_invalid'
                 }
             ],
             sameMarket: false,
@@ -141,16 +141,16 @@ runTest('reports invalid market and selection formats', () => {
 
 runTest('reports short graph paths', () => {
     assert.deepEqual(
-        validateGraphUrls('https://graphs.betfair.com/1.23456789'),
+        validateGraphUrls('https://graphs.betfair.it/1.23456789'),
         {
             ok: false,
             graphs: [
                 {
-                    url: 'https://graphs.betfair.com/1.23456789',
+                    url: 'https://graphs.betfair.it/1.23456789',
                     marketId: null,
                     selectionId: null,
                     valid: false,
-                    error: 'Path too short'
+                    error: 'bad_graph_url_invalid'
                 }
             ],
             sameMarket: false,
@@ -159,6 +159,27 @@ runTest('reports short graph paths', () => {
             invalidCount: 1
         }
     );
+});
+
+runTest('rejects duplicate selection IDs', () => {
+    const result = validateGraphUrls([
+        'https://graphs.betfair.it/1.23456789/101/0',
+        'https://graphs.betfair.it/1.23456789/101/0'
+    ]);
+    assert.equal(result.ok, false);
+    assert.equal(result.invalidCount, 1);
+    assert.equal(result.graphs[1].error, 'bad_graph_url_duplicate_selection');
+});
+
+runTest('rejects non-canonical protocol, host, port and path', () => {
+    for (const value of [
+        'http://graphs.betfair.it/1.2/3/0',
+        'https://graphs.betfair.com/1.2/3/0',
+        'https://graphs.betfair.it:443/1.2/3/0',
+        'https://graphs.betfair.it/1.2/3'
+    ]) {
+        assert.equal(validateGraphUrls(value).ok, false, value);
+    }
 });
 
 if (process.exitCode) {

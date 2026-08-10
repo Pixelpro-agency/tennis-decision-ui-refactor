@@ -203,6 +203,27 @@ test('regressive sample is rejected and leaves marketState unchanged', () => {
     assert.equal(regressiveRaw.technicalFailure, undefined);
 });
 
+test('missing runner volume remains unavailable and suppresses money flow', () => {
+    const marketState = new Map();
+    processBetfairRunnerState({
+        key: 'volume-unavailable',
+        raw: buildRaw({ marketTotal: 1000, matchedTotal: 100 }),
+        marketState
+    });
+
+    const raw = buildRaw({ marketTotal: 1100, matchedTotal: 120 });
+    delete raw.runners[0].matchedTotal;
+    delete raw.runners[0].totalMatchedOnSelection;
+    delete raw.runners[0].state.totalMatched;
+    processBetfairRunnerState({ key: 'volume-unavailable', raw, marketState });
+
+    assert.equal(raw.runners[0].matchedTotal, null);
+    assert.equal(raw.runners[0].totalMatchedOnSelection, null);
+    assert.equal(raw.runners[0].moneyFlow.confidence, 'suppressed');
+    assert.equal(raw.runners[0].moneyFlow.reason, 'runner_matched_unavailable');
+    assert.equal(marketState.get('volume-unavailable').runners[0].matchedTotal, null);
+});
+
 console.log(`Results: ${passed} passed, ${failed} failed`);
 
 if (failed > 0) {

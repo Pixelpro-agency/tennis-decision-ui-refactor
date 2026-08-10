@@ -16,7 +16,7 @@ export function useSourceIdentityGateStatus(
   const [error, setError] = useState(null);
   const [isPolling, setIsPolling] = useState(false);
 
-  const sessionIdRef = useRef(0);
+  const pollGenerationRef = useRef(0);
   const pollTimeoutRef = useRef(null);
   const activeFetchRef = useRef(null);
   const requestIdRef = useRef(0);
@@ -32,16 +32,16 @@ export function useSourceIdentityGateStatus(
 
   const fetchOnce = useCallback(async ({
     currentEventId,
-    currentSessionId,
+    currentGeneration,
     showLoading = false
   }) => {
-    if (!currentEventId || sessionIdRef.current !== currentSessionId) {
+    if (!currentEventId || pollGenerationRef.current !== currentGeneration) {
       return null;
     }
 
     if (
       activeFetchRef.current &&
-      activeFetchRef.current.sessionId === currentSessionId
+      activeFetchRef.current.generation === currentGeneration
     ) {
       return activeFetchRef.current.promise;
     }
@@ -50,7 +50,7 @@ export function useSourceIdentityGateStatus(
     const requestId = requestIdRef.current;
     const controller = new AbortController();
 
-    if (showLoading && sessionIdRef.current === currentSessionId) {
+    if (showLoading && pollGenerationRef.current === currentGeneration) {
       setLoading(true);
     }
 
@@ -60,7 +60,7 @@ export function useSourceIdentityGateStatus(
           signal: controller.signal
         });
 
-        if (sessionIdRef.current !== currentSessionId) {
+        if (pollGenerationRef.current !== currentGeneration) {
           return null;
         }
 
@@ -88,7 +88,7 @@ export function useSourceIdentityGateStatus(
           return null;
         }
 
-        if (sessionIdRef.current !== currentSessionId) {
+        if (pollGenerationRef.current !== currentGeneration) {
           return null;
         }
 
@@ -102,7 +102,7 @@ export function useSourceIdentityGateStatus(
         ) {
           activeFetchRef.current = null;
 
-          if (showLoading && sessionIdRef.current === currentSessionId) {
+          if (showLoading && pollGenerationRef.current === currentGeneration) {
             setLoading(false);
           }
         }
@@ -110,7 +110,7 @@ export function useSourceIdentityGateStatus(
     })();
 
     activeFetchRef.current = {
-      sessionId: currentSessionId,
+      generation: currentGeneration,
       requestId,
       controller,
       promise
@@ -120,8 +120,8 @@ export function useSourceIdentityGateStatus(
   }, []);
 
   useEffect(() => {
-    sessionIdRef.current += 1;
-    const currentSessionId = sessionIdRef.current;
+    pollGenerationRef.current += 1;
+    const currentGeneration = pollGenerationRef.current;
     let disposed = false;
 
     clearPollTimeout();
@@ -144,14 +144,14 @@ export function useSourceIdentityGateStatus(
     setIsPolling(true);
 
     const scheduleNextPoll = () => {
-      if (disposed || sessionIdRef.current !== currentSessionId) {
+      if (disposed || pollGenerationRef.current !== currentGeneration) {
         return;
       }
 
       pollTimeoutRef.current = setTimeout(async () => {
         await fetchOnce({
           currentEventId: normalizedEventId,
-          currentSessionId
+          currentGeneration
         });
 
         scheduleNextPoll();
@@ -161,7 +161,7 @@ export function useSourceIdentityGateStatus(
     void (async () => {
       await fetchOnce({
         currentEventId: normalizedEventId,
-        currentSessionId,
+        currentGeneration,
         showLoading: true
       });
 
@@ -170,12 +170,12 @@ export function useSourceIdentityGateStatus(
 
     return () => {
       disposed = true;
-      sessionIdRef.current += 1;
+      pollGenerationRef.current += 1;
       clearPollTimeout();
 
       if (
         activeFetchRef.current &&
-        activeFetchRef.current.sessionId === currentSessionId
+        activeFetchRef.current.generation === currentGeneration
       ) {
         activeFetchRef.current.controller.abort();
         activeFetchRef.current = null;
@@ -198,7 +198,7 @@ export function useSourceIdentityGateStatus(
 
     return fetchOnce({
       currentEventId: normalizedEventId,
-      currentSessionId: sessionIdRef.current,
+      currentGeneration: pollGenerationRef.current,
       showLoading: true
     });
   }, [enabled, fetchOnce, normalizedEventId]);

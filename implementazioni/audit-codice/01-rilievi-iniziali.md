@@ -830,7 +830,7 @@ Stringhe presenti:
 
 ```txt
 âEUR”
-ModalitÃ
+sequenza mojibake al posto di “Modalità”
 ```
 
 `PreflightChecks.jsx` stampa direttamente `checks[key].message`.
@@ -1617,3 +1617,17 @@ collaudo manuale con due backend reali concorrenti
 RUNTIME-002 e gli altri finding della session authority restano invariati.
 
 ---
+## Autorità temporale e overlay corrente
+
+Le sezioni B3–B6 sono snapshot storici; il secondo audit del Punto 1 è un checkpoint successivo e l'update `IMPL-015` è ancora successivo. `COMPLETATO E APPROVATO` qualifica l'attività di audit, non chiude automaticamente i finding. Lo stato operativo prevalente vive nella Todo e nelle schede owner.
+
+Supersession da preservare nella lettura:
+
+```txt
+CODE-001 → decisione DEC-008
+CODE-003 → decisione DEC-009
+EVIDENCE-001 → decisione DEC-010
+CLEANUP-001 → decisione DEC-011
+CODE-004 → assorbito dagli owner successivi
+IMPL-015 → implementata e verificata dopo il checkpoint originario
+```

@@ -95,6 +95,16 @@ export function persistBetfairProcessedResult(sofaEventId, processedResult, key,
             dependencies
         });
 
+        if (decision.action === 'failed') {
+            clearProcessedHistory(processedResult);
+            return createPersistenceFailureResult({
+                eventId: sofaEventId,
+                status: 'failed',
+                reason: decision.reason,
+                failedDocument: 'timeline'
+            });
+        }
+
         if (decision.action === 'unchanged') {
             clearProcessedHistory(processedResult);
             return createUnchangedCommitResult(sofaEventId, decision.reason);
@@ -132,6 +142,10 @@ export function persistBetfairProcessedResult(sofaEventId, processedResult, key,
         if (commitResult.ok !== true) {
             clearProcessedHistory(processedResult);
             return commitResult;
+        }
+
+        if (typeof dependencies.commitBetfairState === 'function') {
+            dependencies.commitBetfairState(sofaEventId, documents.committedState);
         }
 
         processedResult.history = Array.isArray(documents.historyDocument.history)

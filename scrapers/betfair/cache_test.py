@@ -31,6 +31,7 @@ class CacheRedactionTest(unittest.TestCase):
                 "url": f"https://example.test/?appKey={SECRET}&event=1",
             },
             "runners": [{"name": "Runner One", "price": 2.5}],
+            "market_info": {"market_id": "1.1"},
         }
 
         cache.set_cached_result(url, payload)
@@ -77,6 +78,30 @@ class CacheRedactionTest(unittest.TestCase):
         self.assertEqual(cached["diagnostics"]["marketId"], "1.234567")
         self.assertEqual(cached["runners"][0]["name"], "Legacy Runner")
         self.assertEqual(cached["runners"][0]["volume"], 125.0)
+
+    def test_request_identity_changes_cache_key(self):
+        url = "https://www.betfair.it/exchange/plus/tennis/market/1.2"
+        persistent = cache.get_cache_key(url, {"mode": "persistent"})
+        cdp = cache.get_cache_key(url, {"mode": "cdp"})
+        self.assertEqual(len(persistent), 64)
+        self.assertNotEqual(persistent, cdp)
+        self.assertNotIn("betfair", persistent)
+
+    def test_transient_and_incomplete_results_are_not_cached(self):
+        url = "https://www.betfair.it/exchange/plus/tennis/market/1.3"
+        invalid_results = (
+            {"error": "temporary_error", "runners": [], "market_info": {}},
+            {"runners": [], "market_info": {"market_id": "1.3"}},
+            {"runners": [{"name": "A"}], "market_info": {}},
+            {
+                "runners": [{"name": "A"}],
+                "market_info": {"market_id": "1.3"},
+                "event_status": {"hasFinished": True},
+            },
+        )
+        for result in invalid_results:
+            self.assertFalse(cache.set_cached_result(url, result))
+        self.assertEqual(list(self.cache_dir.glob("*.json")), [])
 
 
 if __name__ == "__main__":

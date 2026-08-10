@@ -105,9 +105,11 @@ ${NPM}
 
 `pathChecks` elenca file o directory che devono esistere prima della suite. `requires` dichiara capacità vietate nel profilo `fast`, fra cui browser, credenziali, rete esterna e tracking.
 
+`requires` è metadata dichiarativo validato dal runner, non un sandbox di sicurezza. I child ereditano ancora l'environment del processo padre; la minimizzazione dell'environment resta un hardening aperto.
+
 ### Inventario corrente della persistenza
 
-Il manifest non registra comandi per `commitJournal.test.mjs` o `recovery.test.mjs`: questi percorsi non esistono nella working tree verificata il 3 agosto 2026. Non sostituirli con path dedotti dai nomi dei moduli. Le suite journal/recovery potranno essere aggiunte soltanto dopo un inventario reale (`IMPL-003`) o dopo l'introduzione di test effettivi con sandbox controllata (`IMPL-008`).
+I vecchi file monolitici `commitJournal.test.mjs` e `recovery.test.mjs` non esistono. La copertura corrente è suddivisa in suite modulari sotto `backend/src/sofa/matchHistory/commitJournal/` e `backend/src/sofa/matchHistory/recovery/`. Il manifest non le registra ancora tutte: l'espansione richiede inventario `IMPL-003` e sandbox controllata `IMPL-008`, senza dedurre path inesistenti dai nomi storici.
 
 ## Artefatti
 
@@ -121,6 +123,8 @@ test-results/<timestamp>-<sha>-<profile>.json
 
 L'artefatto include lo SHA osservato e lo stato `clean`, `dirty` o `unavailable` della working tree. Non dichiara una working tree sporca come failure: la registra come contesto.
 
+`counts.passed` conta entry del manifest, non assertion interne. `perTestResults` include test, build, checker e compile eseguiti. SHA più stato clean/dirty non identificano byte per byte una working tree sporca.
+
 ## Limiti della prima versione
 
 - esecuzione interamente seriale;
@@ -128,7 +132,7 @@ L'artefatto include lo SHA osservato e lo stato `clean`, `dirty` o `unavailable`
 - nessuna coverage;
 - nessun browser o test live;
 - nessun harness persistence o benchmark;
-- nessun frontend interaction harness React;
+- test React e lifecycle mirati presenti, ma nessun harness di interazione generale che chiuda integralmente `IMPL-030`;
 - nessuna CI.
 
 L'espansione completa test ↔ owner ↔ documento appartiene a IMPL-003. Il ledger storico e la gestione degli ultimi esiti appartengono a IMPL-031.

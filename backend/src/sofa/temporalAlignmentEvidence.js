@@ -13,7 +13,7 @@ const PRICE_MOVE_THRESHOLD = 0.01;
 
 const SCORE_TYPE_PRIORITY = { set: 4, game: 3, point: 2, match_status: 1, unknown: 0 };
 
-export function buildTemporalAlignment({ sofaTicks, betfairTicks, now }) {
+export function buildTemporalAlignment({ sofaTicks, betfairTicks, now, dataQuality = null }) {
     const warnings = [];
 
     const st = Array.isArray(sofaTicks) ? sofaTicks : [];
@@ -26,6 +26,16 @@ export function buildTemporalAlignment({ sofaTicks, betfairTicks, now }) {
     const latestRelevantSofaMarker = computeLatestRelevantSofaMarker(st, now);
     const latestBetfairMove = computeLatestBetfairMove(bt, now);
     const reactionWindows = computeReactionWindows(latestRelevantSofaMarker, latestBetfairMove);
+    const reliabilityReasons = [];
+    if (!dataQuality) reliabilityReasons.push('Data quality unavailable');
+    else {
+        if (!dataQuality.sofaRecent) reliabilityReasons.push('SofaScore tick is not recent');
+        if (!dataQuality.betfairRecent) reliabilityReasons.push('Betfair tick is not recent');
+        if (dataQuality.graphHealth !== 'ok') reliabilityReasons.push('Graph health is not ok');
+        if (!dataQuality.ladderReliable) reliabilityReasons.push('Ladder is not reliable');
+        if (!dataQuality.marketTradable) reliabilityReasons.push('Book is not tradable');
+    }
+    const reliable = reactionWindows.relation !== 'unknown' && reliabilityReasons.length === 0;
 
     if (!latestScoreChange.available) warnings.push('No score change detected in Sofa lookback window');
     if (!latestRelevantSofaMarker.available) warnings.push('No relevant Sofa pressure marker found in lookback window');
@@ -63,6 +73,9 @@ export function buildTemporalAlignment({ sofaTicks, betfairTicks, now }) {
         latestRelevantSofaMarker,
         latestBetfairMove,
         reactionWindows,
+        available: reactionWindows.relation !== 'unknown',
+        reliable,
+        reliabilityReasons,
         warnings
     };
 }

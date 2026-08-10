@@ -13,7 +13,7 @@ Il progetto separa acquisizione, normalizzazione, persistenza canonica, Evidence
 ## Requisiti
 
 - Python disponibile nel terminale;
-- una versione LTS recente di Node.js e npm;
+- una release LTS supportata di Node.js con npm; la versione ufficialmente supportata deve restare allineata ai manifest del backend e del frontend;
 - Google Chrome e PowerShell per il runtime locale completo.
 
 ## Installazione
@@ -76,7 +76,7 @@ node scripts/validation/run.mjs python
 node scripts/validation/run.mjs full-offline
 ```
 
-Il runner legge `scripts/validation/test-manifest.json`, esegue ogni entry in un child process separato, applica timeout e salva un risultato JSON bounded sotto `test-results/`. I checker documentali restano read-only e fanno parte dei profili `fast` e `full-offline`.
+Il runner legge `scripts/validation/test-manifest.json`, esegue ogni entry in un child process separato, applica timeout e salva sotto `test-results/` un risultato JSON con output limitato. I checker documentali restano read-only e fanno parte dei profili `fast` e `full-offline`.
 
 I profili `persistence`, `benchmark` e `live` sono riconosciuti ma non ancora eseguibili. Un profilo pianificato non viene dichiarato `skipped` o `passed`.
 
@@ -103,7 +103,7 @@ Non condividere o versionare:
 - cookie, token o credenziali;
 - profili browser;
 - dump diagnostici non necessari;
-- `backend/match_history/` e `.pending_commits/`, salvo task espliciti di storage o recovery.
+- `backend/match_history/`, inclusi i sidecar `.pending_commits/` e `.writer_authority/`, salvo task espliciti di storage o recovery.
 
 ## Documentazione
 

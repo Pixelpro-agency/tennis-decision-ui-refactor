@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { confirmSourceIdentityGate } from '../services/liveSessionApi';
+import { confirmSourceIdentityGate } from '../services/liveSessionApi.js';
 import { buildSourceIdentityGatePresentation } from '../utils/sourceIdentityGatePresentation.js';
 
 function buildPendingIdentityKey({
@@ -26,6 +26,15 @@ function buildPendingIdentityKey({
     ].join('\u0001');
 }
 
+export function isRecordingAlignedForSession(status, trackingSessionId) {
+    return Boolean(
+        trackingSessionId &&
+        status?.phase === 'recording' &&
+        status?.sourceIdentity?.status === 'aligned' &&
+        status?.trackingSessionId === trackingSessionId
+    );
+}
+
 export function useSourceIdentityGateUi({
     sourceIdentityGate,
     sofaEventId,
@@ -35,6 +44,8 @@ export function useSourceIdentityGateUi({
     stopSofaPolling,
     clearConfirmedSession,
     setSessionShellVisible,
+    setSessionActive,
+    setTrackingSessionId,
     setActiveView,
     setTrackingStopped,
     resetDashboardBootstrap
@@ -114,6 +125,8 @@ export function useSourceIdentityGateUi({
             });
             stopSofaPolling();
             clearConfirmedSession();
+            setSessionActive(false);
+            setTrackingSessionId(null);
             setConfirmationOpen(false);
             setSessionShellVisible(false);
             setActiveView('overview');
@@ -130,6 +143,8 @@ export function useSourceIdentityGateUi({
         sessionShellVisible,
         setActiveView,
         setSessionShellVisible,
+        setSessionActive,
+        setTrackingSessionId,
         setTrackingStopped,
         sourceIdentityStatusForUi,
         stopSofaPolling
@@ -164,7 +179,8 @@ export function useSourceIdentityGateUi({
         try {
             const payload = await confirmSourceIdentityGate(sofaEventId, {
                 selectedPairs,
-                confirmationText
+                confirmationText,
+                trackingSessionId: sourceIdentityStatusForUi?.trackingSessionId
             });
 
             if (payload?.ok !== true) {
@@ -174,7 +190,19 @@ export function useSourceIdentityGateUi({
                 };
             }
 
-            await sourceIdentityGate.refresh();
+            const refreshedStatus = await sourceIdentityGate.refresh();
+            const isRecordingAligned = isRecordingAlignedForSession(
+                refreshedStatus,
+                sourceIdentityStatusForUi?.trackingSessionId
+            );
+
+            if (!isRecordingAligned) {
+                return {
+                    ok: false,
+                    error: 'Confirmation is still pending verification.'
+                };
+            }
+
             acknowledgedPendingKeyRef.current = pendingIdentityKey;
             setConfirmationOpen(false);
 
@@ -188,6 +216,7 @@ export function useSourceIdentityGateUi({
     }, [
         pendingIdentityKey,
         sofaEventId,
+        sourceIdentityStatusForUi,
         sourceIdentityGate
     ]);
 

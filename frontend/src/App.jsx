@@ -12,9 +12,6 @@ import { useBetfairJson } from './hooks/useBetfairJson';
 import { useMarketReactionEvidence } from './hooks/useMarketReactionEvidence';
 import { useSourceIdentityGateStatus } from './hooks/useSourceIdentityGateStatus';
 import { fetchBetfairLogLines } from './services/liveSessionApi';
-import LayTheWinner from './components/LayTheWinner';
-import BancaServizio from './components/BancaServizio';
-import Superbreak from './components/Superbreak';
 import MarketReactionsPage from './components/MarketReactionsPage';
 import { getSofaEventId } from './utils/preflight.js';
 import { usePreflightChecks } from './hooks/usePreflightChecks';
@@ -24,6 +21,7 @@ import { useBetfairLoginAction } from './hooks/useBetfairLoginAction.js';
 import { useLiveTrackingActions } from './hooks/useLiveTrackingActions.js';
 import { frontendRuntimeLog } from './utils/runtimeLog.js';
 import { useSourceIdentityGateUi } from './hooks/useSourceIdentityGateUi.js';
+import { buildPersistenceViewState } from './utils/persistenceViewState.js';
 
 const API_BASE = '';
 
@@ -39,7 +37,6 @@ function App() {
         setBetfairMode,
         chromeProfilePath,
         setChromeProfilePath,
-        chromeProfileName,
         cdpUrl,
         setCdpUrl,
         confirmedUrl,
@@ -56,6 +53,9 @@ function App() {
     const [activeView, setActiveView] = useState('overview');
     const [stopSofaStatus, setStopSofaStatus] = useState('');
     const [sessionShellVisible, setSessionShellVisible] = useState(false);
+    const [sessionActive, setSessionActive] = useState(false);
+    const [trackingSessionId, setTrackingSessionId] = useState(null);
+    const [startTrackingError, setStartTrackingError] = useState(null);
     const [trackingStopped, setTrackingStopped] = useState(false);
 
     const [checks, setChecks] = useState({
@@ -75,9 +75,13 @@ function App() {
         error: marketReactionError,
         reasons: marketReactionReasons,
         lastUpdate: marketReactionLastUpdate,
+        integrity: marketReactionIntegrity,
+        sources: marketReactionSources,
+        persistenceComplete: marketReactionPersistenceComplete,
+        readStatus: marketReactionReadStatus,
         isPolling: isMarketReactionPolling,
         refresh: refreshMarketReactionEvidence
-    } = useMarketReactionEvidence(sofaEventId);
+    } = useMarketReactionEvidence(sessionActive ? sofaEventId : '');
 
     const {
         data: backendData,
@@ -86,25 +90,44 @@ function App() {
         lastUpdate: sofaLastUpdate,
         isPolling: isSofaPolling,
         serverStatus,
+        readStatus: sofaReadStatus,
+        integrity: sofaIntegrity,
         loadMatch,
         stopPolling: stopSofaPolling
-    } = useMatchPolling(confirmedUrl, 2500, sofaEventId);
+    } = useMatchPolling(
+        sessionActive ? confirmedUrl : '',
+        2500,
+        sessionActive ? sofaEventId : ''
+    );
 
     const {
         data: betfairData,
         health: betfairHealthFromHook,
+        error: betfairError,
         moneyFlowHistory: betfairMoneyFlowHistory,
-        lastUpdate: betfairLastUpdate
-    } = useBetfairJson(confirmedBetfairUrl, sofaEventId, 5000, {
+        lastKnownMoneyFlowHistory: betfairLastKnownMoneyFlowHistory,
+        lastKnownData: betfairLastKnownData,
+        lastUpdate: betfairLastUpdate,
+        sourceUpdatedAt: betfairSourceUpdatedAt,
+        isPolling: isBetfairPolling,
+        integrity: betfairIntegrity,
+        readStatus: betfairReadStatus
+    } = useBetfairJson(
+        sessionActive ? confirmedBetfairUrl : '',
+        sessionActive ? sofaEventId : '',
+        5000,
+        {
         mode: confirmedBetfairMode,
         cdpUrl: confirmedCdpUrl
-    });
+        }
+    );
 
     const betfairHealth = betfairData?.health || betfairHealthFromHook || null;
 
     const {
         dashboardData,
-        betfairHistory
+        betfairHistory,
+        lastKnownDashboardData
     } = useDashboardViewModel({
         backendData,
         isSofaPolling,
@@ -113,16 +136,32 @@ function App() {
         betfairData,
         betfairMoneyFlowHistory,
         confirmedUrl,
-        loadMatch
+        loadMatch,
+        matchReadStatus: sofaReadStatus
     });
 
     const {
         dashboardContentReady,
         beginDashboardBootstrap,
         resetDashboardBootstrap
-    } = useDashboardBootstrapState({ backendData, sessionShellVisible });
+    } = useDashboardBootstrapState({
+        backendData,
+        sessionActive,
+        trackingSessionId
+    });
     const hasDashboardData = dashboardContentReady && Boolean(dashboardData);
     const shouldShowDashboard = hasDashboardData;
+    const persistenceViewState = buildPersistenceViewState({
+        sessionActive,
+        dashboardReady: hasDashboardData,
+        sofaIntegrity,
+        betfairIntegrity,
+        evidenceIntegrity: marketReactionIntegrity,
+        evidencePersistenceComplete: marketReactionPersistenceComplete,
+        sofaError,
+        betfairError,
+        evidenceError: marketReactionError
+    });
 
     const {
         betfairHealthTransition,
@@ -136,7 +175,7 @@ function App() {
     });
 
     const sourceIdentityGate = useSourceIdentityGateStatus(sofaEventId, {
-        enabled: sessionShellVisible
+        enabled: sessionActive
     });
 
     const {
@@ -147,7 +186,6 @@ function App() {
         confirmationOpen,
         dismissSourceIdentityToast,
         resetSourceIdentityUi,
-        closeSourceIdentityConfirmation,
         handleConfirmSourceIdentity,
         openSourceIdentityConfirmation
     } = useSourceIdentityGateUi({
@@ -159,6 +197,8 @@ function App() {
         stopSofaPolling,
         clearConfirmedSession,
         setSessionShellVisible,
+        setSessionActive,
+        setTrackingSessionId,
         setActiveView,
         setTrackingStopped,
         resetDashboardBootstrap
@@ -213,6 +253,9 @@ function App() {
         resetSourceIdentityUi,
         setActiveView,
         setSessionShellVisible,
+        setSessionActive,
+        setTrackingSessionId,
+        setStartTrackingError,
         setTrackingStopped,
         setStopSofaStatus,
         beginDashboardBootstrap,
@@ -220,23 +263,10 @@ function App() {
     });
 
     const stopAndCloseConfirmation = async () => {
-        closeSourceIdentityConfirmation();
         return stopAndReturnToLinks();
     };
 
     const renderContent = () => {
-        if (activeView === 'lay') {
-            return <LayTheWinner matchUrl={confirmedUrl} />;
-        }
-
-        if (activeView === 'banca') {
-            return <BancaServizio />;
-        }
-
-        if (activeView === 'superbreak') {
-            return <Superbreak />;
-        }
-
         if (activeView === 'market-reactions') {
             return (
                 <MarketReactionsPage
@@ -245,6 +275,10 @@ function App() {
                     loading={marketReactionLoading}
                     error={marketReactionError}
                     reasons={marketReactionReasons}
+                    integrity={marketReactionIntegrity}
+                    sources={marketReactionSources}
+                    persistenceComplete={marketReactionPersistenceComplete}
+                    readStatus={marketReactionReadStatus}
                     lastUpdate={marketReactionLastUpdate}
                     isPolling={isMarketReactionPolling}
                     refresh={refreshMarketReactionEvidence}
@@ -258,6 +292,13 @@ function App() {
                 betfairHistory={betfairHistory}
                 betfairHealth={betfairHealth}
                 betfairHealthTransition={betfairHealthTransition}
+                betfairLastKnownData={betfairLastKnownData}
+                betfairLastKnownHistory={betfairLastKnownMoneyFlowHistory}
+                betfairReadStatus={betfairReadStatus}
+                betfairIsPolling={isBetfairPolling}
+                betfairSourceUpdatedAt={betfairSourceUpdatedAt}
+                persistenceViewState={persistenceViewState}
+                trackingStopped={trackingStopped}
                 confirmedUrl={confirmedUrl}
                 stopSofaStatus={stopSofaStatus}
                 onStopLiveTracking={handleStopLiveTracking}
@@ -273,7 +314,10 @@ function App() {
                     backendData={backendData}
                     sofaLastUpdate={sofaLastUpdate}
                     sofaServerStatus={serverStatus}
+                    sofaReadStatus={sofaReadStatus}
                     betfairData={betfairData}
+                    betfairReadStatus={betfairReadStatus}
+                    lastKnownDashboardData={lastKnownDashboardData}
                     betfairLastUpdate={betfairLastUpdate}
                     betfairHealth={betfairHealth}
                     betfairHealthTransition={betfairHealthTransition}
@@ -284,6 +328,7 @@ function App() {
                     sourceIdentityGateStatus={sourceIdentityStatusForUi}
                     hasBetfairUrl={hasBetfairUrl}
                     trackingStopped={trackingStopped}
+                    persistenceViewState={persistenceViewState}
                     onOpenSourceIdentityConfirmation={openSourceIdentityConfirmation}
                     sourceIdentityToast={sourceIdentityToast}
                     onDismissSourceIdentityToast={dismissSourceIdentityToast}
@@ -311,7 +356,6 @@ function App() {
                     setBetfairMode={setBetfairMode}
                     chromeProfilePath={chromeProfilePath}
                     setChromeProfilePath={setChromeProfilePath}
-                    chromeProfileName={chromeProfileName}
                     cdpUrl={cdpUrl}
                     setCdpUrl={setCdpUrl}
                     openBetfairLogin={openBetfairLogin}
@@ -329,6 +373,7 @@ function App() {
                     handleSearch={handleSearch}
                     sofaLoading={sofaLoading}
                     sofaError={sofaError}
+                    startTrackingError={startTrackingError}
                 />
             )}
 

@@ -35,9 +35,9 @@ function createUnavailableComparison(reason) {
     };
 }
 
-function parseNonNegativeFiniteNumber(input) {
+function parseNonNegativeInteger(input) {
     if (typeof input === 'number') {
-        return Number.isFinite(input) && input >= 0 ? input : null;
+        return Number.isSafeInteger(input) && input >= 0 ? input : null;
     }
 
     if (typeof input === 'string') {
@@ -45,9 +45,9 @@ function parseNonNegativeFiniteNumber(input) {
 
         if (!trimmed) return null;
 
+        if (!/^\d+$/.test(trimmed)) return null;
         const parsed = Number(trimmed);
-
-        return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+        return Number.isSafeInteger(parsed) ? parsed : null;
     }
 
     return null;
@@ -58,10 +58,11 @@ function findPointsTotal(snapshot) {
         ? snapshot.stats.match
         : [];
 
-    return matchStats.find(stat =>
+    const candidates = matchStats.filter(stat =>
         stat?.period === 'ALL' &&
         stat?.key === 'pointsTotal'
-    ) || null;
+    );
+    return candidates.length === 1 ? candidates[0] : null;
 }
 
 function roundToOneDecimal(number) {
@@ -70,8 +71,8 @@ function roundToOneDecimal(number) {
 
 function buildMatchPointShare(snapshot) {
     const pointsTotal = findPointsTotal(snapshot);
-    const homePoints = parseNonNegativeFiniteNumber(pointsTotal?.homeValue);
-    const awayPoints = parseNonNegativeFiniteNumber(pointsTotal?.awayValue);
+    const homePoints = parseNonNegativeInteger(pointsTotal?.homeValue);
+    const awayPoints = parseNonNegativeInteger(pointsTotal?.awayValue);
 
     if (homePoints === null || awayPoints === null) {
         return createUnavailableMatchPointShare();
@@ -177,7 +178,10 @@ function buildComparisonContext(matchPointShare, recent) {
 function buildDataQuality(matchPointShare, recent) {
     if (matchPointShare.available && recent.available) {
         return {
-            level: 'complete',
+            level: 'derivation_complete',
+            freshness: 'unknown',
+            provenance: 'normalized_provider_payload',
+            temporalAlignment: 'unknown',
             sources: {
                 statistics: true,
                 pointByPoint: true
@@ -188,7 +192,10 @@ function buildDataQuality(matchPointShare, recent) {
 
     if (matchPointShare.available) {
         return {
-            level: 'partial',
+            level: 'derivation_partial',
+            freshness: 'unknown',
+            provenance: 'normalized_provider_payload',
+            temporalAlignment: 'unknown',
             sources: {
                 statistics: true,
                 pointByPoint: false
@@ -204,7 +211,10 @@ function buildDataQuality(matchPointShare, recent) {
     }
 
     return {
-        level: 'insufficient',
+        level: 'derivation_insufficient',
+        freshness: 'unknown',
+        provenance: 'normalized_provider_payload',
+        temporalAlignment: 'unknown',
         sources: {
             statistics: false,
             pointByPoint: recent.available

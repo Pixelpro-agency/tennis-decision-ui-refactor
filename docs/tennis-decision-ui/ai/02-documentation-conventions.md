@@ -8,12 +8,12 @@ La documentazione deve spiegare responsabilità, confini, contratti, invarianti,
 
 ## Radici documentali
 
-| Percorso | Ruolo |
-| --- | --- |
-| `docs/tennis-decision-ui/` | Documentazione tecnica canonica e corrente |
-| `docs/validations/` | Collaudi e verifiche storiche con data, SHA, ambiente e limiti |
-| `docs/archive/` | Registro delle fonti consolidate; eventuali materiali successivi non canonici |
-| `implementazioni/` | Audit, proposte e decisioni; non sostituisce gli owner tecnici |
+| Percorso                   | Ruolo                                                                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `docs/tennis-decision-ui/` | Documentazione tecnica canonica e corrente                                                                                     |
+| `docs/validations/`        | Collaudi e verifiche storiche con data, SHA, ambiente e limiti                                                                 |
+| `docs/archive/`            | Materiali storici, planning, brief o fonti future non canoniche preservati; non è un owner tecnico e non prova implementazione |
+| `implementazioni/`         | Audit, proposte e decisioni; non sostituisce gli owner tecnici                                                                 |
 
 Una specifica futura non implementata non appartiene all'indice canonico. I requisiti futuri restano nei registri e vengono trasformati in documentazione owner soltanto insieme all'implementazione.
 
@@ -39,15 +39,15 @@ Regole:
 
 ## Aree canoniche
 
-| Area | Responsabilità |
-| --- | --- |
-| `architecture/` | Confini e flussi trasversali, senza duplicare i moduli |
-| `api/` | Contratti HTTP realmente esposti |
-| `modules/` | Responsabilità e invarianti dei moduli |
-| `operations/` | Procedure operative correnti |
-| `ai/` | Contesto AI e convenzioni documentali |
-| `reference/` | Mappe e riferimenti di orientamento |
-| `roadmap/` | Solo stato corrente e priorità approvate; non specifiche speculative |
+| Area            | Responsabilità                                                       |
+| --------------- | -------------------------------------------------------------------- |
+| `architecture/` | Confini e flussi trasversali, senza duplicare i moduli               |
+| `api/`          | Contratti HTTP realmente esposti                                     |
+| `modules/`      | Responsabilità e invarianti dei moduli                               |
+| `operations/`   | Procedure operative correnti                                         |
+| `ai/`           | Contesto AI e convenzioni documentali                                |
+| `reference/`    | Mappe e riferimenti di orientamento                                  |
+| `roadmap/`      | Solo stato corrente e priorità approvate; non specifiche speculative |
 
 ## Un owner per responsabilità
 
@@ -104,13 +104,13 @@ Non tutte le sezioni sono obbligatorie.
 
 ## Stati consentiti
 
-| Stato | Significato |
-| --- | --- |
-| `Implementato` | Codice e comportamento esistono |
-| `Implementato, da validare` | Codice presente ma mancano verifiche reali rilevanti |
-| `Deprecato` | Codice o documento ancora presente ma non deve essere esteso |
-| `Legacy` | Conservato soltanto per confronto o migrazione |
-| `Storico` | Risultato di una verifica passata, non contratto corrente |
+| Stato                       | Significato                                                  |
+| --------------------------- | ------------------------------------------------------------ |
+| `Implementato`              | Codice e comportamento esistono                              |
+| `Implementato, da validare` | Codice presente ma mancano verifiche reali rilevanti         |
+| `Deprecato`                 | Codice o documento ancora presente ma non deve essere esteso |
+| `Legacy`                    | Conservato soltanto per confronto o migrazione               |
+| `Storico`                   | Risultato di una verifica passata, non contratto corrente    |
 
 Non usare `Implementato` per una decisione, una proposta o un contratto non presente nel codice.
 
@@ -160,7 +160,7 @@ Aggiornamento obbligatorio quando cambia:
 - percorso canonico;
 - test o procedura di verifica rilevante.
 
-Se l'owner non è ancora migrato, registrare l'impatto documentale e finalizzarlo insieme al relativo batch comportamentale.
+Se non esiste ancora un documento owner canonico per il comportamento modificato, registrare l'impatto documentale e decidere esplicitamente se crearne uno nella stessa task. Non creare un owner canonico per funzionalità future non ancora implementate.
 
 ## Link
 
@@ -204,18 +204,20 @@ Un report di collaudo deve stare in `docs/validations/` e contenere almeno:
 
 Un report storico non viene usato come prova che lo stesso comportamento passa sullo SHA corrente.
 
-## Materiale deprecato e archivio
+## Materiale non canonico e archivio
 
-`docs/archive/` non è un deposito permanente. Una fonte storica separata viene mantenuta soltanto quando contiene evidenza o requisiti unici non ancora assorbiti.
+`docs/archive/` conserva materiali storici, planning, brief o fonti future non canoniche che l'utente ha deciso di mantenere per uso successivo.
 
-Un file deve essere eliminato quando:
+Il contenuto archive:
 
-- il contenuto unico è stato trasferito nel relativo owner, registro o validation;
-- nessun link o consumer lo usa;
-- la provenienza resta descritta nel registro dell'archivio;
-- il controllo finale è positivo.
+- non è documentazione tecnica canonica;
+- non è un documento owner;
+- non prova che una funzione sia implementata;
+- non sostituisce registri, codice, test o validazioni;
+- non viene incluso nelle pulizie documentali automatiche o generiche;
+- non viene eliminato sulla sola base di duplicazione, età o assenza di link.
 
-Non mantenere due owner concorrenti, prompt esecutivi superati o copie integrali di backlog già consolidati.
+Una rimozione da `docs/archive/` richiede una task esplicita, una lista esatta dei file coinvolti e una decisione dell'utente. Le utility di cleanup runtime non operano sulla documentazione.
 
 ## Segreti e dati locali
 
@@ -248,7 +250,7 @@ python scripts/check_registry_consistency.py
 
 Il controllo confronta Blocchi E/F e schede owner, prefissi, stati strettamente incompatibili, SHA sintetici, ultimi ID, range, ultimo Punto e prossimo passo. Non rinumera o modifica alcun file.
 
-## Migrazione MDX → Markdown
+## Procedura per modifiche documentali
 
 Procedura per una modifica documentale:
 
@@ -260,7 +262,7 @@ leggere owner e codice interessato
 → pubblicare soltanto con working tree coerente
 ```
 
-Non esiste un workspace di migrazione permanente né una seconda documentazione canonica.
+La migrazione MDX → Markdown è conclusa. La sola documentazione tecnica canonica corrente è sotto `docs/tennis-decision-ui/` e usa Markdown ordinario `.md`. Non creare una seconda radice documentale canonica.
 
 ## Checklist di chiusura
 
@@ -275,6 +277,7 @@ Non esiste un workspace di migrazione permanente né una seconda documentazione 
 [ ] Nessun duplicato di contratto.
 [ ] Nessun segreto o dato runtime sensibile.
 [ ] Validazioni storiche separate dagli owner.
+[ ] Materiale archive non trattato come owner o target di cleanup generico.
 [ ] Impatto sugli altri documenti dichiarato.
 ```
 
@@ -282,4 +285,7 @@ Non esiste un workspace di migrazione permanente né una seconda documentazione 
 
 - [Indice della documentazione](../index.md)
 - [Selezione del contesto per AI](./01-context-selection.md)
+- [Diagnosi e modularizzazione](./04-diagnosi-e-modularizzazione.md)
+- [Workflow esecutivo e criteri di chiusura](./03-workflow-esecutivo.md)
+- [Artefatti esecutivi e revisione](./05-artefatti-esecutivi.md)
 - [Mappa del repository](../reference/01-repository-map.md)

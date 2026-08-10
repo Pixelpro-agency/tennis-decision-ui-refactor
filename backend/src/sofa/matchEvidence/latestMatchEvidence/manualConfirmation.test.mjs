@@ -51,6 +51,32 @@ import {
     assert(result.evidence.marketReactionEvidence.summary.causalityClaimed === false, 'manual confirmation does not enable causality');
     assert(JSON.stringify({ sofaTimeline, betfairTimeline }) === rawBefore, 'manual confirmation does not mutate raw timelines');
 
+    const unavailableStoreResult = buildLatestMatchEvidenceFromTimelines({
+        eventId,
+        sofaTimeline,
+        betfairTimeline,
+        now,
+        dependencies: {
+            findApplicableSourceIdentityConfirmation: () => ({
+                ok: false,
+                reason: 'invalid_json',
+                confirmation: null
+            })
+        }
+    });
+    assert(
+        unavailableStoreResult.sources.confirmationStoreStatus === 'unavailable',
+        'confirmation store failure is visible as a bounded status'
+    );
+    assert(
+        unavailableStoreResult.sources.confirmationStoreReason === 'invalid_json',
+        'confirmation store failure exposes a bounded reason'
+    );
+    assert(
+        unavailableStoreResult.evidence.marketReactionEvidence.sourceIdentity.status === 'pending',
+        'confirmation store failure remains fail-closed'
+    );
+
     const changedMarket = makeManualPendingTimelines({ marketId: 'manual-market-next' });
     const changedMarketResult = buildLatestMatchEvidenceFromTimelines({
         eventId,

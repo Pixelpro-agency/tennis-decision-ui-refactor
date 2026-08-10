@@ -115,28 +115,33 @@ export function readSourceIdentityConfirmationStore({
 } = {}) {
     try {
         if (!fs.existsSync(filePath)) {
-            return { ok: true, archive: emptyArchive() };
+            return { ok: true, reason: 'not_found', archive: emptyArchive() };
         }
 
         const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
         if (parsed?.version !== 1 || !Array.isArray(parsed.confirmations)) {
-            return { ok: false, archive: emptyArchive() };
+            return { ok: false, reason: 'invalid_shape', archive: emptyArchive() };
         }
 
         const confirmations = parsed.confirmations.map(record => normalizeRecord(record));
         if (confirmations.some(record => record === null)) {
-            return { ok: false, archive: emptyArchive() };
+            return { ok: false, reason: 'invalid_record', archive: emptyArchive() };
         }
 
         return {
             ok: true,
+            reason: null,
             archive: {
                 version: 1,
                 confirmations: confirmations.map(copyRecord)
             }
         };
-    } catch (_) {
-        return { ok: false, archive: emptyArchive() };
+    } catch (error) {
+        return {
+            ok: false,
+            reason: error instanceof SyntaxError ? 'invalid_json' : 'read_failed',
+            archive: emptyArchive()
+        };
     }
 }
 
@@ -180,7 +185,9 @@ export function findApplicableSourceIdentityConfirmation(
     { filePath = SOURCE_IDENTITY_CONFIRMATION_STORE_PATH } = {}
 ) {
     const current = readSourceIdentityConfirmationStore({ filePath });
-    if (!current.ok) return { ok: false, confirmation: null };
+    if (!current.ok) {
+        return { ok: false, reason: current.reason || 'lookup_failed', confirmation: null };
+    }
 
     const confirmation = current.archive.confirmations.find(record =>
         isConfirmationRecordApplicable({ context, confirmation: record })
@@ -188,6 +195,7 @@ export function findApplicableSourceIdentityConfirmation(
 
     return {
         ok: true,
+        reason: current.reason,
         confirmation: confirmation ? copyRecord(confirmation) : null
     };
 }

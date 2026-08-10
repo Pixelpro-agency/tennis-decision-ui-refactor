@@ -3,6 +3,7 @@ import {
     isSuccessfulWrite,
     withCommitArtifacts
 } from './commitResult.js';
+import { validateRepairPayload } from '../../matchHistory/commitJournal/recordValidation.js';
 
 export function markCompleted(journalStore, commitId, documentName) {
     const result = journalStore.markDocumentComplete(commitId, documentName);
@@ -21,7 +22,9 @@ export function cleanupCompletedResidual(eventId, source, journalStore) {
         return { ok: true, status: 'no_residual' };
     }
 
-    const cleanup = journalStore.removeCompletedCommit(residual.commitId);
+    const cleanup = typeof journalStore.verifyAndCleanupCompletedCommit === 'function'
+        ? journalStore.verifyAndCleanupCompletedCommit(residual.commitId)
+        : journalStore.removeCompletedCommit(residual.commitId);
 
     if (cleanup?.ok !== true) {
         return {
@@ -59,6 +62,10 @@ export function repairPendingBetfairCommit(eventId, pendingCommit, dependencies,
             : timelineCompleted;
 
         if (!document || documentCompleted) continue;
+        const payloadReason = validateRepairPayload(pendingCommit, documentName);
+        if (payloadReason) {
+            return createCommitResult({ ok: false, eventId, commitId: pendingCommit.commitId, status: 'failed', reason: payloadReason, failedDocument: 'journal' });
+        }
 
         const payload = document.payload || {};
         let writeResult;

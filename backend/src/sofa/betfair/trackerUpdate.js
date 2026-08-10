@@ -3,6 +3,11 @@ import {
     observeBetfairSourceIdentitySample
 } from '../sourceIdentityGate.js';
 import { classifyBetfairTechnicalSample } from './processor.js';
+import {
+    redactRuntimeText,
+    runtimeErrorCode,
+    runtimeLog
+} from '../../runtime/runtimeLogger.js';
 
 function ensureBetfairRuntime(info) {
     if (!info.betfairRuntime || typeof info.betfairRuntime !== 'object' || Array.isArray(info.betfairRuntime)) {
@@ -28,10 +33,7 @@ function getNowIso(dependencies) {
 }
 
 function buildTechnicalErrorReason(code, detail) {
-    const normalizedDetail = String(detail ?? '')
-        .replace(/[\r\n]+/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
+    const normalizedDetail = redactRuntimeText(detail ?? '', 120);
 
     const message = normalizedDetail ? `${code}: ${normalizedDetail}` : code;
     return message.slice(0, 160);
@@ -64,30 +66,49 @@ export async function updateBetfair(eventId, info, dependencies = {}) {
         profileDir: info.chromeProfilePath || '',
         cdpUrl: info.cdpUrl || '',
         networkCapture: false,
+        noCache: true,
+        trackingSessionId: info.trackingSessionId ?? null,
         deferPersistence: true
     };
 
-    console.log(`[Tracker] Betfair update eventId=${eventId} mode=${options.mode} graphUrls=${graphUrls.length}`);
+    runtimeLog.info('betfair_tracker', 'update_started', {
+        eventId,
+        mode: options.mode,
+        graphUrlCount: graphUrls.length
+    });
 
     let result;
     try {
         result = await fetchFn(info.betfairUrl, eventId, options);
     } catch (error) {
+        if (dependencies.isTrackingSessionCurrent?.() === false) {
+            return { ok: true, skipped: true, reason: 'stale_tracking_session' };
+        }
         info.betfairFinished = false;
         recordTechnicalError(
             runtime,
             getNowIso(dependencies),
             'fetch_error',
-            error?.message || error
+            runtimeErrorCode(error, 'fetch_failed')
         );
-        console.log(`[Tracker] Betfair fetch failed for eventId=${eventId}; will retry: ${error?.message || error}`);
+        runtimeLog.warn('betfair_tracker', 'fetch_failed', {
+            eventId,
+            reason: runtimeErrorCode(error, 'fetch_failed')
+        });
         return;
+    }
+
+    if (dependencies.isTrackingSessionCurrent?.() === false) {
+        return { ok: true, skipped: true, reason: 'stale_tracking_session' };
     }
 
     if (result?.event_status?.hasFinished === true) {
         runtime.lastSuccessfulScrapeAt = getNowIso(dependencies);
         info.betfairFinished = true;
-        console.log(`[Tracker] Betfair event finished for eventId=${eventId}. Stopping Betfair polling.`);
+        runtimeLog.info('betfair_tracker', 'event_finished', {
+            eventId,
+            status: 'finished'
+        });
         return;
     }
 
@@ -108,7 +129,14 @@ export async function updateBetfair(eventId, info, dependencies = {}) {
             'technical_sample',
             technicalDetail || technicalSample.reason
         );
-        console.log(`[Tracker] Betfair technical sample skipped for eventId=${eventId}: ${technicalSample.reason}`);
+        runtimeLog.warn('betfair_tracker', 'technical_sample_skipped', {
+            eventId,
+            reason: technicalSample.reason
+        });
+
+        if (dependencies.isTrackingSessionCurrent?.() === false) {
+            return { ok: true, skipped: true, reason: 'stale_tracking_session' };
+        }
 
         const repairResult = await persistFn(eventId, result, key, { repairOnly: true });
 
@@ -127,10 +155,16 @@ export async function updateBetfair(eventId, info, dependencies = {}) {
 
     runtime.lastSuccessfulScrapeAt = getNowIso(dependencies);
 
-    const observation = observeFn(eventId, result, key);
-    const action = observation?.action || 'no-gate';
+    const observation = observeFn(eventId, result, key, {
+        trackingSessionId: info.trackingSessionId ?? null
+    });
+    const action = observation?.action || 'blocked';
 
-    if (action === 'persist-current' || action === 'no-gate') {
+    if (dependencies.isTrackingSessionCurrent?.() === false) {
+        return { ok: true, skipped: true, reason: 'stale_tracking_session' };
+    }
+
+    if (action === 'persist-current') {
         const persistenceResult = persistFn(eventId, result, key);
         if (persistenceResult?.ok !== true) {
             return persistenceResult && typeof persistenceResult === 'object'

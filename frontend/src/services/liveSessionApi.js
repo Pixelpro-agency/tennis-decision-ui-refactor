@@ -28,6 +28,14 @@ function staticApiError(code) {
   return error;
 }
 
+function actionError(defaultCode, payload = null) {
+  return staticApiError(
+    typeof payload?.code === 'string' && payload.code.trim()
+      ? payload.code.trim()
+      : defaultCode
+  );
+}
+
 export async function fetchBetfairLogLines() {
   const res = await fetch('/api/betfair/log');
   const data = await res.json();
@@ -83,18 +91,22 @@ export async function startMatchTracking({
   });
   const payload = await readJson(response);
   if (!response.ok || payload?.ok !== true) {
-    throw new Error('Unable to start match tracking.');
+    throw actionError('tracking_request_failed', payload);
   }
   return payload;
 }
 
 export async function stopMatchTracking(eventId) {
-  const res = await fetch('/api/match/stop', {
+  const response = await fetch('/api/match/stop', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ eventId: eventId || null })
   });
-  return res.json();
+  const payload = await readJson(response);
+  if (!response.ok || payload?.ok !== true) {
+    throw actionError('tracking_stop_failed', payload);
+  }
+  return payload;
 }
 
 export async function fetchSourceIdentityGateStatus(eventId, { signal } = {}) {
@@ -107,14 +119,14 @@ export async function fetchSourceIdentityGateStatus(eventId, { signal } = {}) {
 
 export async function confirmSourceIdentityGate(
   eventId,
-  { selectedPairs, confirmationText }
+  { selectedPairs, confirmationText, trackingSessionId }
 ) {
   const response = await fetch(
     `/api/evidence/${encodeURIComponent(eventId)}/source-identity/confirm`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ selectedPairs, confirmationText })
+      body: JSON.stringify({ selectedPairs, confirmationText, trackingSessionId })
     }
   );
   return readJson(response);

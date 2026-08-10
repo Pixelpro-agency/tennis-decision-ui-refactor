@@ -14,15 +14,33 @@ async def main(raw_urls=None):
 
     if not raw_urls:
         print(json.dumps({
-            "error": "No URLs provided",
+            "ok": False,
+            "error": {
+                "code": "missing_urls",
+                "message": "No SofaScore URLs provided",
+            },
         }))
         raise SystemExit(1)
 
-    urls = normalize_input_urls(raw_urls)
+    try:
+        urls = normalize_input_urls(raw_urls)
+    except ValueError as error:
+        print(json.dumps({
+            "ok": False,
+            "error": {
+                "code": str(error),
+                "message": "Invalid SofaScore input",
+            },
+        }))
+        raise SystemExit(1) from None
 
     if not urls:
         print(json.dumps({
-            "error": "No valid URLs provided",
+            "ok": False,
+            "error": {
+                "code": "invalid_urls",
+                "message": "No valid SofaScore URLs provided",
+            },
         }))
         raise SystemExit(1)
 
@@ -53,7 +71,11 @@ async def main(raw_urls=None):
     else:
         sys.stdout.write(json.dumps({
             url: {
-                "error": "Scraper failure",
+                "ok": False,
+                "error": {
+                    "code": "scraper_failure",
+                    "message": "SofaScore scraper failure",
+                },
             }
             for url in urls
         }))

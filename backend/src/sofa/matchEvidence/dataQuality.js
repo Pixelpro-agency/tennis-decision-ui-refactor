@@ -1,15 +1,6 @@
-import { SOFA_RECENT_SEC, BETFAIR_RECENT_SEC, ageSec } from './time.js';
-import { isReliableLadderSource } from './ladder.js';
-
-const PERSISTENCE_INCOMPLETE_REASON = 'Persistence incomplete: canonical cross-source evidence unavailable';
-
-const INVALID_MONEY_FLOW_REASONS_ME = new Set([
-    'matched_total_decreased',
-    'runner_delta_exceeds_market_delta',
-    'classified_volume_exceeds_runner_delta',
-    'runner_delta_raw_computed_mismatch',
-    'market_delta_raw_computed_mismatch'
-]);
+import { SOFA_RECENT_SEC, BETFAIR_RECENT_SEC, ageSec, timestampStatus } from './time.js';
+import { hasReliableLadder, isConfirmedMoneyFlow, isTradableBook } from './qualityPredicates.js';
+import { PERSISTENCE_INCOMPLETE_REASON, isPersistenceConflict } from './persistenceQuality.js';
 
 function isStatusFinished(status) {
     if (!status) return false;
@@ -19,11 +10,6 @@ function isStatusFinished(status) {
         return /finished|ended|completed|fin/i.test(String(status.description || status.type || ''));
     }
     return false;
-}
-
-function isPersistenceConflict(integrity) {
-    return integrity?.status === 'partial_persistence' ||
-        integrity?.status === 'recovery_failed';
 }
 
 export function buildDataQuality({ sofaTick, betfairTick, alignment, now, integrity }) {
@@ -37,6 +23,7 @@ export function buildDataQuality({ sofaTick, betfairTick, alignment, now, integr
     const sofaRecent = sofaAge !== null && sofaAge <= SOFA_RECENT_SEC;
 
     if (!sofaData) reasons.push('SofaScore timeline missing');
+    else if (timestampStatus(sofaTs, now) === 'future') reasons.push('SofaScore timestamp is in the future');
     else if (!sofaRecent) reasons.push('SofaScore tick too old');
 
     const betfairData = betfairTick?.data || null;
@@ -45,6 +32,7 @@ export function buildDataQuality({ sofaTick, betfairTick, alignment, now, integr
     const betfairRecent = betfairAge !== null && betfairAge <= BETFAIR_RECENT_SEC;
 
     if (!betfairData) reasons.push('Betfair timeline missing');
+    else if (timestampStatus(betfairTs, now) === 'future') reasons.push('Betfair timestamp is in the future');
     else if (!betfairRecent) reasons.push('Betfair tick too old');
 
     const gh = betfairData?.graphHealth || null;
@@ -66,9 +54,7 @@ export function buildDataQuality({ sofaTick, betfairTick, alignment, now, integr
         const runners = Array.isArray(betfairData.runners) ? betfairData.runners : [];
         const hasReliableRunner = runners.some(r =>
             r &&
-            isReliableLadderSource(r.ladderSource) &&
-            Array.isArray(r.ladder) &&
-            r.ladder.length > 0
+            hasReliableLadder(r)
         );
 
         if (hasReliableRunner) {
@@ -89,15 +75,7 @@ export function buildDataQuality({ sofaTick, betfairTick, alignment, now, integr
     if (ladderReliable && betfairData) {
         const runners = Array.isArray(betfairData.runners) ? betfairData.runners : [];
         const hasReliableMF = runners.some(r => {
-            if (!r || !isReliableLadderSource(r.ladderSource)) return false;
-            if (!Array.isArray(r.ladder) || r.ladder.length === 0) return false;
-            const mf = r.moneyFlow;
-            if (!mf || typeof mf !== 'object') return false;
-            if (typeof mf.back !== 'number' && typeof mf.lay !== 'number') return false;
-            if (INVALID_MONEY_FLOW_REASONS_ME.has(mf.reason)) return false;
-            if (typeof mf.runnerDelta === 'number' && mf.runnerDelta < 0) return false;
-            if (typeof mf.marketDelta === 'number' && mf.marketDelta < 0) return false;
-            return true;
+            return hasReliableLadder(r) && isConfirmedMoneyFlow(r.moneyFlow);
         });
         if (hasReliableMF) {
             moneyFlowReliable = true;
@@ -111,9 +89,7 @@ export function buildDataQuality({ sofaTick, betfairTick, alignment, now, integr
         const runners = Array.isArray(betfairData.runners) ? betfairData.runners : [];
         for (const r of runners) {
             if (!r) continue;
-            const bb = typeof r.bestBack === 'number' ? r.bestBack : null;
-            const bl = typeof r.bestLay === 'number' ? r.bestLay : null;
-            if (bb !== null && bl !== null && bb > 0 && bl > 0 && bl > bb) {
+            if (isTradableBook(r)) {
                 marketTradable = true;
                 break;
             }

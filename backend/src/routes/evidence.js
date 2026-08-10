@@ -20,6 +20,18 @@ import {
 
 const router = express.Router();
 
+export function buildEvidenceBuildFailureResponse(eventId) {
+    return {
+        httpStatus: 500,
+        body: {
+            ok: false,
+            eventId,
+            code: 'evidence_build_failed',
+            error: 'Failed to build match evidence snapshot'
+        }
+    };
+}
+
 function getConfirmationState(eventId, res) {
     let state;
     
@@ -62,13 +74,9 @@ router.get('/:eventId/latest', (req, res) => {
     let result;
     try {
         result = buildLatestMatchEvidence(eventId);
-    } catch (err) {
-        return res.status(500).json({
-            ok: false,
-            eventId,
-            error: 'Failed to build match evidence snapshot',
-            details: err?.message || String(err)
-        });
+    } catch (_error) {
+        const response = buildEvidenceBuildFailureResponse(eventId);
+        return res.status(response.httpStatus).json(response.body);
     }
     
     if (result.missing) {

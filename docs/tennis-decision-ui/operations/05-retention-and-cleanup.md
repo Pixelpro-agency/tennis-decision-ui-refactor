@@ -163,13 +163,7 @@ ricostruzione o persistenza artificiale di Evidence
 
 La diagnostica deve essere esplicita.
 
-Nel percorso HTTP deprecato:
-
-```txt
-GET /api/betfair/odds?networkCapture=true
-```
-
-la capture può essere abilitata opt-in. Il live tracking non la abilita.
+La precedente route HTTP `/api/betfair/odds` è stata rimossa. Il live tracking non abilita la capture e non esiste un endpoint HTTP diagnostico sostitutivo.
 
 Il CLI Python diretto abilita la capture salvo `--no-network-capture`; non usarlo senza valutare il rischio di dump.
 
@@ -240,6 +234,8 @@ Policy:
 --max-total-bytes
 ```
 
+`--max-files` e `--max-total-bytes` vengono valutati separatamente per ciascuna cache selezionata. Non costituiscono un tetto globale condiviso fra SofaScore e Betfair.
+
 Soglia operativa iniziale verificata:
 
 ```txt
@@ -288,6 +284,17 @@ file saltati
 errori
 rimozioni
 ```
+
+L’apply è best-effort per singolo file. Un errore su un candidato non annulla le rimozioni già completate e non impedisce necessariamente di tentare i candidati successivi:
+
+```txt
+exit code 1
+→ esecuzione con errori
+→ possono esistere rimozioni già effettuate
+→ leggere sempre removed, errors e recoveredBytes
+```
+
+Il risultato non deve quindi essere ridotto al solo exit code. `blocked` indica invece che il controllo di sicurezza ha impedito l’apply prima delle rimozioni.
 
 La policy riguarda la conservazione su disco delle cache rigenerabili. Non modifica i TTL applicativi.
 
@@ -365,6 +372,8 @@ timeline
 conferme applicabili
 validazioni collegate
 ```
+
+La validità JSON dei singoli file non dimostra la coerenza dell’insieme. Un backup destinato a restore o audit richiede una snapshot boundary project-owned che impedisca scritture canoniche fra la copia dei diversi artefatti, oppure una prova equivalente e verificabile della stessa baseline. Questa authority non è ancora definita: fino ad allora il backup è una copia best-effort e non va dichiarato snapshot coerente.
 
 La writer authority è effimera e process-owned. Non deve essere copiata fra working copy per attribuire ownership a un processo diverso.
 

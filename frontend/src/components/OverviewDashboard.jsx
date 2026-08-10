@@ -8,6 +8,13 @@ export default function OverviewDashboard({
   betfairHistory,
   betfairHealth,
   betfairHealthTransition,
+  betfairLastKnownData,
+  betfairLastKnownHistory,
+  betfairReadStatus,
+  betfairIsPolling,
+  betfairSourceUpdatedAt,
+  persistenceViewState,
+  trackingStopped,
   confirmedUrl,
   stopSofaStatus,
   onStopLiveTracking
@@ -28,6 +35,13 @@ export default function OverviewDashboard({
           history={betfairHistory}
           health={betfairHealth}
           healthTransition={betfairHealthTransition}
+          lastKnownData={betfairLastKnownData}
+          lastKnownHistory={betfairLastKnownHistory}
+          readStatus={betfairReadStatus}
+          isPolling={betfairIsPolling}
+          sourceUpdatedAt={betfairSourceUpdatedAt}
+          persistenceViewState={persistenceViewState}
+          trackingStopped={trackingStopped}
         />
       </div>
 

@@ -126,8 +126,6 @@ export function processBetfairRunnerState({
     pendingMarketStateByRaw.delete(raw);
 
     const marketTotalMatched = normalizeMoney(raw.market_info?.total_matched);
-    const runnerCount = raw.runners.length || 1;
-
     raw.runners.forEach(runner => {
         const hadOriginalLadder = Array.isArray(runner.ladder) && runner.ladder.length > 0;
         runner.ladder = buildLadderFromRunner(runner, 0);
@@ -153,17 +151,16 @@ export function processBetfairRunnerState({
             }));
         }
 
-        if (typeof runner.matchedTotal !== 'number' || runner.matchedTotal === 0) {
+        if (!Number.isFinite(runner.matchedTotal)) {
             const runnerMatched = runner.state?.totalMatched ??
                 runner.tradedVolume ??
-                runner.exchange?.tradedVolume ??
-                0;
-            runner.matchedTotal = runnerMatched > 0
+                runner.exchange?.tradedVolume;
+            runner.matchedTotal = Number.isFinite(runnerMatched)
                 ? runnerMatched
-                : (marketTotalMatched / runnerCount);
+                : null;
         }
 
-        if (typeof runner.totalMatchedOnSelection !== 'number' || runner.totalMatchedOnSelection === 0) {
+        if (!Number.isFinite(runner.totalMatchedOnSelection)) {
             runner.totalMatchedOnSelection = runner.matchedTotal;
         }
 
@@ -209,9 +206,11 @@ export function processBetfairRunnerState({
             };
         });
 
-        const matchedTotalFromGraph = marketGraph.runnerMatchedVolume
+        const matchedTotalFromGraph = marketGraph.runnerMatchedVolume !== null &&
+            marketGraph.runnerMatchedVolume !== undefined &&
+            marketGraph.runnerMatchedVolume !== ''
             ? normalizeMoney(marketGraph.runnerMatchedVolume)
-            : 0;
+            : null;
         const lastTradedPrice = parseFloat(runner.state?.lastPriceTraded) ||
             parseFloat(marketGraph.lastTradedPrice) ||
             0;
@@ -265,10 +264,9 @@ export function processBetfairRunnerState({
             ? (moneyFlow.back / totalMatchedFlow)
             : 0.5;
 
-        const finalMatchedTotal = matchedTotalFromGraph || runner.matchedTotal || 0;
-        const finalTotalMatchedOnSelection = matchedTotalFromGraph ||
-            runner.totalMatchedOnSelection ||
-            ladder.reduce((sum, row) => sum + row.traded, 0);
+        const finalMatchedTotal = matchedTotalFromGraph ?? runner.matchedTotal ?? null;
+        const finalTotalMatchedOnSelection = matchedTotalFromGraph ??
+            runner.totalMatchedOnSelection ?? null;
         const normalizedSelectionId = normalizeSelectionId(runner.selectionId);
 
         newState.runners.push({

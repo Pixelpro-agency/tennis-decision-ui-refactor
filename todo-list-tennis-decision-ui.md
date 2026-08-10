@@ -31,6 +31,10 @@ Data del recupero documentale: 2026-08-06
 - [x] Documentazione e registri verificati dopo la modularizzazione
 - [x] Working tree pulita al momento della pubblicazione del recupero
 
+### Autorità temporale corrente
+
+La baseline sopra è il checkpoint pubblicato del recupero, non la descrizione automatica della working tree locale successiva. Al 10 agosto 2026 la documentazione è in revisione locale non ancora pubblicata: gli SHA storici restano invariati e le correzioni non committate non ricevono uno SHA inventato. Per lo stato corrente prevalgono checkbox, stato testuale e schede owner; gli artifact live valgono soltanto per la run identificata.
+
 ## Legenda
 
 ```txt

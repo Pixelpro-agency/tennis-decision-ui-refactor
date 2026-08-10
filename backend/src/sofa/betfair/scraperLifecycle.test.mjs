@@ -97,7 +97,9 @@ const context = {
         mode: 'cdp',
         cdpUrl: 'http://127.0.0.1:9224',
         ladderUrls: [],
-        networkCapture: false
+        networkCapture: false,
+        noCache: true,
+        trackingSessionId: 'session-a'
     },
     logDebug() {},
     processBetfairResults(key, raw) {
@@ -112,7 +114,16 @@ const reused = runner.fetchScraperLifecycle({
 });
 assert.equal(first, reused, 'L28 compatible runtime reuses promise');
 assert.equal(spawnCalls.length, 1);
+await assert.rejects(
+    runner.fetchScraperLifecycle({
+        ...context,
+        options: { ...context.options, trackingSessionId: 'session-b' }
+    }),
+    error => error.code === 'scraper_session_conflict',
+    'same key and runtime cannot cross tracking sessions'
+);
 assert.equal(spawnCalls[0].args.includes('--cdp-url'), true);
+assert.equal(spawnCalls[0].args.includes('--no-cache'), true);
 assert.equal(
     spawnCalls[0].args[spawnCalls[0].args.indexOf('--cdp-url') + 1],
     'http://127.0.0.1:9224'
@@ -371,6 +382,43 @@ await assert.rejects(
 );
 await Promise.resolve();
 assert.equal(runnerTimeoutTerminateCalls, 1);
+
+let overflowTerminateCalls = 0;
+const overflowProc = fakeProcess(8000);
+const overflowRunner = createScraperRunner({
+    processRegistry: {
+        captureGeneration: () => 1,
+        spawnPython: () => ({
+            proc: overflowProc,
+            executionId: 'betfair-overflow',
+            ownerToken: Symbol(),
+            terminationRequested: new Promise(() => {}),
+            isTerminationRequested: () => false
+        }),
+        terminateExecution: async () => {
+            overflowTerminateCalls += 1;
+            return { outcome: 'graceful', errors: [] };
+        },
+        terminateRoles: async () => ({
+            ok: true, scope: 'tracking', requested: 0, graceful: 0,
+            forceKilled: 0, alreadyExited: 0, remaining: 0, errors: []
+        })
+    },
+    maxStdoutBytes: 16,
+    timeoutMs: 60000
+});
+const overflowPromise = overflowRunner.fetchScraperLifecycle({
+    ...context,
+    key: 'market-overflow',
+    options: { mode: 'persistent', trackingSessionId: 'overflow-session' }
+});
+overflowProc.stdout.emit('data', Buffer.from('0123456789abcdefSECRET'));
+await assert.rejects(
+    overflowPromise,
+    error => error.code === 'scraper_output_too_large'
+);
+await Promise.resolve();
+assert.equal(overflowTerminateCalls, 1, 'stdout overflow terminates child');
 
 
 const lifecycleLogRecords = [];

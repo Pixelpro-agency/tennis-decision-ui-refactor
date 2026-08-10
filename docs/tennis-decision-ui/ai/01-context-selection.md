@@ -1,394 +1,171 @@
-# Selezione del contesto e linee guida per AI
+# Selezione del contesto per AI
 
 ## Scopo
 
-Questo documento definisce il contesto minimo e le regole operative da inserire nei prompt destinati a chat o AI che lavorano su Tennis Decision UI.
+Questo documento definisce come scegliere il contesto minimo necessario per una task su Tennis Decision UI. Non definisce il ciclo di esecuzione, gli artefatti di consegna o i criteri di chiusura: per questi aspetti l’owner è [Workflow esecutivo e criteri di chiusura](./03-workflow-esecutivo.md).
 
-Il ciclo esecutivo completo, la distinzione tra `fileModificati.md` e report e i criteri di chiusura sono definiti in [Workflow esecutivo e criteri di chiusura](./03-workflow-esecutivo.md).
+Per analizzare responsabilità, confini ed eventuali estrazioni di moduli, usare [Diagnosi e modularizzazione](./04-diagnosi-e-modularizzazione.md).
 
-Questo documento non sostituisce:
+Il contesto selezionato non sostituisce codice, test, documentazione owner o decisioni esplicite dell’utente.
 
-- codice;
-- test;
-- documentazione tecnica owner;
-- decisioni dell’utente;
-- workflow esecutivo completo.
+## 1. Dati iniziali
 
-## 1. Prima di iniziare
-
-Verificare:
+Prima di lavorare, identificare:
 
 ```txt
-repository
-branch
-SHA
-obiettivo
-modalità
-scope
-file modificabili
-file consultabili
-file esclusi
-controllo mirato
-```
-
-Repository ordinaria:
-
-```txt
-Pixelpro-agency/tennis-decision-ui-refactor
-```
-
-Branch ordinario:
-
-```txt
-main
-```
-
-## 2. Ruoli disponibili
-
-```txt
-CHAT_ANALISI
-CHAT_ESECUTORE
-DESKTOP_ESECUTORE
-DESKTOP_COLLAUDATORE
-```
-
-Non cambiare ruolo durante la stessa esecuzione.
-
-Uso sintetico:
-
-| Modalità | Uso |
-| --- | --- |
-| `CHAT_ANALISI` | Analisi, delimitazione, preparazione prompt e revisione |
-| `CHAT_ESECUTORE` | Consegna deterministica tramite chat browser, poi report dopo gli artefatti locali |
-| `DESKTOP_ESECUTORE` | Modifica locale, controlli, `fileModificati.md` e report separato |
-| `DESKTOP_COLLAUDATORE` | Collaudo indipendente senza modifiche |
-
-## 3. Gerarchia delle fonti
-
-```txt
-decisione utente recente
-→ stato locale autorizzato e fileModificati.md
-→ test sullo stesso stato
-→ codice corrente
-→ documento owner
-→ registri
-→ planning e report storici
-```
-
-Quando le fonti divergono, non inventare una sintesi.
-
-## 4. Selezione minima del contesto
-
-Includere soltanto:
-
-1. obiettivo concreto;
-2. file modificabili;
-3. file consultabili;
-4. file esclusi;
-5. documento owner;
-6. contratto condiviso soltanto se attraversato;
-7. test o controllo mirato;
-8. decisioni utente pertinenti;
-9. procedura per `fileModificati.md`;
-10. formato e momento del report finale.
-
-Non caricare automaticamente:
-
-- repository completo;
-- Repomix globale;
-- history o timeline reali;
-- cache;
-- dump;
-- profili browser;
-- `.env`;
-- credenziali;
-- report storici non pertinenti;
-- tutti i documenti canonici.
-
-## 5. Informazioni obbligatorie del prompt
-
-Ogni prompt deve indicare:
-
-```txt
-ID e titolo
-modalità
+repository e root locale
+branch e SHA, quando pertinenti
 obiettivo unico
-repository / root / branch / SHA
+modalità operativa
 file modificabili
 file consultabili
 file esclusi
 documento owner
-comportamento richiesto
-contratti da preservare
-controlli
-massimo tre tentativi
-criterio di successo
-criterio di stop
-impatto documentale
-metodo unico di consegna
-generazione obbligatoria di fileModificati.md
-momento del report finale
-commit: no
-push: no
+controllo mirato
 ```
 
-Un file consultabile non diventa modificabile.
+Un file consultabile non diventa modificabile. Un file non incluso nello scope di modifica resta fuori perimetro.
 
-Un file non elencato tra quelli modificabili resta fuori scope.
+## 2. Orientamento sulle modalità
 
-## 6. Regola obbligatoria su `fileModificati.md`
+| Modalità               | Contesto da privilegiare                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| `CHAT_ANALISI`         | Fonti necessarie per analisi, delimitazione, revisione o preparazione di istruzioni        |
+| `CHAT_ESECUTORE`       | Fonti necessarie per produrre una consegna applicabile e verificabile                      |
+| `DESKTOP_ESECUTORE`    | File locali autorizzati, dipendenze dirette e controlli pertinenti                         |
+| `DESKTOP_COLLAUDATORE` | Contratto da verificare, ambiente osservabile e criteri di esito, senza file da modificare |
 
-Ogni prompt che può creare o modificare file deve stabilire:
+Ruoli, tentativi, consegna, report e criteri di stop sono regolati esclusivamente dal [workflow esecutivo](./03-workflow-esecutivo.md).
 
-```txt
-fileModificati.md
-→ obbligatorio
-→ generato sulla copia locale
-→ contiene tutti e soli i file creati o modificati dalla task
-→ contiene il contenuto completo dei file
-→ non contiene il report
-→ non viene committato
-```
+## 3. Gerarchia sintetica delle fonti
 
-Il prompt deve riportare il comando o il meccanismo esatto di generazione.
+In caso di divergenza, usare questo ordine:
 
-Comando ordinario:
+1. decisione recente dell’utente;
+2. stato locale autorizzato e output reali della stessa esecuzione;
+3. test eseguiti sullo stesso stato;
+4. codice corrente;
+5. documento owner;
+6. registri correnti;
+7. planning e report storici.
 
-```powershell
-$repomixInclude = 'percorso/file1,percorso/file2'
-npx.cmd --yes repomix@latest -o fileModificati.md --style markdown --include "$repomixInclude"
-```
+Non fondere fonti incompatibili. Segnalare la divergenza e chiedere una decisione solo se cambia il risultato richiesto.
 
-Se i file cambiano durante un tentativo successivo, `fileModificati.md` deve essere rigenerato.
+## 4. Contesto minimo
 
-Non accettare come sostituti:
+Includere soltanto:
 
-- elenco dei file;
-- manifest della consegna;
-- riepilogo della chat;
-- contenuti ricostruiti dal repository remoto;
-- output parziali.
+1. obiettivo concreto;
+2. file modificabili, consultabili ed esclusi;
+3. documento owner;
+4. contratti condivisi realmente attraversati;
+5. dipendenze e consumer diretti necessari;
+6. test, fixture o controllo più vicino;
+7. decisioni utente pertinenti;
+8. criterio osservabile di successo e di stop.
 
-## 7. Regola obbligatoria sul report
+Metodo di consegna, `fileModificati.md` e report finale si includono soltanto quando la modalità e il [workflow esecutivo](./03-workflow-esecutivo.md) li richiedono. Le modalità read-only, in particolare `CHAT_ANALISI` e `DESKTOP_COLLAUDATORE`, non creano né aggiornano `fileModificati.md`.
 
-Il report è una risposta separata dell’Esecutore.
+## 5. Esclusioni predefinite
 
-Non viene inserito dentro `fileModificati.md`.
+Non caricare automaticamente:
 
-Per `DESKTOP_ESECUTORE`:
+- l’intero repository o un Repomix globale;
+- history, timeline, cache o dump reali;
+- profili browser;
+- `.env`, credenziali o altri dati sensibili;
+- report storici non pertinenti;
+- tutti i documenti canonici;
+- test fratelli o directory complete senza una dipendenza dimostrata.
 
-```txt
-modifiche locali
-→ controlli
-→ fileModificati.md
-→ report finale separato
-```
+Una fonte esclusa può essere aggiunta solo quando serve a verificare un contratto specifico e il suo uso è autorizzato.
 
-Per `CHAT_ESECUTORE`:
+## 6. Selezione per tipo di attività
 
-```txt
-consegna iniziale senza report finale
-→ applicazione locale
-→ controlli
-→ fileModificati.md
-→ restituzione degli output reali alla Chat Esecutore
-→ report finale separato
-```
+### Attività di modifica
 
-La Chat Esecutore non può produrre il report finale prima di avere ricevuto e letto:
+Oltre al contesto comune, indicare:
 
-```txt
-fileModificati.md
-+
-output ed exit code reali
-```
+- file autorizzati alla modifica;
+- contratti da preservare;
+- consumer interessati;
+- controlli da eseguire;
+- eventuali artefatti e modalità di consegna richiesti dal workflow.
 
-La prima risposta della Chat Esecutore è una consegna pronta per applicazione, non un report conclusivo.
+### Attività read-only
 
-## 8. CHAT_ESECUTORE
+Indicare:
 
-La Chat Esecutore legge GitHub ma non modifica la copia locale.
+- fonti osservabili;
+- azioni vietate;
+- evidenze da raccogliere;
+- matrice o formato dell’esito, se richiesto.
 
-Deve scegliere un solo metodo di consegna:
+Non aggiungere istruzioni per creare `fileModificati.md`, applicare patch o preparare una consegna modificabile.
 
-```txt
-file completi
-ZIP
-script patch Python
-comandi mirati
-patch piccola
-```
+### Analisi o revisione documentale
 
-La consegna iniziale deve includere:
+Indicare:
 
-- SHA base;
-- manifest dei file previsti;
-- istruzioni di applicazione;
-- controlli;
-- risultato atteso;
-- rollback;
-- limiti;
-- procedura per generare `fileModificati.md`;
-- divieto di commit e push.
+- documento analizzato;
+- documento owner del comportamento descritto;
+- codice o test usati come fonte di verità;
+- distinzione tra stato corrente, target approvato e storia.
 
-La consegna iniziale non deve includere:
-
-- dichiarazione di task completata;
-- dichiarazione di test locali superati;
-- report finale;
-- `fileModificati.md` presentato come proveniente dalla working tree;
-- approvazione del risultato.
-
-Dopo l’applicazione, la Chat Esecutore riceve `fileModificati.md` e gli output reali, li legge integralmente e produce il report separato.
-
-## 9. DESKTOP_ESECUTORE
-
-Deve:
-
-- iniziare subito;
-- verificare branch, SHA e status;
-- modificare solo i file autorizzati;
-- eseguire i controlli;
-- fare massimo tre tentativi;
-- creare o sovrascrivere `fileModificati.md`;
-- restituire `fileModificati.md`;
-- produrre il report finale separato;
-- non fare commit o push;
-- non approvare il proprio lavoro.
-
-Può fare una sola domanda soltanto davanti a un blocco tecnico oggettivo.
-
-## 10. DESKTOP_COLLAUDATORE
-
-Deve:
-
-- usare interazioni reali;
-- non modificare file;
-- non forzare stato tramite DOM o console;
-- registrare finding;
-- distinguere difetto e limitazione strumentale;
-- fermarsi dopo una perdita critica;
-- fare massimo tre tentativi;
-- produrre una matrice `PASS / FAIL / BLOCCATO`;
-- non creare o aggiornare `fileModificati.md`;
-- non fare commit o push.
-
-## 11. Contenuto minimo del report Esecutore
-
-Il report separato deve contenere:
-
-- ID e modalità;
-- SHA base;
-- file letti;
-- file creati;
-- file modificati;
-- file eliminati;
-- riepilogo;
-- comandi ed exit code reali;
-- test e risultati reali;
-- tentativi;
-- warning e limiti;
-- working tree o stato locale fornito;
-- impatto documentale;
-- commit: no;
-- push: no;
-- stato per revisione.
-
-Il report non sostituisce `fileModificati.md`.
-
-`fileModificati.md` non sostituisce il report.
-
-## 12. Decisioni mancanti
-
-Fermarsi e chiedere all’utente quando una scelta cambia:
-
-- comportamento;
-- dati;
-- persistenza;
-- UI;
-- risultato;
-- scope di rimozione;
-- compatibilità.
-
-Non chiedere per:
-
-- informazioni recuperabili;
-- metodi tecnici equivalenti;
-- controlli necessari;
-- nomi temporanei;
-- dettagli già decisi.
-
-## 13. Confini tecnici permanenti
-
-- non ricostruire Evidence nel frontend;
-- non dedurre causalità;
-- non usare dump come input algoritmico;
-- non modificare timeline per risolvere Source Identity;
-- non trattare health come persistence;
-- non trattare il nome runner come identità Betfair quando è richiesto `selectionId`;
-- non introdurre un nuovo blocco di Start per un problema interno a Market Reactions;
-- non terminare processi in base alla sola porta;
-- non modificare wrapper root per un refactor interno non collegato.
-
-## 14. Navigazione del codice
+## 7. Navigazione del codice
 
 Ordine preferito:
 
-1. indice o repository map;
+1. indice o mappa del repository;
 2. documento owner;
 3. file target;
 4. import indispensabili;
-5. consumer diretti se il contratto cambia;
+5. consumer diretti, se il contratto cambia;
 6. test più vicino;
-7. fixture o helper locale.
+7. fixture o helper locale necessario.
 
-Non leggere automaticamente test fratelli o intere directory.
+Allargare il contesto un passaggio alla volta. Ogni nuova fonte deve rispondere a una domanda ancora aperta.
 
-## 15. Diagnosi e modularizzazione
+## 8. Guardrail condizionali
 
-Prima di proporre una divisione identificare:
+I guardrail tecnici non vanno copiati in ogni prompt. Includere solo quelli relativi al confine attraversato e rinviare all’owner:
 
-- responsabilità primaria;
-- export pubblici;
-- input e output;
-- stato e durata;
-- side effect;
-- dipendenze;
-- consumer;
-- test;
-- confine naturale.
+| Area attraversata                                       | Owner da consultare                                                                                                 |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Processi, porte, ownership e terminazione               | [Confini di sistema](../architecture/01-system-boundaries.md) e [Runtime locale](../operations/01-local-runtime.md) |
+| Persistenza, recovery, journal e authority di scrittura | [Commit journal e recovery](../modules/storage/02-commit-journal-and-recovery.md)                                   |
+| Evidence e composizione dello snapshot                  | [Match Evidence Snapshot](../modules/evidence/01-match-evidence-snapshot.md)                                        |
+| Source Identity                                         | [Source Identity](../modules/evidence/02-source-identity.md)                                                        |
+| Qualità, freshness e allineamento delle fonti           | [Qualità, flow e allineamento](../modules/evidence/03-quality-flow-and-alignment.md)                                |
+| Causalità e Market Reactions                            | [Market Reactions](../modules/evidence/04-market-reactions.md)                                                      |
+| Identità Betfair e `selectionId`                        | [Validità tecnica del campione](../modules/betfair/02-technical-sample-validity.md)                                 |
+| Lifecycle Start/Stop e attivazione frontend             | [Session shell](../modules/frontend/01-session-shell.md)                                                            |
+| Betfair Depth, Money Flow e health UI                    | [Betfair Depth e health UI](../modules/frontend/05-betfair-depth-and-health-ui.md)                                   |
+| Presentazione Market Reactions                           | [Market Reactions UI](../modules/frontend/06-market-reactions-ui.md)                                                 |
+| Entry point e wrapper Python                            | [Entry point e runtime Python](../modules/python/01-entrypoints-and-runtime.md)                                     |
 
-Classificare il file come:
+Se la task non attraversa una di queste aree, il relativo guardrail non fa parte del contesto minimo.
 
-```txt
-facade/orchestratore
-logica pura
-adapter I/O
-persistenza
-stato runtime
-fixture/helper
-test unitario
-test integrazione
-test sicurezza/recovery
-```
+## 9. Decisioni mancanti
 
-Regole:
+Fermarsi e chiedere all’utente quando una scelta non ricavabile dalle fonti cambia:
 
-- lasciare nel file principale facade, composizione o entry point;
-- estrarre funzioni pure;
-- separare filesystem, rete, processi, clock e log;
-- separare stato runtime e policy;
-- usare dependency injection quando riduce I/O reale nei test;
-- evitare cartelle intermedie senza owner chiaro;
-- non rompere export pubblici prima della migrazione dei consumer.
+- comportamento o risultato;
+- dati o persistenza;
+- interfaccia utente;
+- compatibilità;
+- perimetro di rimozione;
+- authority fra fonti discordanti.
 
-## 16. Template minimo
+Non chiedere per informazioni recuperabili, controlli necessari, dettagli già decisi o metodi tecnici equivalenti entro lo scope autorizzato.
+
+## 10. Template condizionale
 
 ```txt
 ID e titolo:
 Modalità:
 Obiettivo:
-Repository / root / branch / SHA:
+Repository / root / branch / SHA, se pertinenti:
 
 File modificabili:
 - ...
@@ -402,71 +179,37 @@ File esclusi:
 Documento owner:
 - ...
 
-Contratti da preservare:
+Contratti attraversati:
 - ...
 
-Controlli:
-- ...
-
-Massimo tre tentativi:
-- sì
-
-Metodo unico di consegna:
-- ...
-
-fileModificati.md:
-- obbligatorio;
-- comando o meccanismo esatto;
-- tutti e soli i file creati o modificati;
-- contenuto completo;
-- non contiene il report;
-- non viene committato.
-
-Sequenza del report:
-- consegna iniziale senza report finale;
-- applicazione e controlli locali;
-- ricezione e lettura di fileModificati.md;
-- report finale separato.
-
-Criterio di successo:
+Controllo e risultato atteso:
 - ...
 
 Criterio di stop:
 - ...
-
-Impatto documentale:
-- ...
-
-Commit:
-- no
-
-Push:
-- no
 ```
 
-## 17. Checklist
+Per una task di modifica aggiungere soltanto i campi esecutivi richiesti dal workflow: consegna, artefatti, report e vincoli sulle operazioni Git. Per una task read-only aggiungere invece evidenze e formato dell’esito, senza `fileModificati.md`.
+
+## 11. Checklist
 
 ```txt
-[ ] Un solo obiettivo verificabile.
-[ ] Branch e SHA base dichiarati.
-[ ] File modificabili, consultabili ed esclusi separati.
-[ ] Documento owner individuato.
-[ ] Contratti condivisi inclusi soltanto se attraversati.
-[ ] Controllo mirato reale e ripetibile.
-[ ] Massimo tre tentativi esplicitato.
-[ ] Metodo unico di consegna.
-[ ] fileModificati.md obbligatorio.
-[ ] Elenco esatto dei file da includere.
-[ ] fileModificati.md separato dal report.
-[ ] Report finale vietato nella consegna iniziale della Chat Esecutore.
-[ ] Report prodotto solo dopo fileModificati.md e output reali.
-[ ] Nessun dato sensibile incluso.
-[ ] Impatto documentale dichiarato.
-[ ] Commit e push riservati all’utente.
+[ ] Esiste un solo obiettivo verificabile.
+[ ] Modalità e scope sono espliciti.
+[ ] File modificabili, consultabili ed esclusi sono distinti.
+[ ] Il documento owner è individuato.
+[ ] Sono inclusi soltanto contratti e consumer attraversati.
+[ ] Il controllo è reale, mirato e ripetibile.
+[ ] Ogni fonte aggiunta risponde a una domanda aperta.
+[ ] Nessun dato sensibile è incluso.
+[ ] Artefatti e report sono presenti solo se richiesti dal workflow.
+[ ] Una modalità read-only non crea fileModificati.md.
 ```
 
 ## Documenti collegati
 
 - [Workflow esecutivo e criteri di chiusura](./03-workflow-esecutivo.md)
+- [Artefatti esecutivi e revisione](./05-artefatti-esecutivi.md)
+- [Diagnosi e modularizzazione](./04-diagnosi-e-modularizzazione.md)
 - [Convenzioni della documentazione](./02-documentation-conventions.md)
 - [Mappa del repository](../reference/01-repository-map.md)

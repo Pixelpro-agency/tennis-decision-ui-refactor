@@ -40,7 +40,7 @@ for (const action of ['bootstrapped', 'buffered', 'blocked']) {
     assert.equal(normalizeSofaCommitResult(result, `event-test-${action}`), result);
 }
 
-for (const action of ['persist-current', 'no-gate']) {
+for (const action of ['persist-current']) {
     let observedSample = null;
     let persisted = null;
 
@@ -93,6 +93,35 @@ for (const action of ['persist-current', 'no-gate']) {
             { set: 2, game: 9 }
         ]
     );
+}
+
+{
+    let persistCount = 0;
+    const result = await updateSofa('event-no-gate', {}, createDependencies({
+        observeSofaSourceIdentitySample: () => ({ action: 'no-gate' }),
+        persistSofaTrackingSample: () => {
+            persistCount += 1;
+            return { ok: true };
+        }
+    }));
+    assert.equal(persistCount, 0);
+    assert.deepEqual(result.warnings, ['source_identity_gate:no-gate']);
+}
+
+{
+    let persistCount = 0;
+    const result = await updateSofa('event-stale-sofa', {
+        trackingSessionId: 'session-old',
+        betfairUrl: 'https://betfair.example/market'
+    }, createDependencies({
+        isTrackingSessionCurrent: () => false,
+        persistSofaTrackingSample: () => {
+            persistCount += 1;
+            return { ok: true };
+        }
+    }));
+    assert.equal(persistCount, 0);
+    assert.equal(result.reason, 'stale_tracking_session');
 }
 
 {

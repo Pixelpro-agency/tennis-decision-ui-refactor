@@ -6,8 +6,7 @@ import { buildSofaEvidence } from './sofaEvidence.js';
 import { buildMarketEvidence } from './marketEvidence.js';
 import { buildMarketReactionEvidence } from '../marketReactionEvidence.js';
 import { createPendingSourceIdentity } from './sourceIdentity.js';
-
-const PERSISTENCE_INCOMPLETE_REASON = 'Persistence incomplete: canonical cross-source evidence unavailable';
+import { PERSISTENCE_INCOMPLETE_REASON, isPersistenceConflict } from './persistenceQuality.js';
 
 function uniqueStrings(values) {
     return [...new Set(
@@ -46,11 +45,6 @@ function normalizeSourceIdentity(sourceIdentity) {
         normalizedPairs,
         reasons: uniqueStrings(sourceIdentity.reasons)
     };
-}
-
-function isPersistenceConflict(integrity) {
-    return integrity?.status === 'partial_persistence' ||
-        integrity?.status === 'recovery_failed';
 }
 
 function getCrossSourceUnavailableReason(status) {
@@ -105,11 +99,12 @@ export function buildEvidenceFromTicks({
         betfairTick: scopedBetfairTick,
         now,
         allSofaTicks: Array.isArray(allSofaTicks) ? allSofaTicks : recentSofaTicks,
-        allBetfairTicks: Array.isArray(scopedAllBetfairTicks) ? scopedAllBetfairTicks : scopedLookbackEntries
+        allBetfairTicks: Array.isArray(scopedAllBetfairTicks) ? scopedAllBetfairTicks : scopedLookbackEntries,
+        dataQuality
     });
     Object.assign(alignment, alignmentExt);
 
-    const noTradeReasons = buildNoTradeReasons(dataQuality, alignment, integrity);
+    const noTradeReasons = buildNoTradeReasons(dataQuality, alignment);
 
     const baseMarketReactionEvidence = buildMarketReactionEvidence({
         sofaTicks: Array.isArray(scopedMarketReactionSofaTicks) ? scopedMarketReactionSofaTicks : [],

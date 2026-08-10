@@ -81,11 +81,12 @@ export function appendHistoryRow(historyObj, sofaData, latestBetfair, now, commi
         betfair: latestBetfair ? {
             totalMatched: getPersistedBetfairTotalMatched(latestBetfair),
             runners: runners.map(runner => ({
+                selectionId: runner.selectionId ?? null,
                 name: runner.name,
                 wom: runner.wom,
                 backPrice: runner.back?.[0]?.price || null,
                 layPrice: runner.lay?.[0]?.price || null,
-                moneyFlow: runner.moneyFlow || { back: 0, lay: 0 }
+                moneyFlow: runner.moneyFlow ?? null
             }))
         } : null
     });

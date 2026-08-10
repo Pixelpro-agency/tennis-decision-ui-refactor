@@ -4,18 +4,17 @@ Questo è l'indice canonico della documentazione tecnica corrente.
 
 La migrazione da MDX a Markdown è completata. Tutti gli owner canonici usano `.md`; validazioni storiche e planning archiviato restano fuori dalla documentazione tecnica corrente.
 
-## Gerarchia delle fonti
+## Authority dei fatti e dei target
 
-Quando due fonti divergono, usare questo ordine:
+Per stabilire ciò che **esiste correntemente**, usare nell'ordine:
 
-1. decisione esplicita più recente dell'utente;
-2. stato locale autorizzato e test eseguiti sullo stesso stato;
-3. codice sul branch canonico;
-4. documento owner del modulo;
-5. registri di audit, implementazioni e decisioni;
-6. planning, validazioni e materiale storico.
+1. stato locale autorizzato e test eseguiti sulla stessa baseline;
+2. codice della baseline corrente;
+3. documento owner del modulo;
+4. registri di audit e implementazione;
+5. validazioni e materiale storico, limitatamente al checkpoint dichiarato.
 
-Un documento non rende implementata una funzione che il codice non contiene.
+Per stabilire ciò che **deve essere realizzato**, la decisione esplicita più recente dell'utente è authority del target. Una decisione approvata non dimostra che il target sia già implementato: servono codice e verifiche sulla baseline corrente.
 
 ## Come orientarsi
 
@@ -25,25 +24,34 @@ Un documento non rende implementata una funzione che il codice non contiene.
 4. Aggiungere soltanto i contratti condivisi attraversati dalla modifica.
 5. Usare il controllo più vicino al comportamento modificato.
 
-## Fondazione e architettura migrate
+## Fondazione e architettura
 
 - [Mappa del repository](./reference/01-repository-map.md)
 - [Confini del sistema](./architecture/01-system-boundaries.md)
 - [Ciclo di vita dei dati](./architecture/02-data-lifecycle.md)
 - [Selezione del contesto per AI](./ai/01-context-selection.md)
+- [Diagnosi e modularizzazione](./ai/04-diagnosi-e-modularizzazione.md)
+- [Artefatti esecutivi e revisione](./ai/05-artefatti-esecutivi.md)
 - [Workflow esecutivo e criteri di chiusura](./ai/03-workflow-esecutivo.md)
 - [Convenzioni della documentazione](./ai/02-documentation-conventions.md)
-- [Stato corrente del progetto](./roadmap/01-current-state.md)
+- [Stato corrente del progetto](./roadmap/01-current-state.md) — snapshot da leggere sulla baseline dichiarata nel documento
 
 ## API correnti
 
 - [API Match](./api/01-match.md)
+  - [Letture e integrity](./api/match/01-read-and-integrity.md)
+  - [Tracking e Source Identity](./api/match/02-tracking-and-source-identity.md)
+  - [Analisi e snapshot](./api/match/03-analysis-and-snapshot.md)
 - [API Betfair](./api/02-betfair.md)
+  - [Letture, integrity e health](./api/betfair/01-read-integrity-and-health.md)
+  - [Money Flow History](./api/betfair/02-money-flow-history.md)
+  - [Log diagnostico](./api/betfair/03-log.md)
+  - [Login window](./api/betfair/04-login-window.md)
 - [API Evidence](./api/03-evidence.md)
-- [API Preflight](./api/05-preflight.md)
-- [API Runtime Health](./api/06-runtime-health.md)
-
-[API Strategy](./api/04-strategy.md) descrive codice ancora presente ma deprecato. Non deve essere estesa.
+  - [Latest snapshot](./api/evidence/01-latest-snapshot.md)
+  - [Conferma e revoca Source Identity](./api/evidence/02-source-identity-confirmation.md)
+- [API Preflight](./api/04-preflight.md)
+- [API Runtime Health](./api/05-runtime-health.md)
 
 ## SofaScore e persistenza
 
@@ -51,8 +59,9 @@ Un documento non rende implementata una funzione che il codice non contiene.
 - [Contesto locale e point-by-point](./modules/sofa/02-local-context-and-point-by-point.md)
 - [Timeline e history](./modules/storage/01-timelines-and-history.md)
 - [Commit journal e recovery](./modules/storage/02-commit-journal-and-recovery.md)
-
-I documenti di tracking e storage hanno limiti già registrati. Non devono essere letti come prova dell'esistenza di autorità o contratti non presenti nel codice.
+- [Persistenza SofaScore](./modules/storage/03-sofa-persistence.md)
+- [Persistenza Betfair](./modules/storage/04-betfair-persistence.md)
+- [Writer authority](./modules/storage/05-writer-authority.md)
 
 ## Betfair
 
@@ -76,8 +85,8 @@ Evidence resta read-only rispetto a timeline e journal. Market Reactions mantien
 - [Polling e view model](./modules/frontend/02-live-polling-and-view-model.md)
 - [UI Betfair e Market Reactions](./modules/frontend/03-betfair-and-market-reactions-ui.md)
 - [Contesto punti UI](./modules/frontend/04-match-context-ui.md)
-
-I primi tre documenti hanno gap registrati. Per ordine dello Start, lifecycle dei poller e presentazione dell'integrity prevale il codice corrente.
+- [Betfair Depth e health UI](./modules/frontend/05-betfair-depth-and-health-ui.md)
+- [Market Reactions UI](./modules/frontend/06-market-reactions-ui.md)
 
 ## Python e runtime locale
 
@@ -101,6 +110,8 @@ Le procedure descrivono strumenti e comportamenti realmente disponibili. I risul
 - [Verifica live Source Identity](../validations/source-identity-live-verification.md)
 - [Validazione live Betfair — 4 luglio 2026](../validations/betfair-live-validation-2026-07-04.md)
 - [Chiusura della migrazione documentale — 3 agosto 2026](../validations/documentation-migration-finalization-2026-08-03.md)
+- [Commit journal hardening — 10 agosto 2026](../validations/commit-journal-hardening-2026-08-10.md)
+- [Local runtime hardening — 10 agosto 2026](../validations/local-runtime-hardening-2026-08-10.md)
 
 Una validazione storica dimostra ciò che è stato osservato nello specifico ambiente; non equivale a un PASS corrente.
 
@@ -112,9 +123,11 @@ Una validazione storica dimostra ciò che è stato osservato nello specifico amb
 - [Implementazioni proposte](../../implementazioni/06-implementazioni-proposte.md)
 - [Decisioni dell'utente](../../implementazioni/99-decisioni-utente.md)
 
+Essere presenti in questo indice significa essere un owner tecnico corrente, non essere privi di finding. Limiti, task aperte e implementazioni approvate appartengono alla roadmap e ai registri, non a note ad hoc accanto ai singoli gruppi.
+
 ## Materiale non canonico
 
-Le specifiche future non fanno parte della documentazione tecnica corrente. I requisiti ancora utili sono conservati nei registri. `docs/archive/` conserva materiali storici, planning, brief o fonti future non canoniche che l’utente ha deciso di mantenere per uso successivo. Il contenuto archive non è un owner tecnico, non dimostra implementazione e non viene eliminato automaticamente dalle pulizie documentali.
+Le specifiche future non fanno parte della documentazione tecnica corrente. I requisiti ancora utili sono conservati nei registri. `docs/archive/` è una radice non canonica per materiali esplicitamente preservati dall'utente: può essere vuota o assente, non è un owner tecnico, non dimostra implementazione e non è soggetta a cleanup generici. Non deve essere creata o popolata soltanto per soddisfare una descrizione documentale.
 
 ## Regola documentale corrente
 
@@ -123,4 +136,15 @@ owner tecnico corrente in .md
 → link relativi verificati
 → validazioni storiche separate
 → planning, brief e fonti non canoniche conservati in docs/archive quando dichiarati utili
+```
+
+## Manutenzione dell'indice
+
+Aggiornare questo indice nella stessa modifica quando un owner canonico viene creato, rinominato, spostato, sostituito, diviso, deprecato o rimosso.
+
+Non aggiungere link a file soltanto proposti. Dopo ogni modifica strutturale eseguire:
+
+```txt
+python scripts/check_documentation_links.py --forbid-mdx-links
+python scripts/check_registry_consistency.py
 ```

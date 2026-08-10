@@ -2,11 +2,10 @@ import {
     getSourceIdentityGateStatus as getSourceIdentityGateStatusDefault,
     confirmActiveSourceIdentityGate as confirmActiveSourceIdentityGateDefault
 } from '../../sofa/sourceIdentityGate.js';
+import { normalizeEventId } from '../../utils/eventId.js';
 
 export function normalizeEvidenceEventId(value) {
-    return typeof value === 'string' && value.trim()
-    ? value.trim()
-    : null;
+    return normalizeEventId(value);
 }
 
 export function buildInvalidEvidenceEventIdResponse() {
@@ -23,17 +22,26 @@ export function buildManualConfirmationValidationResponse(
     eventId,
     validationCode
 ) {
-    const httpStatus = validationCode === 'confirmation_context_incomplete'
-    ? 422
-    : validationCode === 'automatic_identity_not_pending'
-    ? 409
-    : 400;
+    const mappings = {
+        confirmation_text_invalid: [400, 'confirmation_text_invalid'],
+        selected_pairs_invalid: [400, 'selected_pairs_invalid'],
+        confirmation_context_incomplete: [422, 'confirmation_context_incomplete'],
+        automatic_identity_not_pending: [409, 'automatic_identity_not_pending'],
+        invalid_phase: [409, 'confirmation_phase_invalid'],
+        session_not_found: [409, 'confirmation_session_changed'],
+        stale_session: [409, 'confirmation_session_changed'],
+        persistence_failed: [500, 'confirmation_persistence_failed'],
+        bootstrap_persistence_failed: [500, 'confirmation_bootstrap_failed'],
+        bootstrap_rollback_failed: [500, 'confirmation_rollback_failed']
+    };
+    const [httpStatus, code] = mappings[validationCode] || [400, 'confirmation_invalid'];
     
     return {
         httpStatus,
         body: {
             ok: false,
             eventId,
+            code,
             error: 'Source identity confirmation is invalid'
         }
     };
@@ -46,7 +54,7 @@ export function buildGateManualConfirmationResponse(eventId, reqBody, dependenci
 
     const gateStatus = getGateStatus(eventId);
     if (!gateStatus || !gateStatus.ok) {
-        return null; // Fallback to normal behavior when no active gate exists
+        return buildManualConfirmationValidationResponse(eventId, 'session_not_found');
     }
 
     if (gateStatus.phase === 'collecting') {
@@ -60,7 +68,8 @@ export function buildGateManualConfirmationResponse(eventId, reqBody, dependenci
     if (gateStatus.phase === 'pending') {
         const confirmResult = confirmGate(eventId, {
             selectedPairs: reqBody?.selectedPairs,
-            confirmationText: reqBody?.confirmationText
+            confirmationText: reqBody?.confirmationText,
+            trackingSessionId: reqBody?.trackingSessionId
         });
 
         if (!confirmResult.ok) {

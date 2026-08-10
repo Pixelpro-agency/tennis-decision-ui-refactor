@@ -2,50 +2,36 @@
 
 ## Scopo
 
-Market Reactions descrive osservazioni temporali tra attività Betfair Exchange e stato del match SofaScore.
-
-Non produce:
-
-* segnali operativi;
-* raccomandazioni;
-* previsioni;
-* attribuzioni di intenzione ai trader;
-* causalità dimostrata;
-* indicazioni su vincitori, favoriti, beneficiari o danneggiati.
-
-Ogni output mantiene:
+Market Reactions raccoglie tre livelli distinti:
 
 ```txt
-interpretation: temporal_proximity_only
-causalityClaimed: false
+Significant Market Flow
+→ attività Exchange isolata
+
+Market → Field
+→ osservazioni SofaScore successive a un flow sorgente
+
+Field → Market
+→ osservazioni Betfair successive a un marker SofaScore
 ```
 
-Il modulo consuma solo snapshot Evidence già costruiti. Non legge journal, non esegue recovery, non modifica history o timeline e non avvia tracker o scraper.
+Il modulo non genera segnali, raccomandazioni o previsioni e non attribuisce intenzioni ai trader. I summary e le finestre temporali mantengono `causalityClaimed:false`; gli oggetti interni puramente tecnici non sono tenuti ad avere tutti la stessa shape.
 
-Quando la persistenza canonica cross-source è incompleta o non recuperabile, Market Reactions viene sospeso anche se Source Identity effective è `aligned`.
+`exchange_activity_observed` descrive attività di mercato isolata. `temporal_proximity_only` descrive soltanto una relazione temporale. Nessuna delle due interpretazioni dimostra causalità.
 
 ## Implementazione
 
 ```txt
-backend/src/sofa/
-├── marketReactionEvidence.js
-├── significantMarketFlowEvidence.js
-├── marketLedObservationEvidence.js
-├── marketLedObservationEvidence.testFixtures.mjs
-└── fieldLedReactionEvidence.js
+backend/src/sofa/marketReactionEvidence.js
+backend/src/sofa/significantMarketFlowEvidence.js
+backend/src/sofa/significantMarketFlow/
+backend/src/sofa/marketLedObservationEvidence.js
+backend/src/sofa/marketLedObservationEvidence/
+backend/src/sofa/fieldLedReactionEvidence.js
+backend/src/sofa/fieldLedReactionEvidence/
 ```
 
-Il parent compone:
-
-```txt
-significantMarketFlow
-→ marketLedObservation
-
-fieldLedReaction
-→ summary aggregato
-```
-
-Il summary espone:
+Il parent restituisce i tre rami e un summary con:
 
 ```txt
 largeFlowDetected
@@ -55,160 +41,57 @@ fieldLedMarketResponseObserved
 fieldLedDataQuality
 flowAmbiguous
 dataQuality
-causalityClaimed: false
+causalityClaimed:false
 reasons
 ```
 
-Le ragioni dei tre rami vengono unite e deduplicate.
+Le reason dei rami vengono unite e deduplicate.
 
-Market Reactions non è owner di:
+## Gating cross-source
 
-```txt
-Source Identity Gate live
-persistence integrity
-journal e recovery
-history e timeline
-builder Evidence
-polling frontend
-```
-
-## Source Identity effective
-
-Market Reactions riceve dal Match Evidence Snapshot input già scoped.
-
-Le osservazioni cross-source sono abilitate soltanto quando:
+Il composer Evidence passa input utilizzabili soltanto quando:
 
 ```txt
-sourceIdentity.status === aligned
-dataQuality.persistenceComplete === true
+Source Identity effective aligned
+AND
+persistenceComplete true
 ```
 
-`sourceIdentity` descrive qui l’identità effective dello snapshot, non lo stato live del Source Identity Gate. Il modulo non legge né ricostruisce il gate live.
+Se una condizione manca, gli array cross-source vengono svuotati, `marketReactionEvidence.available` viene forzato a false e il summary conserva le reason backend-owned di Source Identity o persistence integrity.
 
-| Stato identity | Effetto                                                                    |
-| -------------- | -------------------------------------------------------------------------- |
-| `aligned`      | Osservazioni Market Reactions consentite solo se la persistenza è completa |
-| `pending`      | Osservazioni cross-source sospese                                          |
-| `mismatch`     | Osservazioni cross-source sospese                                          |
-
-Quando l’identità effective non è `aligned`:
-
-* i dati SofaScore restano disponibili nello snapshot;
-* la qualità Betfair può restare disponibile;
-* `marketReactionEvidence.available` è forzato a `false`;
-* viene aggiunta una ragione esplicita;
-* timeline raw e history non vengono modificate.
-
-Le osservazioni usano solo tick Betfair dell’active market epoch. Tick di epoch storiche non vengono confrontati con il contesto corrente.
-
-## Persistence completeness
-
-Market Reactions consuma `persistenceComplete` dal blocco `dataQuality` dello snapshot Evidence.
-
-Regole:
-
-```txt
-integrity.status = no_known_partial
-→ persistenceComplete:true
-
-integrity.status = partial_persistence
-integrity.status = recovery_failed
-→ persistenceComplete:false
-```
-
-Quando `persistenceComplete:false`, Market Reactions sospende l’uso cross-source canonico:
-
-```txt
-marketReactionEvidence.available
-→ false
-
-marketReactionEvidence.summary.causalityClaimed
-→ false
-
-marketLedAvailable
-→ false
-
-fieldLedAvailable
-→ false
-
-fieldLedMarketResponseObserved
-→ false
-```
-
-La reason standard è:
-
-```txt
-Persistence incomplete: canonical cross-source evidence unavailable
-```
-
-La reason viene aggiunta una sola volta e può coesistere con reason Source Identity `pending` o `mismatch`, senza duplicati.
-
-`partial_persistence` e `recovery_failed` non sono:
-
-```txt
-Source Identity mismatch
-freshness stale
-Graph health degradato
-runtime scraper failed
-Money Flow non valido
-ladder reliability assente
-segnale causale
-```
-
-Un tick Betfair può essere tecnicamente fresco e allo stesso tempo non utilizzabile da Market Reactions perché la persistenza canonica cross-source è incompleta.
+Il dominio Market Reactions non legge il gate live, journal o storage e non esegue recovery. Riceve inoltre soltanto il Betfair active market epoch scelto dal loader Evidence.
 
 ## Significant Market Flow
 
-Facade:
+Questo ramo individua attività di volume significativa nel lookback Betfair e può produrre flow single-tick o cluster.
+
+Un candidato espone, fra gli altri:
 
 ```txt
-backend/src/sofa/significantMarketFlowEvidence.js
+runner
+selectionId
+observedFlowAmount
+absoluteFlowTier
+relativeFlowTier
+direction
+flowAmbiguous
+validVolume
+graphHealth
+ladderSource
+bookTradable
+interpretation: exchange_activity_observed
+causalityClaimed: false
 ```
 
-Questo ramo individua flow significativi dai tick Betfair disponibili nello snapshot attribuito.
+`available:true` significa che la pipeline dispone di tick da analizzare, non che sia stato trovato un flow significativo. La presenza effettiva è indicata da `largeFlowDetected`, `significantFlows` e `latestSignificantFlow`.
 
-Può distinguere:
-
-```txt
-single tick flow
-cluster flow
-valid flow
-invalid flow
-ambiguous flow
-```
-
-L’output include il flow più recente:
-
-```txt
-latestSignificantFlow
-```
-
-Un candidato di flow può essere invalidato dal gate TotalMatched: in quel caso non entra in `significantFlows`, ma il summary espone conteggio e reason.
-
-Un flow significativo valido può restare ambiguo quanto alla direzione.
-
-Un `totalMatched` incoerente o in diminuzione deve generare una ragione di qualità, non una direzione certa.
-
-Quando `persistenceComplete:false`, questo ramo non deve ricevere tick Betfair attribuiti per uso cross-source canonico.
+Il ramo usa il predicate Money Flow condiviso: solo `confidence:confirmed` può diventare significativo. Richiede inoltre Graph health `ok`, ladder affidabile e non vuota e `selectionId`. Le tolleranze TotalMatched seguono il producer (`max(1, 5% del market delta)`). I candidati suppressed o tecnicamente ineligibili incrementano il conteggio diagnostico degli invalidati ma non diventano `latestSignificantFlow` o `sourceMarketEvent`.
 
 ## Market → Field
 
-Facade:
+`marketLedObservationEvidence` usa `latestSignificantFlow` come `sourceMarketEvent` e osserva esclusivamente tick SofaScore successivi.
 
-```txt
-backend/src/sofa/marketLedObservationEvidence.js
-```
-
-Flusso:
-
-```txt
-significant market flow
-→ sourceMarketEvent
-→ finestre temporali SofaScore successive
-→ osservazioni su score, marker e servizio
-```
-
-Le finestre predefinite sono:
+Finestre predefinite:
 
 ```txt
 60s
@@ -217,61 +100,21 @@ Le finestre predefinite sono:
 240s
 ```
 
-Ogni finestra può includere:
+Il tick sorgente è escluso; il cutoff finale è incluso. Ogni finestra può riportare score, servizio, marker, coverage quality e reason.
+
+Il ramo applica `maxSourceAgeSec:240` e tollera al massimo 5 secondi di clock skew futuro. Eventi più vecchi o futuri oltre tolleranza vengono rifiutati con reason bounded. Le observation window configurabili vengono filtrate, deduplicate e ordinate.
+
+Il disclaimer resta obbligatorio:
 
 ```txt
-windowSec
-windowStart
-windowEnd
-tick count
-score snapshots
-latest server
-marker osservati
-data quality
-reasons
+fieldEventObservedAfterFlow
+≠
+il flow ha causato l'evento di campo
 ```
-
-Il ramo osserva soltanto eventi successivi al flow sorgente.
-
-Se non esistono tick SofaScore successivi, restituisce una ragione esplicita. Non deduce un risultato o una reazione implicita.
-
-Quando la persistenza è incompleta, il ramo resta non disponibile: non deve costruire un `sourceMarketEvent` da tick Betfair non utilizzabili in modo canonico.
 
 ## Field → Market
 
-Facade:
-
-```txt
-backend/src/sofa/fieldLedReactionEvidence.js
-```
-
-Flusso:
-
-```txt
-marker SofaScore rilevante
-→ sourceFieldEvent
-→ anchor temporale
-→ finestre Betfair successive
-→ osservazioni prezzo e volume
-```
-
-Il source event usa:
-
-```txt
-sourceFieldEvent.stateFirstSeenAt
-```
-
-come anchor temporale.
-
-Marker rilevanti includono quelli esposti dal dominio SofaScore, ad esempio:
-
-```txt
-BREAK_POINT
-GAME_POINT
-DEUCE
-THIRTY_ALL
-PRESSURE_POINT
-```
+`fieldLedReactionEvidence` seleziona un marker SofaScore e osserva tick Betfair successivi all'anchor `sourceFieldEvent.stateFirstSeenAt`.
 
 Configurazione predefinita:
 
@@ -280,49 +123,27 @@ observationWindowsSec: [10, 30, 60, 120, 180, 240]
 maxSourceAgeSec: 240
 ```
 
-Per ogni finestra:
+La baseline è l'ultimo tick Betfair con timestamp minore o uguale all'anchor; i tick osservati sono successivi all'anchor e inclusi fino al cutoff.
 
-* baseline Betfair: ultimo tick con timestamp minore o uguale all’anchor;
-* tick osservati: strettamente successivi all’anchor;
-* cutoff: incluso nel limite della finestra;
-* osservazione finale: ultimo tick della finestra.
+`marketResponseObserved` diventa true in presenza di variazioni prezzo o di un incremento del totale matched. `marketResponseReliable` richiede inoltre coverage `good`, Graph health `ok` e almeno un runner con ladder e book affidabili. `reliabilityReasons` spiega una risposta soltanto diagnostica. La quality locale della finestra può essere `good`, `medium` o `poor`, ma non è la `dataQuality` globale dello snapshot.
 
-Output tipico:
+## Quality locale e availability
 
-```txt
-marketMatchedDelta
-runnerPriceChanges
-priceChangeObserved
-matchedVolumeIncreaseObserved
-marketResponseObserved
-dataQuality
-reasons
-```
+I nomi hanno scope differenti:
 
-`marketResponseObserved` indica solo che sono stati osservati cambiamenti compatibili con la finestra. Non prova che l’evento SofaScore li abbia causati.
+| Campo                              | Significato                                                  |
+| ---------------------------------- | ------------------------------------------------------------ |
+| `marketReactionEvidence.available` | Almeno una pipeline figlia ha dati elaborabili               |
+| `largeFlowDetected`                | È presente un flow sopra soglia                              |
+| `marketLedAvailable`               | Il ramo Market → Field ha un source event e dati elaborabili |
+| `fieldLedAvailable`                | Il ramo Field → Market ha un marker e dati elaborabili       |
+| `fieldLedMarketResponseObserved`   | Una variazione è stata osservata dopo il marker              |
+| `summary.dataQuality`              | Coverage quality locale del ramo Market → Field              |
+| `fieldLedDataQuality`              | Coverage quality locale del ramo Field → Market              |
 
-Quando la persistenza è incompleta, il ramo non deve calcolare finestre Betfair attribuite e `marketResponseObserved` resta non confermato.
-
-## Qualità dati
-
-Le finestre disponibili riportano qualità `good`, `medium` o `poor`. `unknown` è riservato al summary di un ramo non disponibile, ad esempio quando manca un source event utilizzabile.
-
-| Condizione                                           | Qualità o motivo                                     |
-| ---------------------------------------------------- | ---------------------------------------------------- |
-| Baseline disponibile e prezzi runner confrontabili   | `good`                                               |
-| Tick presenti ma manca baseline o prezzo comparabile | `medium`                                             |
-| Nessun tick successivo all’anchor                    | `poor`                                               |
-| Source event assente, invalido o troppo vecchio      | ramo non disponibile; summary `dataQuality: unknown` |
-| Source Identity effective non `aligned`              | ramo cross-source sospeso                            |
-| `persistenceComplete:false`                          | ramo cross-source sospeso per persistenza incompleta |
-
-Un marker assente o troppo vecchio non deve essere interpretato come “nessuna reazione di mercato”.
-
-Una persistenza incompleta non deve essere interpretata come “nessuna reazione di mercato”: significa soltanto che l’osservazione cross-source non è canonicalmente utilizzabile.
+Questi campi non sono intercambiabili. In particolare `available` non significa “reaction observed” e una quality locale buona non sostituisce freshness, Graph, ladder, Source Identity o persistence integrity dello snapshot.
 
 ## Frontend
-
-La UI usa:
 
 ```txt
 frontend/src/hooks/useMarketReactionEvidence.js
@@ -330,96 +151,108 @@ frontend/src/components/MarketReactionsPage.jsx
 frontend/src/components/marketReactions/
 ```
 
-Ownership:
+`App.jsx` crea una sola istanza del polling; la pagina è un consumer presentazionale.
 
-| Livello                        | Responsabilità                                                                                            |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `App.jsx`                      | Crea l’unica istanza del polling Evidence e gestisce Source Identity UI                                   |
-| `useMarketReactionEvidence.js` | Carica e conserva `latest.marketReactionEvidence`, gestisce refresh ed espone helper di conferma e revoca |
-| `MarketReactionsPage.jsx`      | Consumer presentazionale dei dati già caricati                                                            |
-| Card Market Reactions          | Visualizzano finestre, qualità, reasons e limiti interpretativi                                           |
+Le card usano `evidence.available`, mostrano le blocking reason backend-owned e il disclaimer di causalità. Il mapping Market → Field usa runner, importo, tier, direzione e ambiguità reali; `sofaEventsObserved` è renderizzato come array. Il view model puro è coperto da fixture frontend.
 
-L’hook non conserva il wrapper Evidence completo: i blocchi top-level come `integrity`, `sources` e le altre sezioni dello snapshot non entrano nel suo stato pubblico. Il flusso globale corrente della Source Identity UI resta governato dal controller dedicato; gli helper di conferma e revoca dell’hook non diventano l’autorità del gate frontend.
+La UI non deve ricostruire reason di Source Identity o persistence: deve renderizzare quelle ricevute dal backend.
 
-`MarketReactionsPage.jsx` non deve:
+## Invarianti
 
-* creare un secondo polling;
-* gestire conferma o revoca Source Identity;
-* montare la modale Source Identity;
-* ricostruire Evidence;
-* dedurre causalità;
-* interpretare `partial_persistence` o `recovery_failed` come errore frontend;
-* eseguire recovery o retry di persistenza.
+Market Reactions non deve:
 
-La UI può mostrare la reason di persistenza incompleta ricevuta dallo snapshot, ma non deve ricostruirla leggendo journal o endpoint storage.
+- trasformare matched volume in intenzione certa;
+- promuovere una relazione temporale a causalità;
+- confrontare epoch Betfair differenti;
+- bypassare Source Identity o persistence integrity;
+- interpretare `available` come reazione osservata;
+- interpretare `marketResponseObserved` come risposta affidabile o causale;
+- modificare timeline, history o journal;
+- avviare tracker, scraper o recovery.
 
-## Limiti attuali
+## Riferimenti implementativi
 
-Non esistono ancora:
+| Area                    | Implementazione                                                                         |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| composer principale     | `backend/src/sofa/marketReactionEvidence.js`                                            |
+| flow significativo      | `backend/src/sofa/significantMarketFlowEvidence.js`, `significantMarketFlow/`           |
+| osservazione market-led | `backend/src/sofa/marketLedObservationEvidence.js`                                      |
+| reazione field-led      | `backend/src/sofa/fieldLedReactionEvidence.js`                                          |
+| marker e finestre       | `backend/src/sofa/temporalAlignment/`                                                   |
+| consumer frontend       | `frontend/src/hooks/useMarketReactionEvidence.js`, `components/MarketReactionsPage.jsx` |
 
-```txt
-persistenza storica osservazioni
-export
-replay Market Reactions
-backtest dedicato
-journal derivato
+Le due direzioni non condividono la stessa domanda:
+
+```text
+Market → Field
+movimento mercato qualificato
+→ finestra SofaScore successiva
+→ osservazione descrittiva
+
+Field → Market
+marker SofaScore qualificato
+→ finestra Betfair successiva
+→ osservazione descrittiva
 ```
 
-La vista live mostra soltanto le osservazioni dello snapshot corrente.
+### Gate di disponibilità
 
-Il selector Field → Market usa gli ultimi 60 tick SofaScore. Se più marker sono presenti nel tick più recente, applica la priorità `BREAK_POINT → DEUCE → THIRTY_ALL → GAME_POINT → PRESSURE_POINT`; l’anchor resta `stateFirstSeenAt` dello stato selezionato.
+| Gate                  | Se fallisce                              |
+| --------------------- | ---------------------------------------- |
+| Source Identity       | nessuna correlazione cross-source        |
+| active Betfair epoch  | tick di epoch precedenti esclusi         |
+| persistence integrity | output degradato o indisponibile         |
+| qualità/freshness     | reason esplicita, nessun fallback a zero |
+| flow significativo    | nessuna finestra market-led aperta       |
 
-Una modifica a lookback o priorità richiede test dedicati e non deve trasformare marker vecchi in eventi correnti.
+Il parent `available` non sostituisce gli stati delle singole sezioni. I consumer leggono separatamente market-led e field-led, con reason, quality e intervallo osservato.
+
+### Contratto interpretativo
+
+Il producer imposta sempre `causalityClaimed: false`. Nelle finestre temporali market-led e field-led il valore letterale di `interpretation` è:
+
+```json
+{
+  "causalityClaimed": false,
+  "interpretation": "temporal_proximity_only"
+}
+```
+
+Il summary aggregato espone `causalityClaimed`, ma non va documentato come se possedesse necessariamente lo stesso campo `interpretation` delle finestre.
+
+La vicinanza temporale non dimostra causalità, edge, strategia o indicazione operativa. Nessuna parte di Market Reactions scrive timeline, modifica journal o apre automaticamente una posizione.
+
+### Verifica automatica
+
+```text
+backend/src/sofa/marketReactionEvidence.test.mjs
+backend/src/sofa/marketLedObservationEvidence.test.mjs
+backend/src/sofa/fieldLedReactionEvidence.test.mjs
+backend/src/sofa/matchEvidence/evidenceBuilder/sourceIdentityGate.test.mjs
+```
 
 ## Verifica
 
-```txt
-node sofa/marketReactionEvidence.test.mjs
-node sofa/significantMarketFlowEvidence.test.mjs
-node sofa/marketLedObservationEvidence.test.mjs
-node sofa/fieldLedReactionEvidence.test.mjs
-node sofa/matchEvidence/evidenceBuilder.test.mjs
-```
-
-Controllare sempre:
+Suite backend presenti:
 
 ```txt
-Source Identity pending o mismatch sospende le osservazioni
-→ causalityClaimed resta false
-→ una finestra senza dati espone reasons
-→ tick di epoch diverse non vengono confrontati
-→ timeline raw non vengono modificate
-
-persistenceComplete:false sospende Market Reactions
-→ marketReactionEvidence.available false
-→ marketLedAvailable false
-→ fieldLedAvailable false
-→ fieldLedMarketResponseObserved false
-→ causalityClaimed resta false
-
-partial_persistence o recovery_failed
-→ non diventano Source Identity mismatch
-→ non diventano freshness stale
-→ non diventano Graph health degradato
-→ non diventano errore runtime scraper
-
-Persistence incomplete: canonical cross-source evidence unavailable
-→ reason deduplicata
-→ può coesistere con reason Source Identity
-
-frontend
-→ non crea polling secondario
-→ non ricostruisce Evidence
-→ non legge journal
-→ non esegue recovery
+node backend/src/sofa/marketReactionEvidence.test.mjs
+node backend/src/sofa/significantMarketFlowEvidence.test.mjs
+node backend/src/sofa/marketLedObservationEvidence.test.mjs
+node backend/src/sofa/fieldLedReactionEvidence.test.mjs
+node backend/src/sofa/matchEvidence/evidenceBuilder/sourceIdentityGate.test.mjs
+node backend/src/sofa/matchEvidence/evidenceBuilder/persistenceIntegrity.test.mjs
+node frontend/src/components/marketReactions/marketReactionViewModel.test.mjs
 ```
+
+La matrice copre suppression, `flow_exceeds_runner_delta`, eligibility tecnica, recency e timestamp futuro del source event, distinzione observed/reliable, semantica availability e mapping delle card frontend. Evidence Builder resta verificato tramite le suite modulari realmente presenti.
 
 ## Documenti collegati
 
-* [Match Evidence Snapshot](./01-match-evidence-snapshot.md)
-* [Source Identity](./02-source-identity.md)
-* [Qualità, flow e allineamento](./03-quality-flow-and-alignment.md)
-* [Timeline e history](../storage/01-timelines-and-history.md)
-* [Commit journal e recovery](../storage/02-commit-journal-and-recovery.md)
-* [API Evidence](../../api/03-evidence.md)
-* [Ciclo di vita dei dati](../../architecture/02-data-lifecycle.md)
+- [Match Evidence Snapshot](./01-match-evidence-snapshot.md)
+- [Source Identity](./02-source-identity.md)
+- [Qualità, flow e allineamento](./03-quality-flow-and-alignment.md)
+- [Timeline e history](../storage/01-timelines-and-history.md)
+- [Commit journal e recovery](../storage/02-commit-journal-and-recovery.md)
+- [API Evidence](../../api/03-evidence.md)
+- [Ciclo di vita dei dati](../../architecture/02-data-lifecycle.md)

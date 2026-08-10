@@ -69,6 +69,16 @@ export function isValidCommitId(commitId) {
         /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(commitId);
 }
 
+export function isCanonicalCommitId(commitId, source) {
+    return isValidSource(source) && typeof commitId === 'string' &&
+        new RegExp(`^${source}-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`, 'i').test(commitId);
+}
+
+export function classifyCommitId(commitId, source) {
+    if (isCanonicalCommitId(commitId, source)) return 'canonical';
+    return isValidCommitId(commitId) ? 'accepted_legacy' : 'invalid';
+}
+
 export function isValidTarget(target) {
     return typeof target === 'string' && target.trim().length > 0;
 }
@@ -151,7 +161,12 @@ export function isSafeJsonValue(value, seen = new Set(), parentKey = null) {
     }
 
     if (valueType === 'string') {
-        return !hasSensitiveQueryParameter(value);
+        const trimmed = value.trim();
+        const looksLikeBearer = /^Bearer\s+[A-Za-z0-9._~+\/-]+=*$/i.test(trimmed);
+        const looksLikeJwt = /^[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}$/.test(trimmed);
+        const looksLikePrivateKey = /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(trimmed);
+        return !hasSensitiveQueryParameter(value) &&
+            !looksLikeBearer && !looksLikeJwt && !looksLikePrivateKey;
     }
 
     if (valueType === 'number') {

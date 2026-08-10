@@ -7,7 +7,7 @@
 | Tipo | Osservazione live manuale |
 | Periodo | Osservazioni consolidate fino al 4 luglio 2026 |
 | SHA | Non registrato nel documento sorgente |
-| Sorgente migrata | `docs/validations/source-identity-live-verification.md` |
+| Sorgente migrata | `docs/tennis-decision-ui/operations/06-source-identity-live-verification.mdx` |
 | Stato | Parziale: alcuni flussi osservati, pending reale non verificato |
 
 ## Scopo
@@ -64,12 +64,12 @@ Il 4 luglio 2026 sono stati osservati:
 ```txt
 Source Identity recording / canonical / aligned
 TopBar Sofa: Connected
-GET timeline SofaScore disponibile
+GET /api/match/:eventId/json → 200
 ```
 
 ## Osservazioni riferite ma non archiviate
 
-È stato riferito che durante buffering, con timeline SofaScore non ancora disponibile, la TopBar mostrava `Sofa: In attesa` senza errore di polling. Non sono stati archiviati screenshot, payload o log sufficienti; il caso non viene presentato come evidenza riproducibile.
+È stato riferito che durante buffering, con timeline SofaScore non ancora disponibile, la TopBar mostrava `Sofa: In attesa`. L'assenza di errori di polling e l'eventuale `404` non furono verificate. Non sono stati archiviati screenshot, payload o log sufficienti; il caso resta `historically_reported` e non viene presentato come evidenza riproducibile.
 
 ## Scenari non verificati
 
@@ -133,6 +133,11 @@ Stato dei casi:
 | buffering → In attesa | osservazione riferita, artefatto non archiviato |
 | pending reale → confirm | non eseguito |
 | pending reale → decline | non eseguito |
+| pending plausibile | non eseguito |
+| mismatch senza modale | non eseguito |
+| privacy della modale | non eseguito |
+| toast singolo per transizione | non eseguito |
+| bootstrap failure con ritorno a pending | non eseguito |
 
 ## Documenti owner correnti
 

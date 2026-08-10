@@ -139,6 +139,10 @@ export async function updateSofa(eventId, info, dependencies = {}) {
 
     const { endpoints, dataMap } = await loadPayloadFn(eventId);
 
+    if (dependencies.isTrackingSessionCurrent?.() === false) {
+        return { ok: true, skipped: true, reason: 'stale_tracking_session' };
+    }
+
     const eventData = dataMap[endpoints.event];
     const statsData = dataMap[endpoints.statistics];
     const pbpData = dataMap[endpoints.pbp];
@@ -168,10 +172,17 @@ export async function updateSofa(eventId, info, dependencies = {}) {
     };
 
     // Observe sample for gate evaluation
-    const observation = observeFn(eventId, sample, { localContext });
-    const action = observation?.action || 'no-gate';
+    const observation = observeFn(eventId, sample, { localContext }, {
+        trackingSessionId: info.trackingSessionId ?? null,
+        hasBetfairUrl: Boolean(info.betfairUrl && info.betfairUrl.trim())
+    });
+    const action = observation?.action || 'blocked';
 
-    if (action === 'persist-current' || action === 'no-gate') {
+    if (dependencies.isTrackingSessionCurrent?.() === false) {
+        return { ok: true, skipped: true, reason: 'stale_tracking_session' };
+    }
+
+    if (action === 'persist-current') {
         const persistenceResult = persistFn(eventId, snapshot, tournamentName, dateStr, {
             snapshot,
             localContext

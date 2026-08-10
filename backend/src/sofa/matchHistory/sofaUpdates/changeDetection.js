@@ -26,7 +26,7 @@ export function getPersistedBetfairTotalMatched(betfair, fromHistory = false) {
 
     if (typeof value === 'number' && Number.isFinite(value)) return value;
     if (typeof value === 'string' && value.trim().length > 0) return value;
-    return '0 â‚¬';
+    return null;
 }
 
 export function normalizeBetfairForHistory(betfair, fromHistory = false) {
@@ -43,8 +43,7 @@ export function normalizeBetfairForHistory(betfair, fromHistory = false) {
     const normalizeText = value =>
         typeof value === 'string' ? value : null;
     const normalizeNumber = value => {
-        const number = Number(value);
-        return Number.isFinite(number) ? number : 0;
+        return typeof value === 'number' && Number.isFinite(value) ? value : null;
     };
     const runners = Array.isArray(betfair.runners)
         ? betfair.runners
@@ -55,13 +54,14 @@ export function normalizeBetfairForHistory(betfair, fromHistory = false) {
             getPersistedBetfairTotalMatched(betfair, fromHistory)
         ),
         runners: runners.map(runner => ({
+            selectionId: runner?.selectionId ?? null,
             name: normalizeText(runner?.name),
             wom: normalizeText(runner?.wom),
             moneyFlow: {
                 back: normalizeNumber(runner?.moneyFlow?.back),
                 lay: normalizeNumber(runner?.moneyFlow?.lay)
             }
-        }))
+        })).sort((a, b) => String(a.selectionId).localeCompare(String(b.selectionId)))
     };
 }
 

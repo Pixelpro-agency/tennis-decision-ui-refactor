@@ -3,6 +3,8 @@
 
 > Ogni task è stata ricontrollata sul repository corrente distinguendo implementazione, test automatici presenti, collaudi live documentati, limiti e discrepanze emerse durante l’audit B1–B6.
 
+> **Snapshot storico:** gli esiti D1–D18 sotto appartengono alla baseline `b277bd9b7373dfd8702e65446c88bab7a0f64dcc`. Non descrivono automaticamente HEAD o la working tree corrente. Lo stato operativo prevalente vive nella Todo e negli owner tecnici; l'overlay seguente collega gli approfondimenti successivi senza riscrivere il checkpoint.
+
 ## 1. Baseline del ricontrollo
 
 ```txt
@@ -67,6 +69,20 @@ Quando una task è `DA RIAPRIRE`, va riaperta soltanto la parte difettosa. Non s
 | D16 | Context locale V1 | `CONFERMATA CON LIMITI` |
 | D17 | Diagnostica Betfair | `DA RIAPRIRE` — solo hardening pubblico e capture |
 | D18 | Retention cache runtime | `CONFERMATA CON LIMITI` |
+
+### Overlay corrente sugli esiti storici
+
+| Esiti | Owner successivi | Stato corrente sintetico |
+| --- | --- | --- |
+| D5–D6 | `TECH-SAMPLE-*`, moduli Betfair | validità tecnica, identità runner e missing semantics implementate e verificate |
+| D9 | `PY-RUNTIME-*`, `LOCAL-RUNTIME-*` | launcher, ownership, manifest, readiness e reuse hardenizzati |
+| D10 | `SOFA-LIVE-*`, `LIVE-CTRL-*` | Stop e session authority migliorati; retry dopo cleanup remaining resta aperto |
+| D11 | `STORAGE-TH-*` | timeline/history fail-closed e materialità separate |
+| D12–D13 | `JOURNAL-REC-*` | journal e recovery semanticamente verificati e testati |
+| D14 | Todo e owner persistence/frontend | resta riaperta per il residuo cross-layer dichiarato |
+| D16 | `MATCH-CONTEXT-*`, `LOCAL-PBP-*` | contratto versionato, current-game identity e PBP validati |
+| D17 | `BETFAIR-DIAG-*` | gran parte dell'hardening è confluita nel codice e nei runbook; la recovery auth completa resta aperta |
+| D18 | `RETENTION-*` | policy cache e partial apply documentati; snapshot backup coerente resta aperto |
 
 Conteggio:
 

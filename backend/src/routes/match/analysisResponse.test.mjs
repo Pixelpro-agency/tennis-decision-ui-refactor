@@ -145,15 +145,7 @@ assert.equal(
     true
 );
 
-assert.equal(savedHistory.eventId, '123');
-assert.equal(savedHistory.receivedSnapshot, snapshot);
-assert.equal(savedHistory.tournamentName, 'Test Open');
-assert.equal(savedHistory.dateStr, '2026-06-24');
-
-assert.deepEqual(savedHistory.timelineData, {
-    snapshot,
-    localContext
-});
+assert.equal(savedHistory, null, 'analyze is compute-only and does not write canonical history');
 
 for (const writerResult of [
     { ok: false, status: 'failed', reason: 'write_failed' },
@@ -186,12 +178,9 @@ for (const writerResult of [
     assert.equal(result.body.snapshot, snapshot);
     assert.equal(result.body.localContext, localContext);
     assert.equal(
-        debugLogs.some(message =>
-            message.includes('Match History Save Failed') &&
-            message.includes('eventId=123') &&
-            message.includes('reason=write_failed')
-        ),
-        true
+        debugLogs.some(message => message.includes('Match History Save Failed')),
+        false,
+        'compute-only analysis ignores canonical writer results'
     );
 }
 
@@ -209,6 +198,47 @@ const notFoundResult = await buildMatchAnalysisResponse(
 );
 
 assert.equal(notFoundResult.httpStatus, 404);
-assert.equal(notFoundResult.body.error, 'event not found 404');
+assert.deepEqual(notFoundResult.body, {
+    code: 'sofa_event_not_found',
+    error: 'Evento SofaScore non trovato.'
+});
+
+const blockedResult = await buildMatchAnalysisResponse(
+    { url: 'https://www.sofascore.com/tennis/match/test/403' },
+    {
+        extractEventId: () => '403',
+        buildSofaAnalysis: async () => {
+            throw new Error('UPSTREAM BLOCKED: private detail');
+        },
+        logDebug: () => {},
+        logError: () => {},
+        now: fixedNow
+    }
+);
+
+assert.equal(blockedResult.httpStatus, 503);
+assert.deepEqual(blockedResult.body, {
+    code: 'sofa_access_blocked',
+    error: 'SofaScore non disponibile.'
+});
+
+const unknownErrorResult = await buildMatchAnalysisResponse(
+    { url: 'https://www.sofascore.com/tennis/match/test/500' },
+    {
+        extractEventId: () => '500',
+        buildSofaAnalysis: async () => {
+            throw new Error('C:\\private\\runtime\\secret.txt');
+        },
+        logDebug: () => {},
+        logError: () => {},
+        now: fixedNow
+    }
+);
+
+assert.equal(unknownErrorResult.httpStatus, 500);
+assert.deepEqual(unknownErrorResult.body, {
+    code: 'analysis_failed',
+    error: 'Analisi SofaScore non riuscita.'
+});
 
 console.log('analysisResponse local context: OK');

@@ -2,6 +2,10 @@
 
 > Questo file definisce ordine, aree e output delle analisi. I rilievi dettagliati vivono nei file tematici.
 
+> **Autorità temporale:** questo documento conserva il piano originario e gli snapshot storici dell'audit. Lo stato operativo corrente vive nella Todo, nell'audit tecnico e nel root registry. Una fase indicata qui come futura o differita può essere stata completata successivamente.
+
+“Audit completato” significa che l'attività è stata eseguita nel perimetro dichiarato. Non implica automaticamente copertura esaustiva, checklist interamente verde, chiusura di tutti i finding, esecuzione di ogni test o completamento dei collaudi live.
+
 ## 8. Piano generale delle analisi
 
 ### BLOCCO A — Baseline e inventario
@@ -304,6 +308,8 @@ Il ricontrollo D1–D18 non ha eseguito suite, collaudi live o modifiche al prod
 
 ## 8.3 Stato dopo decisioni, workflow e planning
 
+Metadata dello snapshot: data della verifica `non registrato`; SHA verificato `non registrato`; commit di registrazione `non registrato`; fonte `registro locale storico`. Un eventuale commit che ha aggiunto questo testo non viene assunto come baseline verificata.
+
 Completato:
 
 ```txt
@@ -354,6 +360,8 @@ Non sono comprese in questo checkpoint:
 ---
 
 ## 8.4 Audit dei materiali locali esterni alla documentazione canonica
+
+Metadata dello snapshot: data della verifica `non registrato`; SHA verificato `non applicabile` per l'archivio locale; commit di registrazione `non registrato`; fonte `docs.zip` locale non repository.
 
 Archivio ricevuto:
 

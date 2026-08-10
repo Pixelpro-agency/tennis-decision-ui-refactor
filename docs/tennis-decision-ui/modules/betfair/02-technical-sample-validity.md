@@ -1,17 +1,5 @@
 # Validità tecnica dei campioni Betfair
 
-## Stato
-
-**Implementato, da validare.**
-
-La classificazione tecnica, i guard di persistenza e i test locali sono implementati.
-
-Per il logout Graph esplicito sono stati osservati live: rilevamento del requisito di login, persistenza del tick `status-only`, health `red` con popup e audio, e ritorno a `Connected` dopo il login.
-
-Restano da validare con evidenze dedicate timeout, errore rete/API reale, URL Graph malformate, mismatch `marketId`, mercato Betfair realmente `finished`, failure reali di persistenza journalizzata e recovery dopo riavvio.
-
-Non è archiviato un payload `/latest` post-fix né un test automatico PASS dedicato al tick `status-only`.
-
 ## Scopo
 
 Questo documento definisce quando un risultato Betfair può diventare un campione elaborabile.
@@ -30,7 +18,7 @@ Un risultato tecnicamente incompleto non deve essere interpretato come fine merc
 
 Un risultato tecnicamente utilizzabile non garantisce invece da solo la persistenza: regressioni, duplicati, Source Identity e commit journalizzato vengono controllati successivamente dal flusso timeline.
 
-Un campione tecnico non utilizzabile può solo partecipare al repair di un journal Betfair già pendente tramite percorso `repairOnly`. Questo non equivale a un nuovo campione canonico e non conferma lo stato runtime dei runner.
+Un campione tecnico non utilizzabile può solo partecipare al repair di un journal Betfair già pendente tramite percorso `repairOnly`. Questo non equivale a un nuovo campione canonico e non conferma il baseline `marketState`.
 
 ## Implementazione
 
@@ -71,6 +59,9 @@ raw.error presente
 raw.api_error presente
 raw.runners non è un array
 raw.runners è vuoto
+un runner non è un oggetto non-array
+selectionId assente, vuoto o non normalizzabile
+selectionId duplicato nel campione
 raw.market_info.total_matched assente
 total_matched non numerico o non finito
 total_matched minore o uguale a zero
@@ -84,10 +75,15 @@ raw_error
 api_error
 runners_missing
 runners_empty
+runner_invalid
+selection_id_invalid
+selection_id_duplicate
 total_matched_missing
 total_matched_invalid
 total_matched_non_positive
 ```
+
+Ogni runner deve essere un oggetto non-array e deve possedere un `selectionId` stringa non vuoto o numero finito. Gli ID vengono normalizzati a stringa per il controllo di unicità; `7` e `"7"` sono quindi duplicati. Un rename con lo stesso ID conserva invece la continuità del runner.
 
 Quando il processor riceve un campione non utilizzabile, restituisce un risultato tecnico normalizzato con:
 
@@ -100,6 +96,8 @@ technicalFailure
 ```txt
 EUR 74,817
 ```
+
+Quando il volume del singolo runner manca, il processing lo conserva come `null`/unavailable. Non distribuisce più `marketTotalMatched` fra i runner e il Money Flow dipendente viene soppresso con `runner_matched_unavailable`.
 
 ## Mercato concluso
 
@@ -176,6 +174,8 @@ persistBetfairTrackingSample(..., { repairOnly:true })
 
 Il percorso `repairOnly` non classifica il campione come utilizzabile e non lo trasforma in un nuovo tick.
 
+«Nessun nuovo dato dal sample tecnico» non equivale a «nessuna scrittura»: il repair può completare fisicamente history o timeline di un commit già descritto nel journal. Non crea però un nuovo `commitId`, un nuovo tick o una nuova row derivati dal sample live e non ricostruisce business data dal sample tecnico.
+
 Con `repairOnly:true`:
 
 ```txt
@@ -211,6 +211,16 @@ regressive_sample
 duplicate_tick
 ```
 
+Il vocabolario corrente distingue tre livelli:
+
+```txt
+timelineIntegrity.reason = regressive_sample
+persistence result reason = regressive_tick
+duplicate persistence reason = duplicate_tick
+```
+
+I nomi non sono sinonimi automatici e possono essere unificati soltanto con una modifica coordinata di codice, test e consumer.
+
 Per `duplicate_tick` e per ogni `regressive_sample` ordinario:
 
 ```txt
@@ -219,7 +229,7 @@ nessuna nuova timeline
 nessun commit del baseline proposto
 ```
 
-Il commit canonico Betfair è journalizzato e produce un esito strutturato. Solo questi esiti possono confermare lo stato runtime dei runner:
+Il commit canonico Betfair è journalizzato e produce un esito strutturato. Solo questi esiti possono confermare il baseline `marketState` dei runner:
 
 ```txt
 complete
@@ -236,6 +246,8 @@ writer undefined
 target errato
 commitId errato
 ```
+
+`betfairRuntime.lastSuccessfulScrapeAt` ha un contratto distinto: è un timestamp di acquisizione/runtime aggiornato dopo un campione tecnico utilizzabile e non prova che sia avvenuto un commit canonico `complete` o `recovered`.
 
 Il dettaglio di `commitId`, journal, repair e ordine di scrittura appartiene ai documenti storage.
 
@@ -258,6 +270,13 @@ non adotta quote, volumi, ladder o Money Flow regressivi
 viene aggiunto alla timeline canonica
 non aggiorna il baseline runner o market
 non aggiunge il sample raw regressivo alla history
+```
+
+Il tick aggiunto possiede nuovi `seq` e `commitId` e può diventare il successivo `last algorithmic tick`. Il baseline `marketState` non avanza; i runner del tick derivano dall'ultimo snapshot canonico e il loro Money Flow viene sostituito da:
+
+```txt
+confidence = suppressed
+reason = graph_login_required
 ```
 
 Espone inoltre:
@@ -363,26 +382,11 @@ betfairFetch.test.mjs
 → separazione tra errore tecnico, sample valido e commit
 ```
 
+La matrice copre runner `null`, primitivi e array annidati, `selectionId` mancanti o duplicati, numeri non finiti, formati producer-compatible, rename con stesso ID, volume runner indisponibile e status-only con `seq`, `commitId`, append timeline, history invariata e Money Flow suppressed. Il baseline `marketState` resta coperto dai test di orchestration e runner processing.
+
 Il guard di persistenza per un campione tecnico è presente nel codice. Se viene modificato `persistBetfairProcessedResult(...)`, deve restare coperto da un’asserzione diretta dedicata al percorso tecnico e al percorso `repairOnly`.
 
-Per l’eccezione `status-only`:
-
-```txt
-test automatico PASS dedicato
-→ non archiviato
-
-script Node mirato
-→ non valido come test, perché l’here-doc era corrotto
-→ non dichiarare PASS
-
-osservazione live manuale
-→ logout Graph
-→ health red, popup e audio
-→ login ripristinato
-→ ritorno a Connected
-```
-
-I normali test su `regressive_sample` restano validi per i sample regressivi ordinari: non coprono da soli l’eccezione logout Graph.
+I normali test su `regressive_sample` restano validi per i sample regressivi ordinari: non coprono da soli l'eccezione logout Graph. Le evidenze storiche appartengono a `docs/validations/` e non costituiscono automaticamente un PASS del checkpoint corrente.
 
 ## Documenti collegati
 

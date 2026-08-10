@@ -37,6 +37,7 @@ const entry = {
                 selectionId: 11,
                 name: 'Runner A',
                 ladderSource: 'graph',
+                ladder: [{ price: 2, size: 10 }],
                 bestBack: 2,
                 bestLay: 2.2
             }
@@ -70,6 +71,7 @@ const previousEntry = {
                 selectionId: 11,
                 name: 'Runner A',
                 ladderSource: 'graph',
+                ladder: [{ price: 2.1, size: 10 }],
                 lastTradedPrice: 2.1,
                 matchedTotal: 100
             }
@@ -86,12 +88,14 @@ const currentEntry = {
                 selectionId: 11,
                 name: 'Runner A',
                 ladderSource: 'graph',
+                ladder: [{ price: 1.9, size: 10 }],
                 lastTradedPrice: 1.9,
                 matchedTotal: 160,
                 moneyFlow: {
                     back: 50,
                     lay: 10,
-                    trend: 'back'
+                    trend: 'backing',
+                    confidence: 'confirmed'
                 },
                 bestBack: 1.89,
                 bestLay: 1.91
@@ -104,7 +108,7 @@ const flow = buildRunnerFlowEvidence(
     currentEntry.data.runners[0],
     currentEntry,
     [previousEntry],
-    [currentEntry, previousEntry],
+    true,
     'ok'
 );
 

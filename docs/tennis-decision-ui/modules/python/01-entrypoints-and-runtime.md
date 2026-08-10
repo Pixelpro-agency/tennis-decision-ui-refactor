@@ -30,17 +30,37 @@ Durante modifiche Python non cambiare senza una migrazione esplicita:
 
 * nomi e percorsi dei tre wrapper root;
 * argomenti CLI ricevuti dagli scraper;
-* JSON prodotto su stdout;
+* JSON prodotto su stdout nelle modalità scrape che usano stdout come result channel;
 * significato delle opzioni browser;
 * percorsi invocati dal backend Node;
 * comportamento Ctrl+C del launcher;
 * Chrome CDP aperto dopo lo shutdown normale.
 
-I log diagnostici degli scraper devono usare `stderr` e devono essere redatti prima della scrittura. `stdout` deve restare leggibile come JSON dal backend.
+I contratti dipendono dalla modalità:
+
+```txt
+SofaScore scrape
+→ stdout contiene il risultato JSON
+
+Betfair scrape
+→ stdout contiene il risultato JSON
+
+Betfair login-only
+→ processo di lifecycle
+→ nessun JSON finale richiesto
+
+errore di parsing o validazione CLI
+→ exit code non-zero
+→ diagnostica su stderr
+```
+
+I log diagnostici devono usare `stderr`, essere bounded e redatti prima della scrittura. I logger Betfair e SofaScore applicano la stessa redazione bounded; i failure payload pubblici preferiscono code e messaggi statici.
 
 Il backend Node non deve registrare stdout raw, stderr raw, argomenti completi dello spawn, URL complete o messaggi raw del child process quando possono contenere dati sensibili.
 
 Sono ammessi log strutturali non sensibili, come modalità, conteggi, PID, durata, byte stdout/stderr, exit code, signal code e reason tecniche.
+
+Il consumer Node SofaScore limita stdout a 2 MiB. Un overflow azzera il buffer, restituisce `scraper_output_too_large` e richiede la terminazione del solo child Python owned; il buffer parziale non viene interpretato come JSON.
 
 ## Chiamanti principali
 
@@ -101,7 +121,7 @@ launcher/
 | File                     | Responsabilità                                                                            |
 | ------------------------ | ----------------------------------------------------------------------------------------- |
 | `app.py`                 | Sequenza di avvio, riuso sessione, lock e gestione Ctrl+C.                                |
-| `config.py`              | Root progetto, script PowerShell, porte preferite e percorsi runtime.                     |
+| `config.py`              | Root progetto, helper CDP, porte preferite e percorsi runtime.                            |
 | `services.py`            | Risoluzione CDP, backend e frontend, apertura browser e shutdown dei soli processi owned. |
 | `session.py`             | Lock e manifest runtime atomico, verifica riuso e registrazione ownership.                |
 | `system.py`              | Logging, probe porte, verifiche HTTP e attese limitate.                                   |
@@ -197,6 +217,12 @@ Il frontend viene avviato direttamente tramite Node e CLI Vite locale, con bind 
 127.0.0.1
 ```
 
+Anche il backend canonico usa un bind esplicito su `127.0.0.1`. Il probe health loopback e il bind del listener sono quindi due controlli distinti ma coerenti.
+
+Il launcher avvia direttamente `node server.js`; non usa `BACKEND_SCRIPT`. 
+
+`scripts/start-backend-dev.ps1` resta un helper di sviluppo manuale e non una dipendenza del lifecycle launcher.
+
 Il launcher usa l'URL frontend effettivamente scelto nel manifest e per aprire il browser.
 
 ## Percorsi runtime collegati
@@ -216,11 +242,28 @@ Il launcher riusa un endpoint CDP valido esistente.
 
 La discovery considera al massimo cinque porte candidate, dalla porta preferita fino alla quarta porta successiva.
 
-Quando non trova un endpoint valido, può avviare Chrome dedicato su una porta libera e passa subito al frontend l'URL candidato.
+Quando non trova un endpoint valido, può richiedere l'avvio di Chrome dedicato su una porta libera e passare al frontend l'URL candidato.
 
 Il CDP non blocca l'avvio di backend e frontend.
 
-Un CDP non disponibile resta vuoto; non viene convertito automaticamente in:
+Gli stati sono distinti:
+
+```txt
+ready
+→ endpoint verificato
+
+starting
+→ helper avviato, URL candidata non ancora verificata ready
+
+unavailable
+→ nessun endpoint utilizzabile, URL vuota
+```
+
+Il launcher esegue fino a tre probe bounded dopo `launch_requested`. Se uno riesce, registra `ready`; altrimenti conserva `starting` con URL candidata. 
+
+`starting` non deve essere presentato come disponibilità verificata.
+
+Un CDP `unavailable` resta vuoto; non viene convertito automaticamente in:
 
 ```txt
 http://127.0.0.1:9222
@@ -231,6 +274,10 @@ Chrome/CDP esterno non viene chiuso né registrato come processo owned.
 ## Manifest e ownership
 
 Il manifest runtime registra la sessione corrente, gli URL effettivi e i PID dei servizi quando disponibili e verificati. Solo i processi con ownership `owned` sono stati avviati dalla sessione corrente e possono essere terminati dal launcher. Un servizio `reused` può avere un PID verificato nel manifest, ma non diventa owned e non viene terminato dal launcher.
+
+La scrittura usa un file temporaneo nella stessa directory e replace atomico. 
+
+`write_manifest()` ripulisce il temporaneo quando possibile e propaga gli errori I/O; `_safe_write_manifest()` li converte in un risultato booleano soltanto nei percorsi di cleanup che richiedono una degradazione bounded.
 
 Il riuso richiede:
 
@@ -264,6 +311,10 @@ server.close richiesto; la chiusura del listener procede in parallelo
 ```
 
 Dopo un'attesa limitata, il launcher può usare il fallback sul process tree soltanto per il PID owned registrato.
+
+La configurazione assegna al launcher 8 secondi prima dell'escalation, oltre il budget interno backend di 6 secondi. 
+
+Il parent non anticipa quindi il force budget del child; oltre la deadline parent resta ammesso il fallback sul solo PID owned.
 
 Non termina:
 
@@ -312,6 +363,33 @@ backend/src/runtime/matchHistoryWriterAuthority.test.mjs
 backend/src/server.test.mjs
 backend/src/sofa/matchTracker.test.mjs
 ```
+
+La matrice di hardening copre:
+
+```txt
+modalità scrape e login-only dei wrapper
+redazione bounded della diagnostica SofaScore
+overflow stdout e terminazione owned del child SofaScore
+failure di creazione e replace del manifest
+riconciliazione CDP delayed-ready e stato provisional
+gerarchia cross-runtime dei timeout di shutdown
+bind locale backend
+```
+
+I test mirati aggiuntivi sono in:
+
+```txt
+launcher/tests/test_runtime_hardening.py
+backend/src/sofa/directFetch.test.mjs
+```
+
+## Confini con il runbook operativo
+
+Questo documento è l'owner tecnico di wrapper, modalità CLI, launcher, manifest e ownership dei processi. 
+
+[Runtime locale](../../operations/01-local-runtime.md) è l'owner delle istruzioni operative, dei comandi per l'utente e della diagnosi di avvio. 
+
+Le evidenze live appartengono ai documenti di validation; la writer authority appartiene al modulo storage collegato sotto.
 
 ## Documenti collegati
 

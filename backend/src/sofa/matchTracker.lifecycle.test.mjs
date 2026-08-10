@@ -47,12 +47,17 @@ await handleSourceIdentityMismatch('event-mismatch', {
     terminateBetfairScrapersFn() {
         calls.push(['terminate-betfair']);
         return Promise.reject(new Error('hidden'));
+    },
+    terminateTrackingPythonProcessesFn() {
+        calls.push(['terminate-tracking']);
+        return Promise.resolve({ ok: true, remaining: 0 });
     }
 });
 assert.deepEqual(calls, [
     ['stop', { preserveGateEventId: 'event-mismatch' }],
     ['invalidate', 'tracking'],
-    ['terminate-betfair']
+    ['terminate-betfair'],
+    ['terminate-tracking']
 ], 'R13 mismatch ordering and exact tracking generation');
 assert.equal(
     calls.some(call => call[1] === 'login'),
@@ -93,6 +98,16 @@ await handleSourceIdentityMismatch('event-mismatch-queued', {
         scope: 'tracking',
         requested: 0,
         graceful: 0,
+        forceKilled: 0,
+        alreadyExited: 0,
+        remaining: 0,
+        errors: []
+    }),
+    terminateTrackingPythonProcessesFn: async () => ({
+        ok: true,
+        scope: 'tracking',
+        requested: 1,
+        graceful: 1,
         forceKilled: 0,
         alreadyExited: 0,
         remaining: 0,

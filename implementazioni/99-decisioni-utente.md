@@ -698,3 +698,11 @@ IMPL-023
 docs/validations/
 → evidenze storiche ancora utili
 ```
+
+## DEC-027 — Closeout della directory archive
+
+**Stato:** applicata; chiarimento superseding del solo punto 3 di `DEC-026`.
+
+La mappa di provenienza inizialmente prevista in `docs/archive/README.md` è stata consolidata nel record di migrazione e nei registri owner. Dopo tale verifica anche il README e la directory vuota sono stati rimossi. Non esiste quindi un owner corrente sotto `docs/archive/` e la directory non deve essere ricreata automaticamente.
+
+Restano invariati gli altri vincoli di `DEC-026`: lettura prima della rimozione, assorbimento del contenuto unico, conservazione delle validation utili e divieto di presentare idee future come implementate.
