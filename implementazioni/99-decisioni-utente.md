@@ -657,19 +657,13 @@ La decisione non autorizza:
 
 **Stato:** approvata integralmente; il solo punto 3 è superato da `DEC-027`.
 
-1. il repository non deve conservare prompt, backlog, pacchetti esecutivi o ODT
-   separati quando il contenuto utile è già nei documenti di lavoro;
-2. ogni fonte viene letta prima della rimozione e il contenuto unico viene
-   trasferito nell'owner, nel registro o nella validation pertinente;
-3. `docs/archive/README.md` avrebbe dovuto conservare una descrizione breve della
-   provenienza e della destinazione; questo punto è superato da `DEC-027`;
+1. il repository non deve conservare prompt, backlog, pacchetti esecutivi o ODT separati quando il contenuto utile è già nei documenti di lavoro;
+2. ogni fonte viene letta prima della rimozione e il contenuto unico viene trasferito nell'owner, nel registro o nella validation pertinente;
+3. `docs/archive/README.md` avrebbe dovuto conservare una descrizione breve della provenienza e della destinazione; questo punto è superato da `DEC-027`;
 4. i report di collaudo con evidenza utile restano in `docs/validations/`;
-5. le idee future consolidate restano esplicitamente non implementate;
-6. i pacchetti ZIP, report di consegna e sorgenti temporanee scaricati sul PC
-   possono essere eliminati tramite una lista di nomi esatti, senza scansioni
-   distruttive o pattern generici;
-7. conclusa la pulizia documentale, il prossimo lavoro tecnico urgente è
-   `IMPL-015` — writer authority esclusiva per `match_history`.
+5. le idee future consolidate restano esplicitamente non implementate; 
+6. i pacchetti ZIP, report di consegna e sorgenti temporanee scaricati sul PC possono essere eliminati tramite una lista di nomi esatti, senza scansioni distruttive o pattern generici;
+7. conclusa la pulizia documentale, il prossimo lavoro tecnico urgente è `IMPL-015` — writer authority esclusiva per `match_history`.
 
 ### Fonti rimosse
 

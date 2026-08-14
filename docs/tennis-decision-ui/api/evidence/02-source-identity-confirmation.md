@@ -93,7 +93,7 @@ Il router chiama prima:
 buildGateManualConfirmationResponse(eventId, req.body)
 ```
 
-Nel CODE AUTHORITY questo builder restituisce sempre una risposta HTTP, anche quando il gate non esiste o il suo status ha `ok:false`.
+Questo builder restituisce sempre una risposta HTTP, anche quando il gate non esiste o il suo status ha `ok:false`.
 
 Di conseguenza il comportamento HTTP corrente del `POST` è fail-closed sul gate: un gate assente o non valido non attiva il ramo successivo basato sulle timeline, ma restituisce `409 confirmation_session_changed`.
 

@@ -271,7 +271,7 @@ fresh == true
 
 ## Verifica
 
-Test pertinenti presenti nel CODE AUTHORITY:
+Test pertinenti:
 
 ```txt
 node backend/src/sofa/matchEvidence/dataQuality.test.mjs

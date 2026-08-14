@@ -14,8 +14,6 @@ Il comportamento predefinito è il dry-run. La rimozione reale richiede entrambe
 --apply --offline-confirmed
 ```
 
-Il CODE AUTHORITY contiene test unitari per selezione, dry-run, blocchi di sicurezza e rimozione best-effort. Questi test usano directory temporanee e dipendenze controllate: non costituiscono prova di un dry-run o di un apply eseguito sulle cache reali della working copy.
-
 La utility è standalone e non pianifica autonomamente esecuzioni periodiche.
 
 ## Scopo
@@ -53,7 +51,7 @@ L’esclusione delle categorie non-cache deriva dal confine positivo della utili
 
 Le cache applicative hanno una propria validità temporale in lettura:
 
-| Cache     | TTL applicativo nel CODE AUTHORITY |
+| Cache     | TTL applicativo                    |
 | --------- | ---------------------------------: |
 | SofaScore | 5 secondi                          |
 | Betfair   | 4 secondi                          |
@@ -337,7 +335,7 @@ Non copiare un record di writer authority per attribuire ownership a un processo
 
 ## Stato della validazione
 
-Verificato nel CODE AUTHORITY mediante test unitari:
+Verificato mediante test unitari:
 
 ```txt
 dry-run senza modifiche

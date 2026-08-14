@@ -180,8 +180,6 @@ backend/src/sofa/matchHistory/commitJournal.test.mjs
 backend/src/sofa/matchHistory/recovery.test.mjs
 ```
 
-non esistono nel CODE AUTHORITY corrente.
-
 La copertura è suddivisa in suite modulari sotto:
 
 ```txt

@@ -3,7 +3,7 @@
 
 > Questo registro conserva il ricontrollo D1–D18 eseguito sulla baseline storica dichiarata nella sezione 1, distinguendo implementazione osservata, test automatici presenti, collaudi live documentati, limiti e discrepanze emerse durante l’audit B1–B6.
 
-> **Snapshot storico:** gli esiti D1–D18, i conteggi, i limiti, le strutture assenti e l’ordine tecnico riportati sotto appartengono alla baseline `b277bd9b7373dfd8702e65446c88bab7a0f64dcc`. Non descrivono automaticamente HEAD o la working tree corrente. Per lo stato operativo successivo prevalgono la Todo e gli owner tecnici. Il riscontro separato della sezione 3 collega il checkpoint al CODE AUTHORITY senza ricertificare né riscrivere retroattivamente la campagna storica.
+> **Snapshot storico:** gli esiti D1–D18, i conteggi, i limiti, le strutture assenti e l’ordine tecnico riportati sotto appartengono alla baseline `b277bd9b7373dfd8702e65446c88bab7a0f64dcc`. Non descrivono automaticamente HEAD o la working tree corrente. Per lo stato operativo successivo prevalgono la Todo e gli owner tecnici.
 
 ## 1. Baseline del ricontrollo
 
@@ -70,22 +70,16 @@ Quando una task è `DA RIAPRIRE`, va riaperta soltanto la parte difettosa. Non s
 | D17 | Diagnostica Betfair              | `DA RIAPRIRE` — solo hardening pubblico e capture  |
 | D18 | Retention cache runtime          | `CONFERMATA CON LIMITI`                            |
 
-### Riscontro separato sul CODE AUTHORITY
+### Riscontro separato
 
 Il riscontro seguente è limitato al commit `12b344ea96e71b2bdaa6931c98419ce925b5c228`. Non costituisce una nuova esecuzione della campagna D1–D18 e non sostituisce gli esiti storici. Indica soltanto se il codice corrente consultato e gli owner operativi mostrano evoluzioni pertinenti rispetto al checkpoint.
 
-```txt
-CODE AUTHORITY: 12b344ea96e71b2bdaa6931c98419ce925b5c228
-Test: file e contratti presenti ispezionati; suite non rieseguite per questa revisione documentale
-Stato operativo: demandato a todo-list-tennis-decision-ui.md e agli owner tecnici
-```
-
-| Esiti storici interessati | Riferimento corrente                                                    | Riscontro limitato al CODE AUTHORITY                                                                                                                                             |
+| Esiti storici interessati | Riferimento corrente                                                    | Riscontro                                                                                                                                                                        |
 | ------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | D2, D14                   | `frontend/src/App.jsx`; Todo, blocco C11                                | il residuo frontend/cross-layer di persistence integrity è ancora registrato come aperto; il checkpoint non viene promosso a chiuso                                              |
 | D5–D6                     | `backend/src/sofa/betfair/processor/runnerProcessing.js`; owner Betfair | identità `selectionId`, valori runner distinti e blocco delle regressioni sono presenti nel codice consultato; nessuna nuova esecuzione test è attestata qui                     |
 | D10                       | `backend/src/routes/match/trackingResponses.js`; Todo runtime           | Stop restituisce anche l’esito strutturato del cleanup Python e può segnalare `ok:false`; gli ulteriori finding di autorità/sessione restano responsabilità degli owner correnti |
-| D11–D13                   | owner storage/recovery e Todo                                           | il CODE AUTHORITY conserva bootstrap recovery e contratti di persistenza richiamati; la loro evoluzione successiva non modifica gli esiti del checkpoint                         |
+| D11–D13                   | owner storage/recovery e Todo                                           | il progetto conserva bootstrap recovery e contratti di persistenza richiamati; la loro evoluzione successiva non modifica gli esiti del checkpoint                               |
 | D16                       | owner Match Context/PBP e Todo                                          | il comportamento corrente resta descritto dagli owner dedicati; il limite live storico non viene rimosso senza una nuova evidenza di collaudo                                    |
 | D17–D18                   | owner diagnostica/retention e Todo                                      | risultano ancora attività operative o di hardening separate; questo registro non ne assume la chiusura né ne ridefinisce il perimetro                                            |
 

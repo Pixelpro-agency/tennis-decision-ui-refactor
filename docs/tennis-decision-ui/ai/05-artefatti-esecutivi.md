@@ -59,7 +59,7 @@ La procedura di generazione deve essere deterministica e dichiarata nel prompt a
 
 Non usare versioni mobili come `repomix@latest`.
 
-Al CODE AUTHORITY non è definita una versione Repomix approvata come dipendenza del progetto e non è documentato un generatore project-owned canonico per `fileModificati.md`. Di conseguenza, il prompt che richiede l’artefatto deve specificare esplicitamente il metodo deterministico da usare senza presentare come disponibile uno strumento non adottato dal repository.
+Il prompt che richiede l’artefatto deve specificare esplicitamente il metodo deterministico da usare senza presentare come disponibile uno strumento non adottato dal repository.
 
 Se viene usato uno strumento esterno, la versione deve essere esplicita e riproducibile. Un eventuale generatore project-owned potrà essere trattato come canonico soltanto dopo essere stato realmente implementato e verificato.
 
@@ -243,8 +243,6 @@ La revisione non può basarsi soltanto sul riepilogo del report quando esiste un
 ## 9. Protezione Git degli artefatti locali
 
 `fileModificati.md` e l’eventuale directory `fileModificati/` sono artefatti locali di revisione e non fanno parte dei file da pubblicare.
-
-Al CODE AUTHORITY, `.gitignore` non contiene regole dedicate che escludano automaticamente questi artefatti. La protezione è quindi procedurale.
 
 Prima dello staging deve essere verificata l’assenza degli artefatti locali dal perimetro destinato al commit. Finché non esiste una modifica di configurazione separata e approvata, l’artefatto deve essere rimosso dalla copia di lavoro prima dello staging.
 

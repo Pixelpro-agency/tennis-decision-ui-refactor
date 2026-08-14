@@ -60,8 +60,6 @@ La redazione copre, tra gli altri, URL, percorsi locali, header di autorizzazion
 
 ## Confini
 
-Nel CODE AUTHORITY il router Betfair non registra più la precedente route `GET /api/betfair/odds`. Questo documento possiede quindi soltanto il contratto HTTP di `GET /api/betfair/log` e non deve essere ricombinato con una superficie `/odds` non più presente.
-
 Acquisizione Betfair, persistenza, lifecycle dello scraper, login window e diagnostica operativa restano fuori dallo scope di questo documento e sono descritti dai rispettivi owner.
 
 ## Verifica

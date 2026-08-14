@@ -14,21 +14,6 @@ Serve a:
 
 Non sostituisce il codice, i test, la documentazione tecnica canonica, la Todo, le schede owner, il decision log o le validation.
 
-## Baseline della revisione
-
-```txt
-Repository: Pixelpro-agency/tennis-decision-ui-refactor
-Branch canonico: main
-Code authority: 12b344ea96e71b2bdaa6931c98419ce925b5c228
-Documentation structure baseline: 4c5f43b007149f3210c27d7565357a447a3a6ef4
-```
-
-Il **Code authority** è l’autorità per codice, test, script, configurazioni e comportamento implementato.
-
-La **Documentation structure baseline** è usata soltanto per recuperare forma, ordine, granularità e convenzioni del registro. Non costituisce autorità tecnica e non descrive automaticamente lo stato corrente.
-
-Gli SHA storici riportati nei registri collegati conservano il significato assegnato dalle rispettive schede. Non vengono promossi da questo indice a baseline corrente né usati per attribuire una provenienza non verificata a registri o artifact di validazione.
-
 ## Fonti correnti
 
 ### Stato operativo
@@ -77,7 +62,7 @@ Decisioni di prodotto, cleanup e workflow
 → registrate nel decision log
 ```
 
-Gli esiti storici non descrivono automaticamente il comportamento di commit successivi. Per lo stato operativo prevalgono la Todo e le schede owner; per il comportamento implementato prevalgono codice e test della code authority.
+Gli esiti storici non descrivono automaticamente il comportamento di commit successivi.
 
 ### Documentazione e registri
 

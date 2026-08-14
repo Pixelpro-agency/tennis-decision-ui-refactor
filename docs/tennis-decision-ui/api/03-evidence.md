@@ -106,7 +106,7 @@ Shape complete, reason, normalizzazione integrity, data quality e degradazione c
 POST /api/evidence/:eventId/source-identity/confirm
 ```
 
-Al CODE AUTHORITY la route è gate-authoritative: passa prima attraverso `buildGateManualConfirmationResponse(...)`.
+La route è gate-authoritative: passa prima attraverso `buildGateManualConfirmationResponse(...)`.
 
 Se non esiste una sessione gate valida, la response corrente è `409` con `confirmation_session_changed`; il ramo successivo basato sulle timeline persistite presente in `evidence.js` non è quindi raggiungibile con il contratto corrente dell'helper gate-aware.
 
@@ -158,7 +158,7 @@ Il router:
 - non trasforma persistence integrity, freshness e Source Identity nello stesso concetto;
 - non dichiara causalità.
 
-## Verifica al CODE AUTHORITY
+## Verifica
 
 Dalla cartella `backend/src`:
 

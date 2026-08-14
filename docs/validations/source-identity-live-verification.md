@@ -106,7 +106,7 @@ Non sono stati verificati live neppure:
 - toast verde una sola volta per transizione;
 - bootstrap fallito che lascia il gate pending con errore sicuro.
 
-Il fatto che il CODE AUTHORITY contenga oggi logiche e test relativi a questi comportamenti non costituisce evidenza live per questa campagna storica.
+Il fatto che il progetto contenga oggi logiche e test relativi a questi comportamenti non costituisce evidenza live per questa campagna storica.
 
 ### Decline
 
