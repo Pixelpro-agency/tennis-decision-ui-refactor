@@ -2,13 +2,13 @@
 
 ## Metadati
 
-| Campo | Valore |
-| --- | --- |
-| Data | 4 luglio 2026 |
-| Tipo | Osservazione live manuale |
-| SHA | Non registrato nel documento sorgente |
+| Campo            | Valore                                                              |
+| ---------------- | ------------------------------------------------------------------- |
+| Data             | 4 luglio 2026                                                       |
+| Tipo             | Osservazione live manuale                                           |
+| SHA              | Non registrato nel documento sorgente                               |
 | Sorgente migrata | `docs/tennis-decision-ui/operations/07-betfair-live-validation.mdx` |
-| Stato | Completata con limiti documentati |
+| Stato            | Completata con limiti documentati                                   |
 
 ## Scopo
 
@@ -24,7 +24,7 @@ SofaScore
 → Volume abbinato nel tempo
 ```
 
-Non è una specifica del comportamento futuro.
+Il documento conserva le osservazioni effettuate durante le sessioni del 4 luglio 2026. Non è una specifica del comportamento corrente o futuro e non sostituisce i documenti owner indicati in chiusura.
 
 ## Sessione A — Graph URL disponibili
 
@@ -87,7 +87,7 @@ sessione stabile
 → ritorno a Connected
 ```
 
-Non è stato archiviato un payload `/latest` post-fix e non risultava un test automatico PASS dedicato al tick `status-only`.
+Non è stato archiviato un payload `/latest` post-fix e non risultava un test automatico PASS dedicato al tick `status-only`. La sequenza descrive quindi l’osservazione manuale della sessione, non un’attestazione automatica del contratto corrente di recovery.
 
 ## Console
 
@@ -113,24 +113,26 @@ Non sono stati verificati:
 - errore API o rete reale;
 - mercato Betfair realmente concluso.
 
-Il logout della Sessione C non equivale al caso di login assente all'avvio.
+Il logout della Sessione C non equivale al caso di login assente all’avvio.
 
 Il caso SofaScore `404` durante Source Identity buffering è stato riferito come risolto ma senza artefatti allegati e non viene considerato evidenza archiviata.
 
+Lo SHA e l’ambiente delle sessioni live non sono stati registrati. Il codice e i test correnti possono chiarire il significato dei campi citati, ma non costituiscono prova retroattiva delle osservazioni della run.
+
 ## Interpretazione
 
-| Caso | Stato |
-| --- | --- |
-| Graph URL valide | `live_observed` |
-| Nessuna Graph URL | `live_observed` |
-| Volume anomalo soppresso | `live_observed` |
-| Logout Graph e alert | `live_observed` |
-| Recovery dopo login | `live_observed` |
-| Login già scaduto all'avvio | non eseguito |
-| Graph URL malformate | non eseguito |
-| Mismatch `marketId` | non eseguito |
-| Errore rete/API reale | non eseguito |
-| Mercato finished reale | non eseguito |
+| Caso                        | Stato           |
+| --------------------------- | --------------- |
+| Graph URL valide            | `live_observed` |
+| Nessuna Graph URL           | `live_observed` |
+| Volume anomalo soppresso    | `live_observed` |
+| Logout Graph e alert        | `live_observed` |
+| Recovery dopo login         | `live_observed` |
+| Login già scaduto all’avvio | non eseguito    |
+| Graph URL malformate        | non eseguito    |
+| Mismatch `marketId`         | non eseguito    |
+| Errore rete/API reale       | non eseguito    |
+| Mercato finished reale      | non eseguito    |
 
 ## Documenti owner correnti
 

@@ -27,13 +27,13 @@ Con URL Betfair, il gate Source Identity parte normalmente in `collecting`.
 
 Durante il tracking controllare separatamente:
 
-| Area                 | Cosa osservare                                                                                                                                                                                                   |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Source Identity Gate | `phase`, `persistence`, `updatedAt`, eventuale errore sintetico                                                                                                                                                  |
-| SofaScore            | Score, timestamp e timeline solo dopo persistenza autorizzata                                                                                                                                                    |
-| Betfair              | Health, timestamp ultimo tick, ladder e runner                                                                                                                                                                   |
-| Evidence             | Disponibile solo quando esistono timeline canoniche                                                                                                                                                              |
-| Money Flow           | Nuovi timestamp, punti validi e anomalie                                                                                                                                                                         |
+| Area                 | Cosa osservare                                                  |
+| -------------------- | --------------------------------------------------------------- |
+| Source Identity Gate | `phase`, `persistence`, `updatedAt`, eventuale errore sintetico |
+| SofaScore            | Score, timestamp e timeline solo dopo persistenza autorizzata   |
+| Betfair              | Health, timestamp ultimo tick, ladder e runner                  |
+| Evidence             | Disponibile solo quando esistono timeline canoniche             |
+| Money Flow           | Nuovi timestamp, punti validi e anomalie                        |
 | Frontend             | Shell attiva, semaforo Source Identity coerente, waiting screen finché il bootstrap non ha prodotto `dashboardContentReady` e `dashboardData`; Source Identity ne determina testo e tono, non lo sblocco diretto |
 
 Un valore visibile non dimostra automaticamente che sia recente, completo o tradabile.
@@ -42,11 +42,11 @@ Un valore visibile non dimostra automaticamente che sia recente, completo o trad
 
 La verifica deve distinguere tre piani che possono coesistere senza rappresentare lo stesso stato:
 
-| Piano | Authority corrente | Limite operativo |
-| --- | --- | --- |
-| Sessione live corrente | `trackingSessionId` e Source Identity Gate della sessione attiva | Una timeline con lo stesso `eventId` può essere precedente allo Start corrente |
-| Stato persistito | Timeline, history ed Evidence ricostruita | Dimostra che esistono dati canonici, non che il tracker corrente li abbia appena prodotti |
-| Ultimo stato frontend noto | View model e dati conservati dai poller | Deve essere presentato come `last-known` o fermo, non come aggiornamento live |
+| Piano                      | Authority corrente                                               | Limite operativo                                                                          |
+| -------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Sessione live corrente     | `trackingSessionId` e Source Identity Gate della sessione attiva | Una timeline con lo stesso `eventId` può essere precedente allo Start corrente            |
+| Stato persistito           | Timeline, history ed Evidence ricostruita                        | Dimostra che esistono dati canonici, non che il tracker corrente li abbia appena prodotti |
+| Ultimo stato frontend noto | View model conservato dal frontend                               | Deve essere presentato come `last-known` o fermo, non come aggiornamento live             |
 
 Ordine consigliato:
 
@@ -80,13 +80,13 @@ Lo stato live autoritativo è:
 GET /api/match/:eventId/source-identity-status
 ```
 
-| Fase             | Cosa verificare                                                                                                                                                                                      |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `collecting`     | Dati ancora incompleti; nessuna persistenza                                                                                                                                                          |
-| `pending`        | Giocatori e runner presenti; conferma manuale ammessa                                                                                                                                                |
-| `recording`      | Persistenza canonica attiva                                                                                                                                                                          |
+| Fase             | Cosa verificare                                                                                                                                                                                                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `collecting`     | Dati ancora incompleti; nessuna persistenza                                                                                                                                                                                                                                                     |
+| `pending`        | Giocatori e runner presenti; conferma manuale ammessa                                                                                                                                                                                                                                           |
+| `recording`      | Persistenza canonica attiva                                                                                                                                                                                                                                                                     |
 | `mismatch`       | Tick causale bloccato; il callback ferma i tracker logici, preserva il gate mismatch, invalida la generation e termina il Betfair tracking attivo. Le operazioni SofaScore già in volo restano protette dalla verifica della `trackingSessionId`; il solo stop logico non prova un drain fisico |
-| `not-applicable` | Sessione SofaScore senza Betfair                                                                                                                                                                     |
+| `not-applicable` | Sessione SofaScore senza Betfair                                                                                                                                                                                                                                                                |
 
 La conferma manuale è ammessa solo in `pending`.
 
@@ -121,23 +121,26 @@ stopAllMatchTrackers()
 
 La risposta include `pythonCleanup`; lo schema completo resta nell’owner [API Match](../api/01-match.md).
 
-Il successo logico della richiesta e il completamento fisico non sono sinonimi:
+Lo stop logico e il completamento fisico sono osservabili separatamente, mentre `body.ok` riassume entrambi:
 
 ```txt
-body.ok = true
-→ stop logico accettato
+stopped = true
+→ stopAllMatchTrackers() completato
 
 pythonCleanup.ok = true
 + pythonCleanup.remaining = 0
 → cleanup dei processi Python tracking completato
 
+body.ok = true
+→ stop logico completato e cleanup Python completato
+
 activeTrackerOperations = 0 oppure drain esplicito
 → quiescenza delle operazioni Node
 ```
 
-Lo Stop ordinario non esegue il drain terminale usato dallo shutdown. Di conseguenza, `pythonCleanup.ok: true` non dimostra da solo che ogni operazione Node già avviata sia terminata.
+Lo Stop ordinario non esegue il drain terminale usato dallo shutdown. Di conseguenza, `body.ok: true` non dimostra da solo che ogni operazione Node già avviata sia terminata.
 
-Lo stop è globale e idempotente. L’eventuale `eventId` è informativo. Non cancella history, timeline, journal, writer authority, conferme Source Identity, dashboard, URL o profilo browser.
+Lo stop dei tracker è globale e idempotente. L’eventuale `eventId` è informativo. Non cancella history, timeline, journal, writer authority, conferme Source Identity persistite, URL o profilo browser.
 
 Dopo lo stop ordinario:
 
@@ -150,7 +153,13 @@ backend resta attivo
 → le callback della sessione precedente vengono rifiutate quando non corrispondono alla sessione corrente
 ```
 
-Il controllo Overview ferma esplicitamente il polling SofaScore frontend. Betfair ed Evidence possono continuare a mostrare dati persistiti o `last-known`, ma non riavviano il tracking backend. Il Source Identity Gate è invece uno stato live in memoria: lo Stop lo rimuove e `GET /api/match/:eventId/source-identity-status` può quindi restituire `404`. La UI deve presentare queste superfici come ferme, persistite o `last-known`, mai come prova della sessione corrente.
+Quando la risposta API ha `ok: true`, il controllo Stop nell’Overview ferma il polling SofaScore, imposta la sessione come inattiva e mantiene visibile la shell con lo stato di tracking fermo. Poiché `sessionActive` diventa falso, anche i poller Betfair, Evidence e Source Identity vengono disattivati; i loro dati correnti non costituiscono quindi una superficie live post-Stop. Il view model può conservare l’ultimo dashboard noto, che deve essere trattato come `last-known`.
+
+Se la risposta non ha `ok: true`, per esempio perché il cleanup Python è incompleto, il client tratta lo Stop come fallito: mostra lo stato di errore e non applica la transizione frontend appena descritta. I campi `stopped` e `pythonCleanup` della risposta restano necessari per distinguere ciò che il backend ha comunque completato.
+
+Quando lo Stop backend ha esito positivo, il percorso di ritorno al form cancella inoltre la sessione confermata, nasconde la shell e reimposta il bootstrap. È quindi distinto dal controllo Stop dell’Overview.
+
+Il Source Identity Gate è uno stato live in memoria: lo Stop lo rimuove e `GET /api/match/:eventId/source-identity-status` può quindi restituire `404`. Timeline ed Evidence persistite restano leggibili dai rispettivi endpoint, ma non provano l’esistenza di una sessione corrente.
 
 Questa distinzione è obbligatoria:
 
@@ -182,7 +191,7 @@ sofa_tracking = 0
 ≠ prova di activeTrackerOperations = 0
 ```
 
-Se `pythonCleanup.remaining > 0`, una seconda chiamata Stop non garantisce oggi un nuovo tentativo fisico: il registry può riutilizzare la `terminationPromise` già conclusa. Non usare kill per porta o PID non owned; eseguire lo shutdown controllato oppure applicare la procedura owner approvata finché il retry scoped non viene implementato e collaudato.
+Se `pythonCleanup.remaining > 0`, una seconda chiamata Stop non garantisce un nuovo tentativo fisico: per la stessa entry il registry riutilizza la `terminationPromise` già conclusa. Non usare terminazioni per porta o PID non owned; eseguire lo shutdown controllato oppure applicare la procedura prevista dall’owner operativo.
 
 ## Shutdown completo
 
@@ -201,49 +210,34 @@ Ctrl+C / segnale backend
 → processo terminato
 ```
 
-Il drain viene avviato prima del cleanup Python; il release avviene soltanto dopo drain positivo e chiusura del listener.
+Il drain dei tracker viene avviato prima del cleanup Python; le due attività possono procedere nello stesso shutdown. Il rilascio della writer authority avviene soltanto dopo esito positivo del drain e chiusura del listener.
 
 Se il drain fallisce o non è verificabile:
 
 ```txt
 tracker_drain_failed
 → writer authority retained
-→ exit comunque
+→ processo comunque terminato
 ```
 
-Il force timeout:
-
-```txt
-shutdown_force_timeout
-→ exit
-→ nessun release anticipato
-```
+Il force timeout termina il processo senza rilascio anticipato della writer authority.
 
 Il record residuo può essere recuperato dal backend successivo soltanto dopo la verifica positiva che il vecchio owner sia morto.
 
-Lo shutdown duplicato condivide una singola procedura. Segnali ripetuti non duplicano tracker drain, cleanup Python, release o exit. L’eventuale fallback launcher agisce soltanto sui PID owned registrati.
+Lo shutdown duplicato condivide una singola procedura. Segnali ripetuti non duplicano tracker drain, cleanup Python, release o terminazione del processo. L’eventuale fallback launcher agisce soltanto sui PID owned registrati.
 
-## Verifica live 9B
+## Verifica automatica pertinente
 
-La verifica live è stata eseguita in due sequenze distinte:
+I test associati verificano:
 
-```txt
-sequenza Stop
-→ ruoli tracking terminati
-→ nessun respawn per 10 secondi
+* risposta Stop con cleanup atteso e preservazione del ruolo login;
+* esito top-level negativo quando lo stop dei tracker o il cleanup Python falliscono;
+* idempotenza dello Stop senza processi tracking attivi;
+* esposizione sicura dei contatori Python tramite Runtime Health;
+* condivisione della prima procedura in caso di segnali di shutdown ripetuti;
+* drain dei tracker, ordine dello shutdown e rilascio fail-closed della writer authority.
 
-sequenza login-only successiva
-→ started
-→ already_active
-→ un solo PID ed executionId
-→ tracking ancora fermo
-```
-
-Non è stata esercitata direttamente nella stessa sequenza la condizione `login già attivo → Stop → login ancora attivo`. La preservazione del ruolo `betfair_login` da `scope=tracking` resta verificata dal contratto e dai test automatici.
-
-IMPL-015 ha aggiunto test automatici per tracker drain, ordine shutdown, release fail-closed, segnali ripetuti e force timeout. Non è stato eseguito un collaudo manuale con due backend reali concorrenti.
-
-Non sono riportati event ID, giocatori o dati reali della sessione.
+Queste verifiche automatiche non equivalgono a un collaudo manuale end-to-end con processi e browser reali.
 
 ## Regole operative
 

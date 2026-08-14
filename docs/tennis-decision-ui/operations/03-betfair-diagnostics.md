@@ -64,23 +64,23 @@ errore Source Identity
 
 ## Classificazione iniziale
 
-| Sintomo                                                                                 | Interpretazione iniziale                                                                          |
-| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `event_status.hasFinished === true`                                                     | Mercato concluso; polling Betfair fermato                                                         |
-| `404` + health `unknown`                                                                | Nessuna timeline e nessun errore runtime attivo                                                   |
-| `404` + health `yellow/DEGRADED`                                                        | Nessuna timeline, ma retry tecnico attivo                                                         |
-| `409 persistence_integrity`                                                             | Timeline assente o non leggibile per persistenza incompleta nota                                  |
-| `integrity.status = partial_persistence`                                                | Commit canonico incompleto noto; non è health, freshness o runtime scraper                        |
-| `integrity.status = recovery_failed`                                                    | Recovery bootstrap fallita; serve validazione controllata                                         |
-| yellow/DEGRADED                                                                         | Errore tecnico runtime attivo; nessun alert login strutturato                                     |
+| Sintomo                                                                                 | Interpretazione iniziale                                                                                         |
+| --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `event_status.hasFinished === true`                                                     | Mercato concluso; polling Betfair fermato                                                                        |
+| `404` + health `unknown`                                                                | Nessuna timeline e nessun errore runtime attivo                                                                  |
+| `404` + health `yellow/DEGRADED`                                                        | Nessuna timeline, ma retry tecnico attivo                                                                        |
+| `409 persistence_integrity`                                                             | Timeline assente o non leggibile per persistenza incompleta nota                                                 |
+| `integrity.status = partial_persistence`                                                | Commit canonico incompleto noto; non è health, freshness o runtime scraper                                       |
+| `integrity.status = recovery_failed`                                                    | Recovery bootstrap fallita; serve validazione controllata                                                        |
+| yellow/DEGRADED                                                                         | Errore tecnico runtime attivo; nessun alert login strutturato                                                    |
 | yellow/STALE                                                                            | Una o più cause non-auth: age stale, ladder assente, CDP fallito, mercato invalido o Graph stale/bad/unavailable |
-| Tick recente + ladder stale                                                             | Dati mercato recenti, ladder degradata; non equivale a mercato fermo                              |
-| red/ALERT                                                                               | Autenticazione Graph sospetta nel tick corrente o in un tick canonico recente; alert login attivo |
-| `error`, `api_error`, runner mancanti o vuoti, `total_matched` assente, invalido o zero | Campione tecnico scartato; polling da ritentare                                                   |
-| Timeout o DNS                                                                           | Fetch non riuscito; polling da ritentare                                                          |
-| Errore Graph URL isolato con runner e volume affidabili                                 | Non rende da solo inutilizzabile il campione                                                      |
-| Grafico fermo ma ladder visibile                                                        | History, timestamp o point validi non avanzano                                                    |
-| Pagina non aggiornata                                                                   | Connessione Vite persa                                                                            |
+| Tick recente + ladder stale                                                             | Dati mercato recenti, ladder degradata; non equivale a mercato fermo                                             |
+| red/ALERT                                                                               | Autenticazione Graph sospetta nel tick corrente o in un tick canonico recente; alert login attivo                |
+| `error`, `api_error`, runner mancanti o vuoti, `total_matched` assente, invalido o zero | Campione tecnico scartato; polling da ritentare                                                                  |
+| Timeout o DNS                                                                           | Fetch non riuscito; polling da ritentare                                                                         |
+| Errore Graph URL isolato con runner e volume affidabili                                 | Non rende da solo inutilizzabile il campione                                                                     |
+| Grafico fermo ma ladder visibile                                                        | History, timestamp o point validi non avanzano                                                                   |
+| Pagina non aggiornata                                                                   | Connessione Vite persa                                                                                           |
 
 Il solo stato `red/ALERT` non dimostra che il tick corrente sia una transizione `status-only`. La conferma richiede `latest.diagnostics.statusOnlyGraphLogin === true`; in sua assenza, il rosso indica comunque un segnale auth strutturato corrente o recente.
 
@@ -232,11 +232,11 @@ shutdown_complete
 
 I piani diagnostici restano distinti:
 
-| Piano | Contenuto | Limite |
-| --- | --- | --- |
-| runtime Node | lifecycle, spawn, tracking, cleanup e recovery | process-local; non è il log Python |
-| `/api/betfair/log` | tail globale del log Python Betfair | una riga recente non prova la sessione corrente |
-| network capture | artifact opzionali redatti del traffico osservato | non è timeline, health o log della sessione |
+| Piano              | Contenuto                                         | Limite                                          |
+| ------------------ | ------------------------------------------------- | ----------------------------------------------- |
+| runtime Node       | lifecycle, spawn, tracking, cleanup e recovery    | process-local; non è il log Python              |
+| `/api/betfair/log` | tail globale del log Python Betfair               | una riga recente non prova la sessione corrente |
+| network capture    | artifact opzionali redatti del traffico osservato | non è timeline, health o log della sessione     |
 
 La correlazione affidabile richiede identificatori bounded approvati, come event/session identity quando presenti nello stesso evento strutturato. Timestamp, URL o vicinanza temporale da soli non autorizzano ad attribuire una riga globale alla sessione corrente.
 
@@ -434,15 +434,17 @@ Eseguire la verifica su due livelli distinti.
 → selectionId non duplicato nella stessa esecuzione
 ```
 
-| Reason                               | Interpretazione                          | Azione                                        |
-| ------------------------------------ | ---------------------------------------- | --------------------------------------------- |
-| `bad_graph_url_invalid`              | Schema, host, path, view o ID non validi | Correggere la URL diretta                     |
-| `bad_graph_url_unsupported_endpoint` | URL `runnerChartData`                    | Recuperare la URL diretta ladder              |
-| `bad_graph_url_market_mismatch`      | URL di un altro mercato                  | Usare una Graph URL del mercato corrente      |
-| `bad_graph_url_selection_not_found`  | Selezione assente nei runner API         | Verificare mapping e disponibilità API        |
-| `bad_graph_url_duplicate_selection`  | Selezione già accettata                  | Rimuovere la URL duplicata                    |
-| `no_ladder_rows`                     | Mapping valido ma nessuna riga estratta  | Verificare login, stato mercato e diagnostica |
-| `auth_suspected`                     | Login richiesto                          | Usare la procedura Login Betfair              |
+| Reason                                      | Interpretazione                                  | Azione                                                              |
+| ------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------- |
+| `bad_graph_url_invalid`                     | Schema, host, path, view o ID non validi         | Correggere la URL diretta                                           |
+| `bad_graph_url_unsupported_endpoint`        | URL `runnerChartData`                            | Recuperare la URL diretta ladder                                    |
+| `bad_graph_url_market_identity_unavailable` | Identità del mercato atteso assente o non valida | Verificare `market_info.market_id` prima del mapping                |
+| `bad_graph_url_market_mismatch`             | URL di un altro mercato                          | Usare una Graph URL del mercato corrente                            |
+| `bad_graph_url_selection_ambiguous`         | `selectionId` associato in modo ambiguo          | Correggere l'identità dei runner prima di usare la URL              |
+| `bad_graph_url_selection_not_found`         | Selezione assente nei runner API                 | Verificare mapping e disponibilità API                              |
+| `bad_graph_url_duplicate_selection`         | Selezione già accettata                          | Rimuovere la URL duplicata                                          |
+| `no_ladder_rows`                            | Mapping valido ma nessuna riga estratta          | Verificare login, stato mercato e diagnostica                       |
+| `auth_suspected`                            | Login richiesto                                  | Usare la procedura Login Betfair                                    |
 
 Le failure di parser o mapping:
 
@@ -624,11 +626,11 @@ La network capture non fa parte del percorso normale di tracking live. La preced
 
 Matrice corrente:
 
-| Entrypoint | Capture predefinita | Override |
-| --- | --- | --- |
-| tracking Node | disabilitata | nessun endpoint read-only la abilita |
-| route HTTP `/odds` | non applicabile: route rimossa | nessuno |
-| CLI Python standalone | abilitata | `--no-network-capture` la disabilita |
+| Entrypoint            | Capture predefinita            | Override                             |
+| --------------------- | ------------------------------ | ------------------------------------ |
+| tracking Node         | disabilitata                   | nessun endpoint read-only la abilita |
+| route HTTP `/odds`    | non applicabile: route rimossa | nessuno                              |
+| CLI Python standalone | abilitata                      | `--no-network-capture` la disabilita |
 
 Quando la capture è attiva, i dump mantengono condizioni di attivazione, filtri, soglie e schema del summary, ma devono salvare solo contenuti redatti.
 
@@ -821,16 +823,16 @@ La ladder è diagnostica: non è un requisito per mostrare `matchedVolume` quand
 
 ## Matrice di verifica
 
-| Contratto | Verifica automatica | Live necessario |
-| --- | --- | --- |
-| cause yellow e redazione health | `betfairHealth.test.mjs`, test modulari `betfairHealth/` | no |
-| finestra auth ultimi tre tick | codice corrente; coverage completa 1/2/3 ancora aperta | no |
-| finished authoritative e weak hint | `scrapers.betfair.runtime_contract_test`, lifecycle Node | no |
-| separazione log Node/Python/capture | contratti route/log e test redazione | solo per attribuzione a una sessione reale |
-| capture Node vs CLI | runtime contract e test capture Python | dump reale soltanto in procedura controllata |
-| route `/odds` rimossa | test/router API Betfair | no |
-| integrity invalid/recovery failed | suite journal e recovery | no |
-| logout e ritorno a Connected | artifact storico Betfair | sì; non equivale a rerun corrente |
+| Contratto                           | Verifica automatica                                      | Live necessario                              |
+| ----------------------------------- | -------------------------------------------------------- | ---                                          |
+| cause yellow e redazione health     | `betfairHealth.test.mjs`, test modulari `betfairHealth/` | no                                           |
+| finestra auth ultimi tre tick       | codice corrente; coverage completa 1/2/3 ancora aperta   | no                                           |
+| finished authoritative e weak hint  | `scrapers.betfair.runtime_contract_test`, lifecycle Node | no                                           |
+| separazione log Node/Python/capture | contratti route/log e test redazione                     | solo per attribuzione a una sessione reale   |
+| capture Node vs CLI                 | runtime contract e test capture Python                   | dump reale soltanto in procedura controllata |
+| route `/odds` rimossa               | test/router API Betfair                                  | no                                           |
+| integrity invalid/recovery failed   | suite journal e recovery                                 | no                                           |
+| logout e ritorno a Connected        | artifact storico Betfair                                 | sì; non equivale a rerun corrente            |
 
 ## Documenti collegati
 

@@ -1,225 +1,236 @@
-# Contesto punti UI
+# Market Reactions UI
 
 ## Scopo
 
-Questo modulo documenta la card frontend:
+Questo documento è l'owner tecnico della presentazione frontend di Market Reactions. Descrive:
+
+- il recupero periodico dell'Evidence corrente;
+- gli stati di lettura e di disponibilità mostrati dalla pagina;
+- la presentazione separata delle osservazioni Exchange → Field e Field → Exchange;
+- il mapping descrittivo applicato dal view model;
+- il disclaimer di non causalità.
+
+La costruzione dell'Evidence appartiene a [Market Reactions](../evidence/04-market-reactions.md). Il lifecycle Source Identity appartiene a [Sessione e shell frontend](./01-session-shell.md).
+
+## Componenti e responsabilità
 
 ```txt
-frontend/src/components/MatchContextCard.jsx
+App.jsx
+└─ useMarketReactionEvidence(eventId)
+   └─ MarketReactionsPage.jsx
+      ├─ MarketLedObservationCard.jsx
+      └─ FieldLedReactionCard.jsx
 ```
 
-La card mostra un contesto descrittivo dei punti ricevuto dal backend tramite `localContext`.
+| Elemento                       | Responsabilità                                                                                              |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `useMarketReactionEvidence.js` | Legge l'endpoint Evidence, normalizza il payload, gestisce polling, refresh e stato della lettura.          |
+| `MarketReactionsPage.jsx`      | Presenta lo stato generale, l'eventuale degradazione persistence, le reasons di availability e le due card. |
+| `marketReactionViewModel.js`   | Applica i mapping frontend minimi per availability, sorgente market-led, marker e disclaimer causale.       |
+| `MarketLedObservationCard.jsx` | Presenta l'osservazione Exchange → Field.                                                                   |
+| `FieldLedReactionCard.jsx`     | Presenta l'osservazione Field → Exchange.                                                                   |
+
+La pagina non ricostruisce l'Evidence: riceve dall'hook il read model estratto dalla risposta backend e lo distribuisce alle card.
+
+## Lettura e polling
+
+Con una sessione attiva, `App.jsx` passa a `useMarketReactionEvidence()` il SofaScore `eventId`; senza sessione passa una stringa vuota.
+
+L'hook legge:
+
+```http
+GET /api/evidence/:eventId/latest
+```
+
+Il polling usa per default un intervallo di 5 secondi. Il primo caricamento imposta `loading`; i poll automatici successivi non riattivano questo stato. `refresh()` avvia una lettura manuale usando la stessa pipeline.
+
+Quando cambia `eventId`, l'hook:
+
+- invalida la generazione di polling precedente;
+- annulla l'eventuale richiesta attiva;
+- azzera Evidence e metadati della lettura precedente;
+- avvia una nuova lettura e il relativo ciclo di polling, se l'identificatore è presente.
+
+Una sola richiesta della generazione corrente può rimanere attiva. Le risposte appartenenti a una generazione precedente non aggiornano lo stato corrente.
+
+## Normalizzazione del payload
+
+Per una risposta valida con `ok = true`, `normalizeEvidencePayload()` produce:
+
+| Stato frontend                   | Origine nel payload                                |
+| -------------------------------- | -------------------------------------------------- |
+| `latest`                         | `payload.latest`                                   |
+| `evidence`                       | `payload.latest.marketReactionEvidence`            |
+| `sources`                        | `payload.sources`                                  |
+| `integrity`                      | `payload.integrity`                                |
+| `persistenceComplete`            | `payload.latest.dataQuality.persistenceComplete`   |
+| `sourceUpdatedAt` / `lastUpdate` | data valida da `payload.latest.metadata.updatedAt` |
+| `fetchedAt`                      | istante locale della lettura completata            |
+
+Date mancanti o non valide diventano `null`. L'hook non deriva `integrity`, `sources`, `reasons` o `persistenceComplete` dai contenuti delle card.
+
+## Stati di lettura
+
+| Condizione                                                         | `readStatus` | Presentazione della pagina                                                               |
+| ------------------------------------------------------------------ | ------------ | ---------------------------------------------------------------------------------------- |
+| `eventId` assente                                                  | `inactive`   | La pagina, se renderizzata senza match, mostra che nessun match è caricato.              |
+| Lettura iniziale in corso                                          | `waiting`    | Con `loading` e senza Evidence mostra `Loading evidence data…`.                          |
+| HTTP `404` senza `integrity`                                       | `waiting`    | Azzera l'Evidence e conserva eventuali `reasons` o `error` del payload.                  |
+| HTTP `404` con `integrity`                                         | `degraded`   | Azzera l'Evidence, conserva `integrity` e mostra l'avviso persistence.                   |
+| Risposta HTTP non riuscita diversa da `404`, oppure errore di rete | `error`      | Azzera l'Evidence e mostra `Unable to load evidence data.`.                              |
+| Risposta riuscita con `ok` diverso da `true`                       | `waiting`    | Azzera l'Evidence e conserva eventuali reasons senza trattarle come errore di trasporto. |
+| Payload valido con `persistenceComplete = false`                   | `degraded`   | Mantiene l'Evidence normalizzata e mostra l'avviso persistence.                          |
+| Payload valido negli altri casi                                    | `current`    | Mostra l'Evidence corrente senza avviso persistence.                                     |
+
+Se non sono presenti né errore, né Evidence, né caricamento, la pagina mostra `No snapshot available for this match.` e fino a tre reasons ricevute dall'hook.
+
+## Presentazione della persistence integrity
+
+La degradazione persistence è distinta dall'errore di caricamento e dall'availability delle singole osservazioni.
+
+Quando:
 
 ```txt
-timeline SofaScore
-→ useMatchPolling
-→ dashboard view model
-→ MatchContextCard
+readStatus = degraded
+oppure
+persistenceComplete = false
 ```
 
-Non è una strategia, una previsione, un segnale betting o una fair odds.
+la pagina mostra l'avviso `Evidence persistence is incomplete.`. Se disponibile, aggiunge `integrity.reason`; la presenza di `sources` produce soltanto l'indicazione che la lettura Evidence corrente contiene diagnostiche sulle fonti.
 
-## Stato
+La UI non espone path, journal, commit o dettagli del filesystem e non ricalcola lo stato di integrità.
 
-**Implementato e coperto da test automatici; validazione live ancora aperta.**
+## Availability e reasons
 
-Il backend calcola il `localContext`; il frontend ne valida versione, provenienza, shape e coerenza numerica, formatta le etichette e rende le sezioni disponibili.
+L'availability delle due card dipende esclusivamente da:
 
-I test automatici coprono mapping, view model e rendering di `MatchContextCard`.
+```js
+evidence?.available === true
+```
 
-Restano da verificare la resa e gli stati di indisponibilità su dati live reali.
+Ogni altro valore produce il badge `unavailable`. La pagina continua a renderizzare una card unavailable e non la nasconde.
 
-## Responsabilità
+Le reasons restano associate al livello ricevuto:
 
-La card:
+| Origine                                                 | Presentazione                                                  |
+| ------------------------------------------------------- | -------------------------------------------------------------- |
+| `reasons` restituito dall'hook senza snapshot           | Fino a tre voci nel messaggio `No snapshot available`.         |
+| `evidence.summary.reasons` del wrapper Market Reactions | Fino a cinque voci nel blocco generale `Availability reasons`. |
+| `summary.reasons` di una singola branch                 | Fino a cinque voci nella card corrispondente.                  |
+| `observationWindow.reasons`                             | Fino a tre voci nella finestra corrispondente.                 |
 
-* mostra i punti complessivi del match quando disponibili;
-* mostra gli ultimi tre game completati soltanto quando la finestra è valida;
-* mostra la differenza osservata rispetto al match soltanto quando disponibile;
-* usa i nomi giocatori ricevuti dallo snapshot;
-* rappresenta esplicitamente dati non disponibili.
+La UI presenta questi valori senza dedurre autonomamente una reason alternativa.
 
-La card non deve:
+## Exchange → Field
 
-* calcolare valori sportivi di punti, percentuali, differenze o lato in vantaggio; può soltanto validare i numeri ricevuti e formattare le etichette per la presentazione;
-* interpretare point-by-point;
-* ricostruire Evidence o Source Identity;
-* creare fallback `50/50`;
-* mostrare quote, barre, punti o percentuali inventate;
-* derivare trend, previsioni, strategie o segnali betting.
+`MarketLedObservationCard` riceve `evidence.marketLedObservation`.
 
-## Flusso dati
+La sorgente `sourceMarketEvent` viene trasformata da `buildMarketSourceView()`:
 
-`useMatchPolling(...)` conserva il payload ricevuto dal backend.
+| Campo sorgente           | Campo di vista  | Presentazione      |
+| ------------------------ | --------------- | ------------------ |
+| `runner`                 | `runner`        | Runner             |
+| `observedFlowAmount`     | `amount`        | Flow amount        |
+| `absoluteFlowTier`       | `absoluteTier`  | Absolute tier      |
+| `relativeFlowTier`       | `relativeTier`  | Relative tier      |
+| `direction`              | `direction`     | Direction          |
+| `flowAmbiguous === true` | `flowAmbiguous` | Booleano esplicito |
 
-`mapBackendDataToDashboard(...)` richiede `backendData.snapshot`, inoltra `backendData.localContext` senza ricalcolarlo e usa `snapshot.players` per i nomi visualizzati.
+La card può inoltre mostrare timestamp e selection ID della sorgente. Nel summary presenta, quando disponibili, data quality, flow ambiguity e tipi di eventi SofaScore osservati.
 
-Il flusso frontend è:
+Ogni observation window può mostrare:
 
-payload backend
-→ useMatchPolling
-→ useDashboardViewModel
-→ mapBackendDataToDashboard
-→ MatchContextCard
+- durata in secondi;
+- esito `observed` / `not observed` per `fieldEventObservedAfterFlow`;
+- data quality;
+- numero di tick SofaScore osservati;
+- numero di marker rilevanti;
+- reasons della finestra.
 
-L'authority numerica appartiene al backend. La validazione del contratto ricevuto e la formattazione per la presentazione appartengono a:
+Se la branch non è presente, la card segnala che non sono disponibili dati di attività Exchange per lo snapshot. Se esiste la branch ma manca `sourceMarketEvent`, segnala che non è disponibile un'attività Exchange significativa come evento sorgente.
+
+## Field → Exchange
+
+`FieldLedReactionCard` riceve `evidence.fieldLedReaction`.
+
+Per `sourceFieldEvent` la card può mostrare:
+
+- tipo dell'evento;
+- istante `stateFirstSeenAt`;
+- point state;
+- game score.
+
+Nel summary presenta, quando disponibili, data quality, presenza di una market response, affidabilità della response e prima finestra temporale nella quale è stata osservata.
+
+Ogni observation window può mostrare:
+
+- durata in secondi;
+- esito `observed` / `not observed` per `marketResponseObserved`;
+- classificazione `reliable` oppure `diagnostic` quando una response è osservata;
+- data quality;
+- numero di tick Betfair osservati;
+- delta del matched volume;
+- presenza di price change e volume increase;
+- variazioni per runner: baseline price, latest price, delta percentuale e direction;
+- reasons della finestra.
+
+Se la branch non è presente, la card segnala che non sono disponibili dati di reazione del campo per lo snapshot. Se esiste la branch ma manca `sourceFieldEvent`, segnala che non è disponibile un evento di campo rilevante come evento sorgente.
+
+## Regola di non causalità
+
+Market Reactions presenta prossimità temporale tra osservazioni, non causalità. La pagina dichiara sempre nell'intestazione:
 
 ```txt
-frontend/src/components/matchContextViewModel.js
+Temporal proximity only. Causality not established.
 ```
 
-Il componente riceve:
+Ogni card mostra inoltre `Causality not established` quando `causalityClaimed` è `false` nel summary della branch oppure direttamente nella branch.
 
-```txt
-localContext
-players
+La presentazione non deve essere interpretata come:
+
+- segnale di trading;
+- raccomandazione;
+- intenzione attribuita al mercato;
+- previsione del vincitore;
+- relazione causale certa.
+
+## Confine Source Identity
+
+Market Reactions usa l'Evidence resa disponibile nella sessione, ma non possiede il lifecycle UI Source Identity. Gate, waiting screen, modale, toast e conseguenze di navigazione restano responsabilità della shell descritta in [Sessione e shell frontend](./01-session-shell.md).
+
+Questo documento non duplica gli stati `collecting`, `pending`, `recording` e `mismatch` né le relative transizioni.
+
+## Riferimenti implementativi
+
+```text
+frontend/src/App.jsx
+frontend/src/components/MarketReactionsPage.jsx
+frontend/src/components/marketReactions/marketReactionViewModel.js
+frontend/src/components/marketReactions/MarketLedObservationCard.jsx
+frontend/src/components/marketReactions/FieldLedReactionCard.jsx
+frontend/src/hooks/useMarketReactionEvidence.js
 ```
-
-La card presenta il contenuto come contesto descrittivo calcolato sui dati SofaScore disponibili. Il calcolo è `project-calculated` nel backend.
-
-## Contenuto visualizzato
-
-Quando i dati sono disponibili, la card può mostrare:
-
-```txt
-punti nel match
-→ ultimi tre game completati
-→ differenza osservata rispetto al match
-```
-
-I termometri usano esclusivamente percentuali già calcolate dal backend.
-
-La differenza osservata è descrittiva. Non rappresenta un trend, una previsione o un’indicazione operativa.
-
-Il consumer verifica che punti e percentuali siano numeri finiti nei rispettivi intervalli e controlla le invarianti del producer:
-
-```txt
-homePct + awayPct = 100
-homePoints + awayPoints = totalPoints
-percentuali coerenti con i punti
-```
-
-Un payload incoerente degrada la sezione a unavailable. Il frontend non corregge, non esegue clamp e non ricalcola i valori da mostrare.
-
-## Validazione della finestra recente
-
-La sezione degli ultimi game è disponibile soltanto quando:
-
-```txt
-recent.available === true
-recent.window.includedGames === 3
-recent.window.excludedCurrentGame === true
-recent.pointShare valido secondo i controlli frontend correnti
-```
-
-Una finestra con zero, uno o due game resta indisponibile anche quando il payload dichiara `recent.available === true`.
-
-Il frontend non completa una finestra incompleta, non usa game più vecchi e non ricostruisce conteggi point-by-point.
-
-Il gate verifica inoltre `kind: completed-games`, `requestedGames: 3` e la presenza di esattamente tre elementi in `games`.
-
-## Availability per sezione
-
-L'indisponibilità non è un interruttore globale della card:
-
-```txt
-localContext.available
-→ disponibilità della point share del match
-
-recent.available
-→ disponibilità della finestra recente
-
-comparison.available
-→ disponibilità del confronto
-
-dataQuality.level
-→ qualità complessiva complete / partial / insufficient
-```
-
-Il frontend valuta le sezioni separatamente. Una sezione disponibile può quindi restare visibile mentre un'altra mostra il proprio stato indisponibile.
-
-Quando una singola sezione non è disponibile, quella sezione non mostra:
-
-```txt
-barre
-punti
-percentuali
-differenze
-quote
-```
-
-Le reason `point_by_point_unavailable`, `insufficient_verified_completed_games` e `unsupported_or_ambiguous_score_transition` hanno un copy italiano nel view model. 
-
-Il producer preserva `unsupported_or_ambiguous_score_transition` quando uno dei tre game candidati non è decodificabile; l'insufficienza numerica dei game resta distinta tramite `insufficient_verified_completed_games`.
-
-Una reason diversa usa il fallback:
-
-```txt
-Dati recenti non disponibili.
-```
-
-L’assenza di dati resta un’informazione reale e non viene sostituita da valori sintetici.
-
-## Confronto e `observedShift`
-
-I delta percentuali sono calcolati dal backend e descrivono la differenza tra la finestra recente e l'intero match.
-
-`observedShift === true` ha una semantica più stretta: indica che il lato con più punti è cambiato tra match e finestra recente. Non indica genericamente che le percentuali sono cambiate e non rappresenta momentum o trend.
-
-Il consumer mostra il confronto soltanto quando match e recent sono validi, i due delta sono finiti, opposti e coerenti con le point share ricevute.
-
-## Versione e provenienza del contratto
-
-Il payload canonico dichiara:
-
-```txt
-version: 1
-source: project-calculated
-purpose: descriptive-match-context
-```
-
-Questi campi descrivono versione, provenienza e scopo e costituiscono il gate del consumer. Sono accettati soltanto `version: 1`, `source: project-calculated` e `purpose: descriptive-match-context`. Un contratto assente o diverso degrada in modo deterministico tutte le sezioni a unavailable.
-
-## Confini
-
-`MatchContextCard` e `matchContextViewModel.js` non devono dipendere da:
-
-```txt
-scraper Python
-browser
-filesystem
-timeline store
-Source Identity store
-Match Evidence builder
-decoder point-by-point
-```
-
-La UI comunica soltanto tramite il view model e i payload già ricevuti dal backend.
-
-La card non legge direttamente `dataQuality`; questo metadata resta disponibile nel read model backend ma non produce attualmente un badge o un gate globale UI.
 
 ## Verifica
 
-```txt
-node src/components/matchContextViewModel.test.mjs
-node src/types/dashboard.test.mjs
-npm run build
+```bash
+npm.cmd run test:components
+node src/components/marketReactions/marketReactionViewModel.test.mjs
+node src/hooks/useMarketReactionEvidence.test.mjs
+npm.cmd run build
 ```
 
-Verificare:
+| Verifica                             | Copertura pertinente                                                                              |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `frontendComponents.test.jsx`        | Render separato della persistence degradation e della relativa reason.                            |
+| `marketReactionViewModel.test.mjs`   | Availability stretta, mapping della sorgente Exchange, formattazione marker e disclaimer causale. |
+| `useMarketReactionEvidence.test.mjs` | Estrazione di Evidence, persistence completeness, timestamp, integrity e sources dal payload.     |
+| Build frontend                       | Integrità di compilazione del frontend.                                                           |
 
-```txt
-localContext inoltrato senza ricalcolo
-→ finestra recente disponibile solo con tre game e game corrente escluso
-→ nessun fallback numerico
-→ nessuna percentuale inventata
-→ stati non disponibili senza barre o valori fittizi
-```
+## Collegamenti
 
-La suite component-level monta la card e verifica rendering delle barre, attributi accessibili, copy di provenienza e degradazione di un contratto non supportato.
-
-## Documenti collegati
-
-* [Polling e view model](./02-live-polling-and-view-model.md)
-* [Contesto locale e point-by-point](../sofa/02-local-context-and-point-by-point.md)
-* [API Match](../../api/01-match.md)
+- [Facade UI Betfair e Market Reactions](./03-betfair-and-market-reactions-ui.md)
+- [Sessione e shell frontend](./01-session-shell.md)
+- [Polling e view model](./02-live-polling-and-view-model.md)
+- [Market Reactions Evidence](../evidence/04-market-reactions.md)
+- [API Evidence](../../api/03-evidence.md)

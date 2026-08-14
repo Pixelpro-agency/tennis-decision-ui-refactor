@@ -33,9 +33,10 @@ backend/src/routes/evidence.js
 Flusso:
 
 ```txt
-timeline SofaScore + timeline Betfair opzionale
+timeline SofaScore e/o timeline Betfair
 → lettura integrity SofaScore read-only
 → lettura integrity Betfair read-only
+→ boundary canonico delle entry disponibili
 → selezione dell’active Betfair market epoch
 → Source Identity effective
 → buildEvidenceFromTicks
@@ -47,7 +48,7 @@ L'epoch Betfair attivo è la porzione finale contigua della timeline con la stes
 
 Il boundary costruisce viste canoniche prima della composizione. Sofa accetta solo entry `source=sofa`; Betfair richiede `source=betfair`, `seq` finito e un array di runner composto da oggetti non-array. Wrong-source, legacy, `seq` non finiti e runner malformed non rendono una timeline `found` e non raggiungono Source Identity o data quality.
 
-La lettura di `integrity` usa adapter read-only esposti dal livello storage/API e non importa direttamente payload journalizzati, target locali o path filesystem.
+La lettura di `integrity` usa l’adapter read-only esposto dal livello storage tramite `getMatchPersistenceIntegrity` e non importa direttamente payload journalizzati, target locali o path filesystem.
 
 ## Contratto dello snapshot
 
@@ -194,20 +195,18 @@ Quando `persistenceComplete:false`, Evidence aggiunge la reason standard:
 Persistence incomplete: canonical cross-source evidence unavailable
 ```
 
-La reason viene aggiunta una sola volta e può coesistere con reason Source Identity `pending` o `mismatch`, senza duplicati.
+La reason standard può comparire in più raccolte dello snapshot, tra cui `dataQuality.reasons`, `noTradeReasons` e `marketReactionEvidence.summary.reasons`; in ciascuna raccolta viene deduplicata. Può coesistere con reason Source Identity `pending` o `mismatch` senza duplicati nella stessa raccolta.
 
-La persistence integrity non modifica:
+La persistence integrity non riscrive la freshness tecnica delle singole fonti in `dataQuality`:
 
 ```txt
 betfairRecent
 sofaRecent
-freshness
-staleness
-latestTimestamp
-tick freshness tecnica
 ```
 
-Un tick Betfair fresco resta tecnicamente fresco anche se la persistenza è incompleta.
+Un tick Betfair fresco resta quindi `betfairRecent:true` anche se la persistenza è incompleta.
+
+Il gating cross-source agisce invece sull’allineamento attribuito: quando la persistenza è incompleta, il builder non passa il tick Betfair a `buildAlignment()`. Di conseguenza i campi Betfair/pairwise dell’`alignment` possono risultare non disponibili e `alignmentQuality` / `freshnessQuality` degradano. Questa degradazione dell’allineamento non equivale a rendere stale il tick Betfair grezzo.
 
 ## Degradazione cross-source
 
@@ -303,7 +302,7 @@ Source identity mismatch: cross-source observations unavailable
 
 Le reason di Source Identity e la reason di persistenza incompleta possono coesistere. Nessuna delle due deve cancellare o riscrivere l’altra.
 
-## Snapshot Sofa-only
+## Snapshot con una sola fonte
 
 Uno snapshot può essere costruito con una timeline SofaScore disponibile e senza timeline Betfair.
 
@@ -325,9 +324,11 @@ noTradeReasons
 
 Questo è un comportamento dello snapshot da timeline persistite. Non implica che il gate live sia `not-applicable`, `collecting` o `pending`.
 
-Il composer supporta anche il caso Betfair-only: se Betfair contiene almeno una entry e SofaScore manca, costruisce uno snapshot degradato con Source Identity `pending` e senza uso cross-source. Solo quando entrambe le timeline non hanno entry restituisce `missing:true`.
+Il composer supporta anche il caso Betfair-only: se Betfair contiene almeno un tick valido e SofaScore non contiene tick canonici, costruisce uno snapshot degradato con Source Identity `pending` e senza uso cross-source. Solo quando entrambe le fonti non forniscono tick ammessi dal boundary restituisce `missing:true`.
 
-I flag `sources.sofaTimelineFound` e `sources.betfairTimelineFound` significano «documento caricato con almeno una entry», non semplice esistenza del file. Il loader corrente non espone ancora una read-result semantics che distingua file assente, errore di discovery/lettura, JSON invalido e shape invalida; Evidence non tenta recovery automatica.
+I flag `sources.sofaTimelineFound` e `sources.betfairTimelineFound` indicano che, dopo il boundary canonico del composer, è disponibile almeno un tick SofaScore canonico o almeno un tick Betfair valido rispettivamente. Non equivalgono alla semplice esistenza del file né alla presenza di una qualunque entry raw.
+
+A livello storage, `loadTimelineResult()` distingue una timeline `found`, `missing` o `failed` e mantiene reason bounded per discovery, lettura, JSON o shape non validi. Il composer `buildLatestMatchEvidence()` usa però `loadTimeline()`, che restituisce la timeline soltanto quando il risultato storage è `found` e collassa gli altri esiti a `null`; il contratto Evidence corrente non espone quindi quella read-result semantics dettagliata e non tenta recovery automatica.
 
 Se la mancanza di una timeline è accompagnata da `partial_persistence` o `recovery_failed`, Evidence deve mantenere l’assenza osservabile tramite `integrity` e `persistenceComplete:false`, senza tentare recovery.
 
@@ -382,12 +383,14 @@ Dalla cartella `backend/src`:
 node sofa/matchEvidence/latestMatchEvidence/loadingAndEpochs.test.mjs
 node sofa/matchEvidence/latestMatchEvidence/manualConfirmation.test.mjs
 node sofa/matchEvidence/latestMatchEvidence/persistenceIntegrity.test.mjs
+node sofa/matchEvidence/latestMatchEvidence/integrityNormalization.test.mjs
 node sofa/matchEvidence/evidenceBuilder/sourceAvailability.test.mjs
 node sofa/matchEvidence/evidenceBuilder/sourceIdentityGate.test.mjs
 node sofa/matchEvidence/evidenceBuilder/persistenceIntegrity.test.mjs
 node sofa/matchEvidence/noTradeReasons.test.mjs
 node sofa/matchEvidence/dataQuality.test.mjs
 node sofa/matchEvidence/sofaEvidence.test.mjs
+node sofa/matchEvidence/sourceIdentityConfirmationStore.test.mjs
 node routes/evidence/evidenceRoute.test.mjs
 node routes/evidence/evidenceResponses.test.mjs
 ```
@@ -417,7 +420,7 @@ integrity no_known_partial
 
 partial_persistence o recovery_failed
 → persistenceComplete false
-→ reason Persistence incomplete aggiunta una sola volta
+→ reason Persistence incomplete presente senza duplicati nelle singole raccolte in cui compare
 → runner Betfair attribuiti esclusi
 → Market Reactions cross-source sospese
 → causalityClaimed false

@@ -190,11 +190,11 @@ launcher/
 └── system.py
 ```
 
-| Area                | Responsabilità                                                     |
-| ------------------- | ------------------------------------------------------------------ |
-| `scrapers/sofa/`    | URL, cache, browser e JSON SofaScore                               |
-| `scrapers/betfair/` | Browser, mercato, Graph URL, ladder, cache e diagnostica           |
-| `launcher/session.py` | Lock, manifest e identità della sessione launcher                |
+| Area                | Responsabilità                                                                                        |
+| ------------------- | ----------------------------------------------------------------------------------------------------- |
+| `scrapers/sofa/`    | URL, cache, browser e JSON SofaScore                                                                  |
+| `scrapers/betfair/` | Browser, mercato, Graph URL, ladder, cache e diagnostica                                              |
+| `launcher/session.py` | Lock, manifest e identità della sessione launcher                                                   |
 | `launcher/app.py`, `services.py`, `system.py`, `config.py` | Orchestrazione, servizi, primitive di sistema e configurazione |
 
 I wrapper root restano facade compatibili. Non spostare logica di dominio nei wrapper.
@@ -233,19 +233,19 @@ Owner correnti: documenti sotto `modules/frontend/`, inclusi [Betfair Depth e he
 
 Escludere dal normale contesto e dai commit:
 
-| Percorso o categoria                               | Regola                                                     |
-| -------------------------------------------------- | ---------------------------------------------------------- |
-| `backend/match_history/`                           | Dati canonici locali; usare solo per task esplicite        |
-| `.pending_commits/`                                | Journal di recovery; non cancellare manualmente            |
-| `.writer_authority/`                               | Sidecar authority; non cancellare o modificare manualmente |
+| Percorso o categoria                               | Regola                                                                                            |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `backend/match_history/`                           | Dati canonici locali; usare solo per task esplicite                                               |
+| `.pending_commits/`                                | Journal di recovery; non cancellare manualmente                                                   |
+| `.writer_authority/`                               | Sidecar authority; non cancellare o modificare manualmente                                        |
 | `backend/source_identity_confirmations.json`       | Conferme Source Identity persistite; non è cache, non versionare e non cancellare automaticamente |
-| `backend/scraper_cache/`, `backend/betfair_cache/` | Cache non canoniche                                        |
-| profili browser                                    | Sensibili e non condivisibili                              |
-| `backend/betfair_network_dump/`                    | Diagnostica potenzialmente sensibile                       |
-| log runtime                                        | Diagnostica, non fonte canonica                            |
-| `launcher/.runtime/`                               | Launcher lock e manifest effimeri                          |
-| `node_modules/`, build                             | Artefatti generati                                         |
-| `.env`                                             | Credenziali locali                                         |
+| `backend/scraper_cache/`, `backend/betfair_cache/` | Cache non canoniche                                                                               |
+| profili browser                                    | Sensibili e non condivisibili                                                                     |
+| `backend/betfair_network_dump/`                    | Diagnostica potenzialmente sensibile                                                              |
+| log runtime                                        | Diagnostica, non fonte canonica                                                                   |
+| `launcher/.runtime/`                               | Launcher lock e manifest effimeri                                                                 |
+| `node_modules/`, build                             | Artefatti generati                                                                                |
+| `.env`                                             | Credenziali locali                                                                                |
 
 La utility `scripts/cleanup_runtime_cache.py` opera soltanto sulle cache allow-list e non deve essere usata come cleanup generico o per manipolare `.writer_authority/`.
 
@@ -274,22 +274,9 @@ scripts/validation/
 
 `run.mjs` è il comando canonico per i profili offline registrati. Valida prima l'intero manifest, poi esegue ogni entry in un processo separato, in serie, con timeout e output bounded. Gli artefatti locali vengono scritti sotto `test-results/`, già esclusa da Git.
 
-Il manifest iniziale copre la superficie verificata durante il Punto 7 e i checker documentali. Non sostituisce la matrice test ↔ modulo ↔ documento prevista da `IMPL-003`, il sandbox persistence `IMPL-008`, il frontend interaction harness `IMPL-030` o il ledger `IMPL-031`.
+Il manifest registra profili ed entry con owner, comando, timeout, requisiti, mutazioni del filesystem ed eventuale necessità di risorse live. I profili offline abilitati vengono eseguiti senza rete esterna o tracking live; i profili disabilitati non sono eseguibili finché il manifest li dichiara tali.
 
-I test automatici IMPL-015 pubblicati sono:
-
-```txt
-matchHistoryWriterAuthority.test.mjs
-→ 26 passati
-
-matchTracker.test.mjs
-→ 10 passati
-
-server.test.mjs
-→ 30 passati
-```
-
-Non è stato eseguito un collaudo manuale con due backend reali concorrenti.
+Il runner è un indice eseguibile dei controlli registrati, non una matrice di copertura documentale. `IMPL-003` indica la distinta relazione test ↔ modulo ↔ documento e non una seconda repository map.
 
 ## Documentazione
 

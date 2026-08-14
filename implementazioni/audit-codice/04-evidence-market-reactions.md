@@ -1,38 +1,17 @@
 > **Parte 4 di 7 — Evidence e Market Reactions**
-> Secondo audit — Punto 5: provenance temporale, alignment, eligibility, Significant Flow, comparabilità prezzi e semantica Market Reactions.
+> Secondo audit — Punto 5: provenance temporale, alignment, eligibility, Significant Flow, comparabilità dei prezzi e semantica Market Reactions.
 > [Indice](../03-audit-codice.md) · [Parte 3](03-storage-recovery.md) · [Parte 5](05-frontend-session-shell.md)
 
 ## 20. Secondo audit del codice — Punto 5: Evidence e Market Reactions
 
-**Baseline:** `2959fba5bc3e0480cc3ea03f4469361cbb629ae6`
-**Stato:** `COMPLETATO E APPROVATO`
-
-### Perimetro letto
-
-Sono stati verificati:
+### Perimetro
 
 ```txt
-backend/src/routes/evidence.js
-backend/src/sofa/matchEvidence.js
 backend/src/sofa/matchEvidence/latestMatchEvidence.js
 backend/src/sofa/matchEvidence/evidenceBuilder.js
 backend/src/sofa/matchEvidence/alignment.js
-backend/src/sofa/matchEvidence/alignmentExtension.js
-backend/src/sofa/matchEvidence/time.js
 backend/src/sofa/matchEvidence/dataQuality.js
-backend/src/sofa/matchEvidence/noTradeReasons.js
-backend/src/sofa/matchEvidence/marketEvidence.js
-backend/src/sofa/matchEvidence/runnerEvidence.js
-backend/src/sofa/matchEvidence/sofaEvidence.js
-backend/src/sofa/matchEvidence/sourceIdentity.js
-backend/src/sofa/matchEvidence/sourceIdentity/marketEpoch.js
-backend/src/sofa/matchEvidence/sourceIdentity/builder.js
-backend/src/sofa/matchEvidence/sourceIdentityConfirmation.js
-backend/src/sofa/marketFlowEvidence.js
-backend/src/sofa/marketFlowEvidence/runnerFlow.js
-backend/src/sofa/marketFlowEvidence/runnerFlow/primitives.js
-backend/src/sofa/marketFlowEvidence/alignment.js
-backend/src/sofa/marketFlowEvidence/utilities.js
+backend/src/sofa/fieldLedReactionEvidence.js
 backend/src/sofa/marketReactionEvidence.js
 backend/src/sofa/significantMarketFlowEvidence.js
 backend/src/sofa/significantMarketFlow/config.js
@@ -41,332 +20,143 @@ backend/src/sofa/significantMarketFlow/runnerFlow.js
 backend/src/sofa/significantMarketFlow/singleTick.js
 backend/src/sofa/significantMarketFlow/clusters.js
 backend/src/sofa/marketLedObservationEvidence.js
-backend/src/sofa/marketLedObservationEvidence/windowCollection.js
 backend/src/sofa/marketLedObservationEvidence/observationWindow.js
-backend/src/sofa/fieldLedReactionEvidence.js
 backend/src/sofa/temporalAlignmentEvidence.js
-backend/src/sofa/temporalAlignment/sofaMarker.js
-backend/src/sofa/temporalAlignment/betfairMove.js
-backend/src/sofa/temporalAlignment/betfairMove/candidateSelection.js
-backend/src/sofa/temporalAlignment/betfairMove/primitives.js
-backend/src/sofa/temporalAlignment/reactionWindows.js
-backend/src/sofa/betfairHealth.js
-backend/src/sofa/betfairHealth/tickQuality.js
-backend/src/sofa/betfair/processor.js
-backend/src/sofa/betfair/processor/persistenceDecision.js
-backend/src/sofa/betfair/processor/canonicalTimeline.js
-backend/src/sofa/betfair/timeline.js
 
-docs/tennis-decision-ui/modules/evidence/01-match-evidence-snapshot.mdx
-docs/tennis-decision-ui/modules/evidence/02-source-identity.mdx
-docs/tennis-decision-ui/modules/evidence/03-quality-flow-and-alignment.mdx
-docs/tennis-decision-ui/modules/evidence/04-market-reactions.mdx
-
-test Evidence, alignment, data quality e Market Reactions collegati
+backend/src/sofa/marketReactionEvidence.test.mjs
+backend/src/sofa/fieldLedReactionEvidence.test.mjs
+backend/src/sofa/marketLedObservationEvidence/observationWindow.test.mjs
 ```
 
-L’analisi è statica. Le suite presenti sono state lette ma non rieseguite.
+### Confine della pipeline Evidence
 
-### Classificazione usata
+Il Match Evidence Snapshot è costruito da timeline già persistite. Il loader:
 
-Per il Punto 5 ogni rilievo è stato distinto come:
+1. legge le timeline SofaScore e Betfair;
+2. legge lo stato di persistence integrity per entrambe le fonti;
+3. seleziona l’epoch Betfair attivo;
+4. costruisce o applica Source Identity;
+5. limita i dati attribuiti al contesto corrente;
+6. compone Evidence e Market Reactions nello snapshot restituito.
 
-```txt
-bug confermato
-limite noto
-miglioria utile
-documentazione mancante
-struttura completamente assente
-nessuna azione necessaria
-decisione dell’utente richiesta
-```
+Il percorso è read-only rispetto alle timeline. Non avvia scraper o browser, non acquisisce dati live, non aggiunge tick, non esegue recovery e non modifica history, timeline o gate di tracking.
 
-Le decisioni richieste sono state approvate integralmente dall’utente.
+### Gate cross-source correnti
 
-### Parti confermate come solide
-
-#### Evidence resta read-only
-
-Il Match Evidence Snapshot viene costruito da timeline già persistite e può leggere:
-
-```txt
-Source Identity effective
-persistence integrity
-active Betfair market epoch
-```
-
-Non deve:
-
-- avviare scraper;
-- fare fetch live;
-- aprire browser;
-- eseguire recovery;
-- scrivere journal;
-- aggiungere tick;
-- modificare history o timeline;
-- cambiare il gate live.
-
-Questo confine è coerente nel codice letto e va preservato.
-
-#### Gating cross-source conservativo
-
-L’uso attribuito dei dati Betfair è consentito soltanto quando:
+L’attribuzione cross-source è consentita soltanto quando:
 
 ```txt
 Source Identity effective = aligned
 +
-persistence integrity utilizzabile
+persistence integrity senza partial_persistence o recovery_failed
 ```
 
-Con `pending`, `mismatch`, `partial_persistence` o `recovery_failed`:
+Con Source Identity `pending` o `mismatch`, oppure con persistence integrity in conflitto:
 
-- i runner Betfair non vengono attribuiti;
-- il lookback attribuito viene escluso;
-- Market Reactions viene sospeso;
-- le reason restano distinte;
-- Source Identity non viene riscritta come errore storage.
+- il tick Betfair attribuito viene escluso dai builder cross-source;
+- il lookback attribuito viene svuotato;
+- le timeline passate a Market Reactions vengono svuotate;
+- `marketReactionEvidence.available` viene forzato a `false`;
+- le reason di identity e persistenza restano distinte;
+- la Source Identity non viene convertita in un errore storage.
 
-Quando verrà implementato `integrity_unknown` del Punto 4, anche questo stato dovrà rendere `persistenceComplete:false`.
+Il riepilogo di integrità riconosce `no_known_partial`, `partial_persistence` e `recovery_failed`. Nel comportamento corrente, input di integrità assente o non riconosciuto viene normalizzato a `no_known_partial`; non esiste uno stato operativo separato `integrity_unknown` in questa pipeline.
 
-#### Active market epoch
+### Invarianti confermate
 
-L’epoch Betfair attivo è la porzione finale contigua con la stessa firma di mercato.
+#### Epoch Betfair attivo
 
-La firma preferisce:
-
-```txt
-marketId + selectionIds distinti
-```
-
-con fallback controllato su:
-
-```txt
-marketKey + runner normalizzati
-```
-
-Gli epoch storici non partecipano alle osservazioni del contesto corrente.
+Le osservazioni attribuite usano la porzione finale contigua della timeline appartenente allo stesso contesto di mercato. Gli epoch precedenti non partecipano al contesto corrente.
 
 #### Conferma manuale contestuale
 
-La conferma Source Identity è legata a:
+La conferma manuale viene cercata soltanto quando l’identità automatica è `pending` e viene applicata al contesto costruito per evento ed epoch correnti. Un contesto non applicabile non rende automaticamente aligned la Source Identity.
 
-```txt
-eventId
-marketId
-epochSignature
-due selectionId distinti
-due giocatori SofaScore
-due runner Betfair
-mapping uno-a-uno selezionato
-```
+#### Assenza di causalità
 
-Un cambio di contesto rende non applicabile la conferma precedente.
-
-#### Assenza esplicita di causalità
-
-I moduli principali mantengono:
+I builder di Market Reactions mantengono l’invariante:
 
 ```txt
 causalityClaimed: false
 interpretation: temporal_proximity_only
 ```
 
-anche quando rilevano prezzo, volume, marker o ordine temporale.
-
-Questa invariante non deve essere rimossa né indebolita.
+Una sequenza temporale, un cambiamento di prezzo, un incremento matched o un marker SofaScore non sono presentati dal backend come prova di causalità, fair odds, segnale o autorizzazione operativa.
 
 #### Immutabilità degli input
 
-I builder principali lavorano su copie o viste derivate e i test esistenti verificano che timeline, tick e configurazioni non vengano mutati.
+I builder lavorano su viste o copie derivate. I test associati verificano, nei casi coperti, che array di tick e configurazioni non siano mutati.
 
-### EVIDENCE-001 — `selectionId` obbligatorio ancora non applicato
+### Matrice del comportamento corrente
 
-**Classificazione:** `BUG CONFERMATO RISPETTO A DECISIONE APPROVATA`
-**Stato:** `APPROVATO; IMPLEMENTAZIONE MANCANTE`
-**Priorità:** alta
-**Area:** Field → Market e confronti runner temporali
+| Ambito                      | Comportamento corrente                                                                                                                                                   | Stato rispetto alla decisione approvata                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| Identità temporale runner   | `selectionId` è preferito, ma se manca su entrambi i lati Field → Market può ancora usare il nome                                                                        | decisione `EVIDENCE-001` non applicata integralmente                 |
+| Tick tecnicamente degradati | il gate top-level usa Source Identity e persistence integrity; non esiste un eligibility gate uniforme che escluda ogni tick stale, degradato o status-only dai detector | decisione `EVIDENCE-002` non applicata integralmente                 |
+| Field → Market              | `marketResponseObserved` è vero per variazione di prezzo oppure incremento di `market.totalMatched`                                                                      | distinzione di `EVIDENCE-003` non introdotta                         |
+| Market → Field              | la presenza di marker rilevanti nella finestra oppure una differenza di score può rendere vero `fieldEventObservedAfterFlow`                                             | distinzione transizione/persistenza di `EVIDENCE-004` non introdotta |
+| Alignment                   | espone età delle fonti, `maxSourceAgeSec`, `crossSourceGapSec` e `pairwiseAvailable`; conserva anche `maxTickGapSec` come alias dell’età massima                         | source gap aggiunto, provenance completa di `EVIDENCE-005` assente   |
+| Timestamp futuri            | `dataQuality` aggiunge reason future; `ageSec` resta clampato e l’alignment non espone `futureSkewSec`                                                                   | decisione `EVIDENCE-005` parziale                                    |
+| Prezzi runner               | risoluzione in ordine LTP, midpoint, best back, best lay; il risultato conserva il numero ma non la source                                                               | decisione `EVIDENCE-006` non applicata                               |
+| Baseline Field → Market     | ultimo tick Betfair con timestamp `<= anchor`, senza gap massimo esposto o applicato                                                                                     | decisione `EVIDENCE-006` non applicata                               |
+| Copertura runner            | `ladderReliable`, `moneyFlowReliable` e `marketTradable` diventano veri se almeno un runner soddisfa il predicato                                                        | coverage esplicita di `EVIDENCE-007` assente                         |
+| Significant Flow            | soglie e configurazione restano euristiche; il lookback disponibile al loader è limitato rispetto al valore configurabile del detector                                   | policy di `EVIDENCE-008` non applicata integralmente                 |
+| Cluster                     | costruzione basata sui candidati/tick; non è esposto il contratto completo con gap temporale massimo, provenance e non sovrapposizione                                   | decisione `EVIDENCE-008` non applicata integralmente                 |
+| Availability                | parent e child usano ancora `available` insieme a flag specifici; non esiste il contratto uniforme `computed/inputAvailable/observationAvailable/windowState`            | decisione `EVIDENCE-009` non applicata                               |
+| Finestre                    | Field → Market espone `windowClosed`; Market → Field non espone lo stesso stato uniforme                                                                                 | decisione `EVIDENCE-009` non applicata                               |
 
-`DEC-010` stabilisce già:
+### EVIDENCE-001 — Identità temporale del runner
+
+**Classificazione storica:** bug confermato rispetto alla decisione approvata  
+**Stato:** implementazione mancante
+
+Nel ramo Field → Market, il confronto baseline/latest usa `selectionId` quando disponibile. Se il runner baseline non possiede `selectionId`, il codice può ancora cercare un runner latest privo di ID con lo stesso nome.
+
+La regola approvata resta distinta dal comportamento corrente:
 
 ```txt
-selectionId mancante
-→ nessun fallback sul nome
-→ runner non confrontabile
-→ ramo degradato con reason
-```
-
-Nel ramo Field → Market il codice usa ancora il nome quando il runner baseline non possiede `selectionId`.
-
-Il fallback non blocca Start, tracking, Source Identity o dashboard, ma può confrontare come stesso runner due entità identificate soltanto da una label testuale.
-
-#### Decisione approvata nel Punto 5
-
-La regola viene estesa a ogni confronto temporale dello stesso runner Betfair:
-
-```txt
-baseline runner ↔ latest runner
+confronto temporale dello stesso runner Betfair
 → selectionId obbligatorio
+→ nessun fallback sul nome
 ```
 
-Il nome resta consentito per:
+Il nome continua a essere adatto a visualizzazione e diagnostica, ma non è ancora escluso da tutti i confronti temporali.
 
-- visualizzazione;
-- reason diagnostiche;
-- matching Source Identity nel proprio dominio;
+### EVIDENCE-002 — Eligibility tecnica dei tick
 
-ma non come identità temporale del runner Exchange.
+**Classificazione storica:** bug confermato  
+**Stato:** correzione non implementata
 
-Se manca l’ID:
+`evidenceBuilder.js` sospende l’attribuzione cross-source per Source Identity non aligned e persistence conflict. La qualità tecnica viene calcolata separatamente in `dataQuality.js`, ma non governa in modo uniforme l’ingresso dei tick in tutti i detector Market Reactions.
 
-```txt
-comparisonStatus: runner_identity_unavailable
-runnerPriceChanges: unavailable
-reason: runner_selection_id_unavailable
-```
+Di conseguenza, la timeline può essere conservata correttamente per health e diagnostica senza che esista, nello stesso punto, un contratto generale che impedisca a ogni tick stale, Graph degradato o status-only di essere trattato come nuova osservazione algoritmica.
 
-Il resto dello snapshot resta disponibile secondo la propria qualità.
+### EVIDENCE-003 — Attività matched e risposta di mercato
 
-### EVIDENCE-002 — Tick degradati o `status-only` usati come nuovi eventi
+**Classificazione storica:** bug semantico confermato  
+**Stato:** correzione non implementata
 
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** critica
-**Area:** Significant Flow, Market Reactions e tick Graph login
-
-Il builder sospende Market Reactions per:
-
-```txt
-Source Identity non aligned
-persistence incomplete
-```
-
-ma non applica un filtro equivalente per:
-
-- Betfair stale;
-- Graph health non `ok`;
-- ladder non affidabile;
-- flow non affidabile;
-- book degradato;
-- acquisition skew eccessivo;
-- tick `statusOnlyGraphLogin`.
-
-Il tick `status-only` conserva intenzionalmente market e runner dell’ultimo snapshot canonico per mostrare health e diagnostica dopo un problema Graph login.
-
-Questa conservazione è corretta per la timeline, ma il nuovo tick possiede un nuovo timestamp e può ripresentare:
-
-```txt
-runner
-prezzi
-moneyFlow
-matched data precedenti
-```
-
-come se fossero una nuova attività Exchange.
-
-#### Scenario
-
-```txt
-tick reale con flow significativo
-→ Graph login richiesto
-→ tick status-only copia il precedente
-→ nuovo timestamp
-→ detector Significant Flow rilegge lo stesso flow
-→ nuovo sourceMarketEvent possibile
-```
-
-#### Decisione approvata
-
-I tick `status-only` restano nella timeline per health, ma:
-
-```txt
-status-only
-→ non genera Significant Flow
-→ non diventa sourceMarketEvent
-→ non aggiorna baseline algoritmica
-→ non crea Market Reaction nuova
-```
-
-Market Reactions deve usare una eligibility tecnica esplicita e non soltanto Source Identity/persistence.
-
-### EVIDENCE-003 — Attività matched generica classificata come risposta del mercato
-
-**Classificazione:** `BUG SEMANTICO CONFERMATO`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
-**Area:** Field → Market
-
-Il ramo usa oggi:
+Nel ramo Field → Market:
 
 ```txt
 priceChangeObserved
 oppure
-market totalMatched aumentato
-→ marketResponseObserved:true
+matchedVolumeIncreaseObserved
+→ marketResponseObserved
 ```
 
-Un aumento di `market.totalMatched` dimostra soltanto che sono avvenuti scambi nel mercato. Non dimostra:
+`matchedVolumeIncreaseObserved` deriva dall’aumento di `market.totalMatched` fra baseline e ultimo tick della finestra. Il contratto corrente non separa ancora in campi autonomi attività matched generale, variazione di volume del runner e osservazione qualificata.
 
-- movimento del runner collegato;
-- variazione significativa;
-- attività sul runner identificato;
-- risposta al marker;
-- direzione;
-- causalità.
+`marketResponseReliable` aggiunge un gate successivo: richiede risposta osservata, qualità `good` e qualità tecnica Betfair affidabile. Questa distinzione migliora la lettura del risultato, ma non cambia la semantica ampia di `marketResponseObserved`.
 
-#### Decisione approvata
+### EVIDENCE-004 — Persistenza e transizione dei marker
 
-Separare:
+**Classificazione storica:** bug confermato  
+**Stato:** correzione non implementata
 
-```txt
-marketActivityObserved
-→ attività matched generale successiva all’anchor
+In una finestra Market → Field, `fieldEventObservedAfterFlow` è vero quando è presente almeno un marker rilevante oppure quando lo snapshot di score differisce dalla baseline.
 
-runnerPriceChangeObserved
-→ prezzo comparabile dello stesso selectionId cambiato
-
-runnerVolumeChangeObserved
-→ volume reale dello stesso selectionId aumentato
-
-qualifiedMarketObservation
-→ osservazione che supera identity, temporal e quality gate
-```
-
-La label pubblica non deve chiamare “risposta del mercato” la sola attività matched generica.
-
-`marketResponseObserved` può essere rimosso oppure mantenuto soltanto come alias compatibile, documentato come non causale e non qualificato finché non soddisfa i nuovi gate.
-
-### EVIDENCE-004 — Presenza di un marker confusa con comparsa successiva
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
-**Area:** Market → Field
-
-Il ramo considera osservato un field event quando, in una finestra successiva al flow:
-
-```txt
-esiste un marker rilevante
-oppure
-lo score differisce dalla baseline
-```
-
-Non verifica sempre che il marker sia comparso dopo il source market event.
-
-#### Scenario
-
-```txt
-DEUCE già attivo prima del flow
-→ tick successivo ancora DEUCE
-→ nessuna transizione
-→ marker trovato nella finestra
-→ fieldEventObservedAfterFlow:true
-```
-
-La presenza successiva non è equivalente a una nuova comparsa.
-
-#### Decisione approvata
-
-Separare:
+Il risultato non espone ancora separatamente:
 
 ```txt
 markerPresentAfterSource
@@ -374,310 +164,87 @@ markerTransitionObservedAfterSource
 scoreTransitionObservedAfterSource
 ```
 
-Un nuovo field event richiede:
+La persistenza di un marker già attivo può quindi contribuire al booleano osservato anche senza una transizione nuova successiva al source market event.
 
-```txt
-stateFirstSeenAt > sourceMarketEvent.timestamp
-oppure
-baseline state != primo stato post-source
-```
+### EVIDENCE-005 — Provenance temporale e alignment
 
-La persistenza dello stesso marker resta un dato di contesto, non un nuovo evento.
+**Classificazione storica:** bug confermato e limite noto  
+**Stato:** implementazione parziale
 
-### EVIDENCE-005 — Alignment e freshness non misurano il vero rapporto temporale
-
-**Classificazione:** `BUG CONFERMATO + LIMITE NOTO`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
-**Area:** alignment, timestamp e acquisition provenance
-
-`buildAlignment()` calcola:
+`buildAlignment()` espone oggi:
 
 ```txt
 sofaAgeSec
 betfairAgeSec
-maxTickGapSec = max(sofaAgeSec, betfairAgeSec)
+maxSourceAgeSec
+crossSourceGapSec
+pairwiseAvailable
+freshnessQuality
 ```
 
-Il campo `maxTickGapSec` non misura la distanza fra le fonti.
+`crossSourceGapSec` misura la distanza assoluta fra i timestamp delle due fonti. `maxTickGapSec` è ancora restituito come alias compatibile dell’età massima, non come distanza fra le fonti.
 
-Il vero source skew è:
+La qualità `good` o `medium` richiede entrambe le fonti. Una fonte assente produce qualità `poor`.
+
+Restano fuori dal contratto corrente la distinzione completa fra acquisition e recording, `pipelineDelaySec`, `futureSkewSec`, `baselineGapSec` e `firstPostSourceGapSec`. `dataQuality` segnala timestamp futuri nelle reason, mentre il calcolo dell’età resta clampato a zero.
+
+### EVIDENCE-006 — Provenienza e comparabilità dei prezzi
+
+**Classificazione storica:** bug di qualità confermato  
+**Stato:** correzione non implementata
+
+La funzione di risoluzione del prezzo preferisce:
 
 ```txt
-abs(sofaTimestamp - betfairTimestamp)
+lastTradedPrice
+→ midpoint bestBack/bestLay
+→ bestBack
+→ bestLay
 ```
 
-Inoltre una sola fonte recente può oggi produrre `alignmentQuality:medium`, anche se non esiste un confronto cross-source.
+Il confronto Field → Market conserva `baselinePrice` e `latestPrice`, ma non la source usata per ciascun valore. Un passaggio da LTP a midpoint o a un solo lato del book può quindi apparire nello stesso delta numerico.
 
-#### Timestamp futuri
+La baseline resta l’ultimo tick antecedente o coincidente con l’anchor; non è applicata una soglia massima del gap baseline→anchor.
 
-L’età viene clampata a zero:
+### EVIDENCE-007 — Copertura del mercato a due runner
+
+**Classificazione storica:** bug confermato  
+**Stato:** correzione non implementata
+
+I boolean globali di `dataQuality` sono basati sull’esistenza di almeno un runner idoneo:
 
 ```txt
-Math.max(0, now - timestamp)
+almeno un runner con ladder affidabile → ladderReliable
+almeno un runner con flow confermato → moneyFlowReliable
+almeno un runner con book tradable → marketTradable
 ```
 
-Un timestamp futuro può apparire come dato perfettamente fresco invece di produrre clock skew.
+Non sono esposti conteggi o stati `complete | partial | none` per book, ladder e flow. I boolean correnti non attestano quindi la copertura completa dei due runner del mercato tennis.
 
-#### Timestamp di registrazione
+### EVIDENCE-008 — Significant Flow, baseline e cluster
 
-Il tick Betfair canonico usa il momento di costruzione Node come timestamp principale. Non dimostra il momento effettivo in cui Market API e Graph sono stati acquisiti.
+**Classificazione storica:** limite noto e miglioria utile  
+**Stato:** policy non implementata integralmente
 
-Questo limite si collega a `IMPL-018` del Punto 3.
+Il loader Evidence passa alla pipeline una coda limitata dell’epoch attivo; il detector mantiene una propria configurazione di lookback. Il numero dichiarato dalla configurazione può quindi eccedere l’input realmente disponibile.
 
-#### Decisione approvata
+Le soglie assolute e relative di Significant Flow restano euristiche di configurazione. Il risultato mantiene `causalityClaimed:false`; le classi di intensità non costituiscono calibrazione storica né segnale operativo.
 
-Distinguere almeno:
+Il contratto corrente non espone ancora congiuntamente:
 
-```txt
-acquiredAt
-recordedAt
-sofaAgeSec
-betfairAgeSec
-sourceSkewSec
-pipelineDelaySec
-futureSkewSec
-baselineGapSec
-firstPostSourceGapSec
-```
+- baseline relativa distinta per `selectionId` e baseline aggregata del mercato;
+- gap temporale massimo dei cluster;
+- garanzia pubblica di non sovrapposizione o doppio conteggio;
+- provenance completa dei tick inclusi nel cluster.
 
-Rinominare o rimuovere l’attuale `maxTickGapSec`; se mantenuto per compatibilità deve diventare chiaramente `maxSourceAgeSec`.
+### EVIDENCE-009 — Availability e stato delle finestre
 
-Qualità cross-source:
+**Classificazione storica:** limite semantico e documentazione mancante  
+**Stato:** correzione non implementata
 
-```txt
-good
-→ entrambe le fonti presenti
-→ acquisition timestamp validi
-→ freshness valida
-→ source skew entro soglia
+Il parent Market Reactions aggrega i risultati di Significant Flow, Market → Field e Field → Market. `available` indica che almeno un child è disponibile, ma i child non attribuiscono tutti lo stesso significato al campo.
 
-medium
-→ entrambe presenti ma skew/freshness degradati
-
-poor
-→ fonte assente, timestamp invalido/futuro o skew eccessivo
-```
-
-### EVIDENCE-006 — Confronti prezzo con source diverse e baseline non bounded
-
-**Classificazione:** `BUG DI QUALITÀ CONFERMATO`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
-**Area:** price comparison e anchor temporale
-
-Il prezzo comparabile può provenire da:
-
-```txt
-last traded price
-mid book
-best back
-best lay
-```
-
-Nel ramo Field → Market viene mantenuto soltanto il numero, non la sorgente.
-
-Scenario:
-
-```txt
-baseline LTP 1.80
-latest senza LTP, mid book 1.86
-→ delta +0.06
-```
-
-Il risultato mescola un movimento possibile con un cambio della fonte del prezzo.
-
-Inoltre la baseline è l’ultimo tick `<= anchor`, senza un limite esplicito sulla sua distanza dall’anchor.
-
-#### Decisione approvata
-
-Ogni confronto espone:
-
-```txt
-baselinePrice
-baselinePriceSource
-latestPrice
-latestPriceSource
-priceSourcesComparable
-baselineGapSec
-firstPostSourceGapSec
-comparisonStatus
-reasons
-```
-
-Policy:
-
-```txt
-stessa source
-→ confronto normale
-
-source differente ma ammessa
-→ degraded con reason
-
-source non confrontabile
-→ price change unavailable
-
-baseline oltre soglia
-→ comparison unavailable/degraded
-```
-
-### EVIDENCE-007 — Qualità globale positiva con copertura parziale dei runner
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
-**Area:** data quality e mercato tennis a due runner
-
-La qualità globale usa oggi condizioni del tipo:
-
-```txt
-almeno un runner con ladder affidabile
-→ ladderReliable:true
-
-almeno un runner con flow affidabile
-→ moneyFlowReliable:true
-
-almeno un runner con book two-sided
-→ marketTradable:true
-```
-
-In un mercato tennis a due runner, un solo runner completo può quindi rendere positivo un boolean globale mentre l’altro è assente o degradato.
-
-#### Decisione approvata
-
-Esporre copertura:
-
-```txt
-expectedRunnerCount
-identifiedRunnerCount
-tradableRunnerCount
-reliableLadderRunnerCount
-reliableFlowRunnerCount
-
-bookCoverage: complete | partial | none
-ladderCoverage: complete | partial | none
-flowCoverage: complete | partial | none
-```
-
-Per osservazioni che richiedono entrambi i runner:
-
-```txt
-complete
-→ utilizzabile
-
-partial
-→ degradata
-
-none
-→ unavailable
-```
-
-I boolean legacy possono essere mantenuti temporaneamente come derivati, senza nascondere la copertura.
-
-### EVIDENCE-008 — Baseline Significant Flow e cluster non sufficientemente definiti
-
-**Classificazione:** `LIMITE NOTO + MIGLIORIA UTILE`
-**Stato:** `POLICY APPROVATA`
-**Priorità:** medio-alta
-**Area:** Significant Flow
-
-#### Lookback effettivo incoerente
-
-Il detector dichiara:
-
-```txt
-lookbackTicks: 40
-```
-
-ma il loader Evidence passa al massimo gli ultimi 21 tick dell’epoch attivo.
-
-La configurazione esposta non corrisponde quindi sempre all’input realmente disponibile.
-
-#### Baseline relativa mescolata fra runner
-
-La mediana relativa viene calcolata su candidati precedenti di entrambi i runner, senza distinguere `selectionId`.
-
-Un flow del runner A può quindi essere confrontato con una baseline composta anche dal runner B.
-
-#### Cluster basati sui tick, non sul tempo
-
-I cluster usano tick consecutivi e `maxClusterTicks`, ma non impongono un `maxClusterGapSec`.
-
-Due tick consecutivi nel file ma lontani nel tempo possono essere uniti.
-
-Finestre scorrevoli possono inoltre riutilizzare gli stessi tick in cluster sovrapposti.
-
-#### Soglie non calibrate
-
-Le soglie correnti:
-
-```txt
-600 / 1200 / 2500 / 5000
-3x / 6x / 10x
-```
-
-sono euristiche hardcoded. Le label `notable`, `strong`, `very_strong`, `extreme` non derivano ancora da una calibrazione storica documentata.
-
-#### Decisione approvata
-
-Separare:
-
-```txt
-runnerRelativeMultiplier
-→ baseline dello stesso selectionId
-
-marketRelativeMultiplier
-→ baseline aggregata del mercato
-```
-
-I cluster richiedono:
-
-```txt
-selectionId obbligatorio
-maxClusterGapSec
-no status-only
-no tick degradati
-no sovrapposizione o doppio conteggio degli stessi tick
-provenance dei tick inclusi
-```
-
-Le soglie restano per ora:
-
-```txt
-heuristic
-provisional
-versioned
-not calibrated
-not a signal
-```
-
-La calibrazione appartiene al Punto 7 e a `IMPL-012/013`.
-
-### EVIDENCE-009 — `available`, stato finestra e risultato osservato sono ambigui
-
-**Classificazione:** `LIMITE SEMANTICO + DOCUMENTAZIONE MANCANTE`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** media
-**Area:** parent Market Reactions e branch state
-
-Significant Market Flow può restituire `available:true` quando i tick sono stati processati anche se:
-
-- nessun flow significativo è stato trovato;
-- non esiste source event;
-- Market → Field non è disponibile;
-- Field → Market non è disponibile.
-
-Il parent è `available:true` quando almeno un child dichiara availability, ma i child usano il campo con significati diversi.
-
-Anche le finestre non hanno uno stato uniforme:
-
-- Field → Market espone `windowClosed`;
-- Market → Field non espone lo stesso contratto;
-- una finestra da 240 secondi può essere mostrata dopo pochi secondi senza una label uniforme di provisionalità.
-
-#### Decisione approvata
-
-Separare:
+Sono presenti flag più specifici, fra cui source event disponibile, flow rilevato, field event osservato, market response osservata e market response affidabile. Non è però disponibile il contratto uniforme approvato:
 
 ```txt
 computed
@@ -687,294 +254,65 @@ observationAvailable
 observationDetected
 provisional
 stale
-windowState: open | closed | insufficient_data | stale_source
+windowState
 ```
 
-Il top-level `available` deve avere un solo significato stabile, preferibilmente:
-
-```txt
-almeno un ramo possiede un’osservazione presentabile
-```
-
-Il summary deve distinguere:
-
-```txt
-provisional
-final_for_window
-```
-
-### Riferimento audit a DOC-017 — Flusso di composizione Market Reactions
-
-**Classificazione:** `DOCUMENTAZIONE MANCANTE GIÀ REGISTRATA`
-**Stato:** `CONFERMATO; NON DUPLICARE`
-
-La documentazione afferma che Market Reactions consuma uno snapshot Evidence già costruito.
-
-Il flusso reale è:
-
-```txt
-Evidence builder
-→ seleziona tick scoped
-→ chiama Market Reactions
-→ inserisce il risultato nello snapshot finale
-```
-
-Il rilievo resta `DOC-017`; non viene creato un nuovo ID duplicato.
-
-### DOC-026 — Temporal provenance e policy di alignment non documentate
-
-**Classificazione:** `DOCUMENTAZIONE MANCANTE`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
-
-Il documento owner deve distinguere:
-
-```txt
-acquiredAt
-recordedAt
-freshness
-source skew
-pipeline delay
-future clock skew
-baseline gap
-first post-source gap
-observation window
-window open/closed
-```
-
-Deve inoltre spiegare:
-
-- quale timestamp governa la freshness;
-- quale timestamp governa l’anchor;
-- le soglie 10/30/60/120/180/240;
-- il comportamento con una fonte assente;
-- la differenza fra età del dato e gap fra le fonti.
-
-### DOC-027 — Availability, activity, response e threshold non documentati
-
-**Classificazione:** `DOCUMENTAZIONE MANCANTE`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** media-alta
-
-Definire esplicitamente:
-
-```txt
-detector eseguito
-input disponibile
-source event disponibile
-attività osservata
-variazione runner osservata
-osservazione qualificata
-finestra provvisoria
-finestra conclusa
-```
-
-Le soglie Significant Flow devono essere dichiarate:
-
-```txt
-provvisorie
-euristiche
-versionate
-non calibrate
-non operative
-```
-
-### Strutture risultanti
-
-#### Riferimento audit a IMPL-022 — Evidence temporal provenance and alignment policy
-
-Struttura owner di:
-
-- acquisition e recorded timestamp;
-- source skew;
-- pipeline delay;
-- future skew;
-- baseline e first-post gap;
-- stato finestre;
-- soglie temporali versionate.
-
-#### Riferimento audit a IMPL-023 — Market Reaction eligibility e branch state
-
-Struttura owner di:
-
-- eligibility tecnica dei tick;
-- esclusione `status-only` dagli eventi algoritmici;
-- stati uniformi dei rami;
-- distinzione activity/observation/response;
-- marker transition;
-- coverage;
-- Significant Flow e cluster policy.
-
-#### Riferimento audit a IMPL-024 — Runner temporal identity e price comparability
-
-Struttura owner di:
-
-- `selectionId` obbligatorio;
-- assenza di fallback nome;
-- source del prezzo;
-- comparabilità;
-- baseline gap;
-- reason e stato del confronto.
-
-Le specifiche complete sono registrate in `06-implementazioni-proposte.md`.
-
-### Test mancanti
-
-#### TEST-031 — `status-only` non crea Market Reaction
-
-```txt
-tick reale con flow
-→ status-only Graph login
-→ health preservata
-→ nessun nuovo Significant Flow/sourceMarketEvent
-```
-
-#### TEST-032 — Eligibility tecnica Market Reactions
-
-```txt
-Graph degradato / ladder non affidabile / tick stale / acquisition skew
-→ timeline preservata
-→ ramo degraded/unavailable
-```
-
-#### TEST-033 — `selectionId` obbligatorio
-
-```txt
-runner senza selectionId
-→ nessun fallback nome
-→ reason esplicita
-→ resto snapshot invariato
-```
-
-#### TEST-034 — Attività matched distinta da response
-
-```txt
-solo market totalMatched aumenta
-→ marketActivityObserved:true
-→ runnerPriceChangeObserved:false
-→ qualifiedMarketObservation:false
-```
-
-#### TEST-035 — Marker presente distinto da marker nuovo
-
-```txt
-stesso marker prima e dopo source flow
-→ markerPresentAfterSource:true
-→ markerTransitionObservedAfterSource:false
-```
-
-#### TEST-036 — Source prezzo non comparabile
-
-```txt
-LTP → mid o back → lay
-→ confronto degraded/unavailable
-→ source esposte
-```
-
-#### TEST-037 — Baseline troppo lontana
-
-```txt
-baseline gap oltre soglia
-→ gap esposto
-→ qualità degradata
-→ nessun confronto affidabile
-```
-
-#### TEST-038 — Coverage parziale runner
-
-```txt
-un runner completo, uno degradato
-→ coverage partial
-→ nessun complete globale falso
-```
-
-#### TEST-039 — Timestamp, acquisition e clock skew
-
-```txt
-timestamp futuro
-recordedAt diverso da acquiredAt
-source skew elevato
-→ freshness/alignment degradati correttamente
-```
-
-#### TEST-040 — Baseline Significant Flow per `selectionId`
-
-```txt
-runner A
-→ non usa flow runner B nella baseline runner-specific
-```
-
-#### TEST-041 — Cluster temporali non sovrapposti
-
-```txt
-tick consecutivi ma distanti
-→ non uniti
-
-tick già assegnato
-→ non doppio conteggio in cluster sovrapposti
-```
-
-#### TEST-042 — Availability semantica
-
-```txt
-detector computed
-+ nessuna osservazione
-→ computed:true
-→ observationAvailable:false
-→ top-level coerente
-```
-
-#### TEST-043 — Finestre open/closed
-
-```txt
-finestra non conclusa
-→ provisional/open
-
-finestra conclusa
-→ final_for_window/closed
-```
-
-### Decisioni approvate
-
-1. i tick `status-only` restano nella timeline per health ma non generano nuovi Significant Flow o source event;
-2. Market Reactions usa una eligibility tecnica esplicita;
-3. applicare `DEC-010` senza fallback nome nel ramo Field → Market;
-4. estendere `selectionId` obbligatorio a tutti i confronti temporali dello stesso runner Betfair;
-5. separare attività matched generale, variazione runner e osservazione qualificata;
-6. un marker già presente prima del flow non è un nuovo evento successivo;
-7. separare età delle fonti e source skew reale;
-8. timestamp futuri producono degradazione clock-skew e non freshness zero;
-9. conservare e confrontare la sorgente del prezzo;
-10. introdurre un limite massimo baseline→anchor;
-11. la qualità globale espone copertura esplicita dei due runner;
-12. baseline Significant Flow per `selectionId`, con baseline mercato separata;
-13. cluster con gap temporale massimo, provenance e nessun doppio conteggio;
-14. soglie correnti provvisorie, versionate e non calibrate fino al Punto 7;
-15. separare `computed`, `available`, `observed`, `provisional` e `stale`;
-16. mantenere invariati `causalityClaimed:false` e `temporal_proximity_only`.
-
-### Ordine tecnico risultante
-
-```txt
-IMPL-018
-→ acquisition envelope Betfair
-
-IMPL-022
-→ temporal provenance e alignment policy
-
-IMPL-024
-→ runner identity e price comparability
-
-IMPL-023
-→ eligibility e branch state Market Reactions
-
-TEST-031…043
-→ fixture/replay IMPL-012
-→ baseline e calibrazione IMPL-013
-→ Punto 6 Frontend
-→ Punto 7 test e strutture mancanti
-```
-
-
-
----
+Field → Market espone `windowClosed`; Market → Field restituisce finestre temporali e qualità senza lo stesso stato esplicito open/closed/final.
+
+### Matrice delle verifiche associate
+
+Questa matrice conserva il collegamento con i test previsti. La loro presenza non implica che siano implementati o superati.
+
+| ID       | Contratto da verificare                               | Copertura specifica presente                                                         |
+| -------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| TEST-031 | status-only non crea nuovi flow/source event          | copertura specifica non presente                                                     |
+| TEST-032 | eligibility tecnica uniforme                          | non identificata                                                                     |
+| TEST-033 | `selectionId` obbligatorio senza fallback nome        | non identificata; il fallback esiste nel codice                                      |
+| TEST-034 | attività matched distinta da osservazione qualificata | non identificata; il test corrente accetta `marketResponseObserved` su matched/price |
+| TEST-035 | marker persistente distinto da transizione            | non identificata                                                                     |
+| TEST-036 | source prezzo non comparabile                         | non identificata                                                                     |
+| TEST-037 | baseline oltre soglia                                 | non identificata                                                                     |
+| TEST-038 | coverage parziale dei runner                          | non identificata                                                                     |
+| TEST-039 | acquisition, recording e clock skew                   | non identificata come contratto completo                                             |
+| TEST-040 | baseline Significant Flow per `selectionId`           | non identificata come contratto completo                                             |
+| TEST-041 | cluster temporali non sovrapposti                     | non identificata come contratto completo                                             |
+| TEST-042 | availability semantica uniforme                       | non identificata                                                                     |
+| TEST-043 | finestre open/closed uniformi                         | non identificata                                                                     |
+
+I test associati coprono, nei rispettivi fixture:
+
+- forma dei risultati con input vuoto;
+- finestre configurabili;
+- propagazione dei summary;
+- assenza di mutazione degli input;
+- invariante `causalityClaimed:false`;
+- rilevamento Field → Market con marker e tick Betfair successivi;
+- distinzione fra `marketResponseObserved` e `marketResponseReliable`.
+
+### Collegamenti agli owner
+
+Le specifiche complete delle decisioni approvate restano di competenza degli owner storici:
+
+| Owner      | Ambito                                                                                                     |
+| ---------- | ---------------------------------------------------------------------------------------------------------- |
+| `IMPL-022` | temporal provenance, source skew, delay, future skew, gap e stato delle finestre                           |
+| `IMPL-023` | eligibility tecnica, branch state, activity/observation, transizioni, coverage, Significant Flow e cluster |
+| `IMPL-024` | identità temporale del runner, source e comparabilità dei prezzi, baseline gap                             |
+| `DOC-017`  | flusso di composizione fra Evidence builder e Market Reactions                                             |
+| `DOC-026`  | terminologia e policy temporale                                                                            |
+| `DOC-027`  | availability, activity, observation, response e soglie                                                     |
+
+Il completamento di questo audit non equivale al completamento di tali owner o dei test associati.
+
+### Esito consolidato del Punto 5
+
+La pipeline conserva quattro proprietà strutturali solide:
+
+1. costruzione read-only da timeline persistite;
+2. attribuzione cross-source bloccata da Source Identity non aligned e persistence conflict;
+3. selezione del contesto Betfair attivo;
+4. assenza esplicita di causalità e di autorizzazione operativa.
+
+Restano correnti i limiti registrati da `EVIDENCE-001…009`: eligibility tecnica non uniforme, fallback nominale nel confronto runner, semantica ampia di response, mancata distinzione fra presenza e transizione del marker, provenance temporale incompleta, source del prezzo non esposta, coverage runner aggregata per esistenza, policy Significant Flow/cluster non completa e availability non uniformata.
+
+Il record resta unitario: la pipeline Evidence e Market Reactions è un dominio cross-source unico, mentre implementazione, documentazione di prodotto, frontend e validazione mantengono owner separati.

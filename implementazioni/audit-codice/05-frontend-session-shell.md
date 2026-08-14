@@ -1,135 +1,29 @@
 > **Parte 5 di 7 — Frontend e session shell**
-> Secondo audit — Punto 6: session controller, Start/Stop, polling, integrity UI, Source Identity, Market Reactions UI e stato statico.
+> Session controller, Start/Stop, polling, integrity UI, Source Identity, Market Reactions UI e stato statico.
 > [Indice](../03-audit-codice.md) · [Parte 4](04-evidence-market-reactions.md) · [Parte 6](06-validazione-e-test.md)
 
-## 21. Secondo audit del codice — Punto 6: Frontend
+## 21. Frontend e session shell
 
-**Baseline:** `9205b5a789a40203c48ba19f8e3397fd0cec9707`
-**Stato:** `COMPLETATO E APPROVATO`
+La frontend live session shell comprende configurazione della sessione, Start/Stop, bootstrap della dashboard, polling SofaScore e Betfair, polling Evidence e Source Identity, propagazione della persistence integrity, indicatori di connessione e health, Market Reactions UI e comportamento della shell quando il tracking non è attivo.
 
-### Perimetro letto
+### Ambito
 
-Sono stati verificati:
+Il frontend agisce come consumer e coordinatore dei contratti live esposti dal backend. La session shell comprende:
 
-```txt
-frontend/src/App.jsx
-frontend/src/main.jsx
-frontend/src/index.css
+- configurazione corrente e configurazione confermata della sessione;
+- transizione locale fra pannello di avvio e session shell;
+- comando Start e comando Stop consumati dal frontend;
+- attivazione e disattivazione dei poller;
+- protezione delle richieste asincrone rispetto al ciclo di vita dei poller;
+- presentazione di Source Identity, persistence integrity e Betfair health;
+- composizione del view model della dashboard;
+- consumo e presentazione di Market Reactions.
 
-frontend/src/hooks/useAnalysisSessionState.js
-frontend/src/hooks/useLiveTrackingActions.js
-frontend/src/hooks/useDashboardBootstrapState.js
-frontend/src/hooks/useDashboardViewModel.js
-frontend/src/hooks/useMatchPolling.js
-frontend/src/hooks/useBetfairJson.js
-frontend/src/hooks/useMarketReactionEvidence.js
-frontend/src/hooks/useSourceIdentityGateStatus.js
-frontend/src/hooks/useSourceIdentityGateUi.js
-frontend/src/hooks/usePreflightChecks.js
-frontend/src/hooks/useBetfairHealthAlerts.js
-frontend/src/hooks/useBetfairLoginAction.js
+L’implementazione interna di tracking, persistenza, recovery, Evidence e classificazione Betfair health resta lato backend; nella session shell entrano soltanto i contratti consumati e i relativi effetti sulla UI.
 
-frontend/src/services/liveSessionApi.js
-frontend/src/utils/analysisSessionState.js
-frontend/src/utils/liveSessionRequests.js
-frontend/src/utils/preflight.js
-frontend/src/utils/dashboardConnections.js
-frontend/src/utils/sourceIdentityGatePresentation.js
-frontend/src/types/dashboard.js
+### Separazione dei domini di stato
 
-frontend/src/components/StartAnalysisPanel.jsx
-frontend/src/components/DashboardWorkspace.jsx
-frontend/src/components/Sidebar.jsx
-frontend/src/components/TopBar.jsx
-frontend/src/components/OverviewDashboard.jsx
-frontend/src/components/BetfairDepthCard.jsx
-frontend/src/components/MarketReactionsPage.jsx
-frontend/src/components/SourceIdentityGateIndicator.jsx
-frontend/src/components/SourceIdentityGateToast.jsx
-frontend/src/components/TotManualInputPlaceholder.jsx
-frontend/src/components/LayTheWinner.jsx
-frontend/src/components/BancaServizio.jsx
-frontend/src/components/Superbreak.jsx
-frontend/src/components/marketReactions/FieldLedReactionCard.jsx
-frontend/src/components/marketReactions/MarketLedObservationCard.jsx
-frontend/src/components/marketReactions/SourceIdentityConfirmationModal.jsx
-frontend/src/components/marketReactions/SourceIdentityControls.jsx
-
-frontend/src/hooks/useMatchPolling.test.mjs
-frontend/src/hooks/useBetfairJson.test.mjs
-frontend/src/utils/dashboardConnections.test.mjs
-frontend/package.json
-
-backend/src/routes/match.js
-backend/src/routes/match/trackingResponses.js
-backend/src/routes/match/sourceIdentityStatusResponse.js
-backend/src/sofa/extractEventId.js
-backend/src/sofa/betfairHealth/statusClassification.js
-
-docs/tennis-decision-ui/modules/frontend/01-session-shell.mdx
-docs/tennis-decision-ui/modules/frontend/02-live-polling-and-view-model.mdx
-docs/tennis-decision-ui/modules/frontend/03-betfair-and-market-reactions-ui.mdx
-```
-
-L’analisi è statica. Build, test e collaudi responsive non sono stati eseguiti.
-
-### Classificazione usata
-
-Per ogni rilievo sono stati distinti:
-
-```txt
-bug confermato
-limite noto
-miglioria utile
-documentazione mancante
-struttura completamente assente
-nessuna azione necessaria
-decisione dell’utente richiesta
-```
-
-Le decisioni proposte sono state approvate integralmente dall’utente.
-
-### Parti solide — nessuna azione necessaria
-
-#### Ownership Evidence globale
-
-`App.jsx` monta una sola istanza di `useMarketReactionEvidence(...)` e passa il risultato a `MarketReactionsPage`.
-
-La pagina:
-
-- non crea un secondo poller;
-- non avvia tracking;
-- non conferma Source Identity;
-- non scrive timeline o journal.
-
-Questo ownership deve essere preservato.
-
-#### Polling Gate ed Evidence già protetti
-
-`useSourceIdentityGateStatus(...)` e `useMarketReactionEvidence(...)` possiedono già gran parte del modello corretto:
-
-```txt
-session generation
-requestId monotono
-AbortController
-una fetch attiva per sessione
-controllo prima di setState
-cleanup timeout
-```
-
-Questi hook diventano il riferimento da generalizzare, non un’eccezione isolata.
-
-#### Source Identity globale distinta da Evidence
-
-Lo stato Source Identity globale deriva da:
-
-```txt
-GET /api/match/:eventId/source-identity-status
-```
-
-Non viene ricostruito dal Match Evidence Snapshot.
-
-La separazione tra:
+Nel runtime frontend restano distinti quattro domini:
 
 ```txt
 Source Identity live
@@ -138,773 +32,693 @@ persistence integrity
 Betfair health
 ```
 
-è corretta e deve restare esplicita.
+Questi domini arrivano da percorsi diversi e non vengono ricostruiti l’uno dall’altro.
 
-#### Health Betfair backend-owned
+| Dominio               | Sorgente frontend                                | Uso principale                                    |
+| --------------------- | ------------------------------------------------ | ------------------------------------------------- |
+| Source Identity live  | `GET /api/match/:eventId/source-identity-status` | gate, waiting state, conferma manuale, mismatch   |
+| Evidence              | `GET /api/evidence/:eventId/latest`              | Market Reactions e metadata associati             |
+| Persistence integrity | payload SofaScore, Betfair ed Evidence           | stato aggregato di affidabilità della persistenza |
+| Betfair health        | payload Betfair                                  | TopBar, toast, audio e Betfair card               |
 
-Il frontend riceve lo stato health già classificato dal backend.
+### Configurazione della sessione
 
-`useBetfairHealthAlerts(...)` può gestire:
-
-- transizioni;
-- toast;
-- audio;
-
-ma non deve cambiare il significato di `green`, `yellow`, `red`, `finished` o `unknown`.
-
-#### Money Flow associato tramite `selectionId`
-
-`BetfairDepthCard.jsx` associa history e runner attraverso `selectionId` stringificato.
-
-Il nome resta una label e non viene usato come identità temporale della serie.
-
-### Ampliamento finale collegato a FRONTEND-001 — Response tardive e fuori ordine attraversano la sessione
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
-
-`useMatchPolling(...)` e `useBetfairJson(...)` non possiedono:
+`useAnalysisSessionState(...)` mantiene due insiemi di valori:
 
 ```txt
-trackingSessionId
-session generation
-requestId
-AbortController
-single-active-request lock
-guard prima di ogni setState
+input correnti
+→ matchUrl
+→ betfairUrl
+→ betfairGraphUrls
+→ betfairMode
+→ chromeProfilePath
+→ cdpUrl
+
+configurazione confermata
+→ confirmedUrl
+→ confirmedBetfairUrl
+→ confirmedBetfairGraphUrls
+→ confirmedBetfairMode
+→ confirmedChromeProfilePath
+→ confirmedCdpUrl
 ```
 
-Una richiesta della sessione A può completarsi dopo Start B e aggiornare:
+La configurazione confermata non viene applicata all’inizio del click Start. Viene applicata soltanto dopo una risposta Start considerata valida da `useLiveTrackingActions(...)`.
 
-- snapshot SofaScore;
-- dati Betfair;
-- health;
-- Money Flow history;
-- integrity;
-- timestamp;
-- errori;
-- server status.
+`clearConfirmedSession()` svuota i riferimenti confermati alla sessione, senza cancellare gli input correnti del form.
 
-Due richieste della stessa sessione possono anche completarsi fuori ordine e permettere al payload più vecchio di sovrascrivere quello più recente.
+### Start della live session
 
-#### Conferma Source Identity tardiva
-
-La conferma usa una closure con `eventId`, ma non riceve né verifica `trackingSessionId`.
-
-Una conferma A in flight può completarsi dopo Start B e avviare un refresh non più appartenente al contesto che l’ha generata.
-
-#### EventId duplicato
-
-Dopo Start, il frontend ricalcola `eventId` dalla URL confermata e ignora l’`eventId` restituito dal backend.
-
-La sessione accettata deve usare soltanto l’identità restituita da Start.
-
-### Ampliamento collegato a FRONTEND-002 — Persistence integrity raccolta ma scartata prima della UI
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
-
-Gli hook SofaScore e Betfair conservano `integrity`, ma `App.jsx` non la estrae né la passa ai consumer.
-
-`useMarketReactionEvidence(...)` conserva soltanto:
+L’avvio passa attraverso:
 
 ```txt
-payload.latest.marketReactionEvidence
+StartAnalysisPanel
+→ useLiveTrackingActions.handleSearch(...)
+→ liveSessionApi.startMatchTracking(...)
+→ POST /api/match/track
 ```
 
-e perde:
+Prima della richiesta il frontend:
 
 ```txt
-integrity top-level
-sources
-dataQuality complessiva
-metadata dello snapshot
-```
-
-`useDashboardViewModel(...)` non riceve le integrity e non produce uno stato persistence.
-
-Mancano quindi:
-
-- stato locale SofaScore;
-- stato locale Betfair;
-- stato locale Market Reactions;
-- indicatore globale in fondo alla sidebar;
-- modale persistence;
-- rappresentazione distinta di `partial_persistence`, `recovery_failed` e futuro `integrity_unknown`.
-
-#### Ultimo dato su `409`
-
-Quando il polling SofaScore riceve `409`, azzera `backendData`, ma `dashboardData` resta invariato perché il view model aggiorna il proprio stato soltanto con un input truthy.
-
-L’ultimo snapshot può restare visibile, ma deve essere marcato esplicitamente:
-
-```txt
-last_verified
-frozen
-degraded
-```
-
-Non deve sembrare un dato live corrente.
-
-### Ampliamento finale collegato a FRONTEND-003 — Start fallito lascia sessione e poller nascosti
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
-
-Il frontend esegue prima:
-
-```txt
-applySearchSession
+reset Source Identity UI
+activeView = overview
 sessionShellVisible = true
+sessionActive = false
+trackingSessionId = null
+startTrackingError = null
 trackingStopped = false
-beginDashboardBootstrap
+stopSofaStatus = ""
 ```
 
-poi attende `POST /api/match/track`.
+La shell può quindi essere visibile durante lo Start, ma la sessione non è ancora attiva e i poller live non ricevono ancora la configurazione confermata.
 
-Il cambio della configurazione confermata può quindi attivare i poller prima che il backend abbia accettato lo Start.
-
-Se Start fallisce, il codice:
+`startMatchTracking(...)` accetta la risposta soltanto quando:
 
 ```txt
-resetDashboardBootstrap
+HTTP response.ok = true
+payload.ok = true
+```
+
+`useLiveTrackingActions(...)` richiede inoltre un `trackingSessionId` stringa non vuoto. Se manca, lo Start viene trattato come fallito.
+
+Quando la risposta è accettata:
+
+```txt
+applySearchSession(...)
+trackingSessionId = payload.trackingSessionId
+sessionActive = true
+beginDashboardBootstrap(trackingSessionId)
+```
+
+Il backend restituisce sia `eventId` sia `trackingSessionId`. Nel frontend, `trackingSessionId` viene letto dalla risposta Start, mentre l’`eventId` usato successivamente da `App.jsx` viene ricavato da `confirmedUrl` tramite `getSofaEventId(...)`.
+
+In caso di errore Start:
+
+```txt
+resetDashboardBootstrap()
+clearConfirmedSession()
+sessionActive = false
+trackingSessionId = null
 sessionShellVisible = false
+startTrackingError = <codice errore>
 ```
 
-ma non:
+Il frontend torna quindi al pannello iniziale senza attivare i poller con la configurazione richiesta.
 
-- cancella la sessione confermata;
-- ferma Betfair ed Evidence;
-- invalida il comando Start;
-- abortisce le request in flight;
-- resetta tutti i dati transitori;
-- espone un errore Start specifico;
-- esegue cleanup compensativo quando la risposta è ambigua.
+### Bootstrap della dashboard
 
-`sofaError` appartiene al polling timeline e non rappresenta l’errore di `POST /track`.
+`useDashboardBootstrapState(...)` separa l’accettazione della sessione dalla visualizzazione del contenuto dashboard.
 
-### FRONTEND-005 — I vecchi loop possono ricrearsi dopo cleanup
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
-
-I loop SofaScore e Betfair seguono:
+Il bootstrap viene associato al `trackingSessionId` accettato. Il contenuto viene marcato pronto soltanto quando, per quella stessa sessione:
 
 ```txt
-await fetchData
-→ setTimeout(loop)
+sessionActive = true
+trackingSessionId presente
+bootstrapSessionId === trackingSessionId
+è stato osservato un reset del backendData
+backendData è poi diventato disponibile
 ```
 
-Se cleanup o cambio sessione avvengono durante la fetch, il timeout noto viene cancellato, ma la vecchia closure può completare e programmarne uno nuovo.
+Questa sequenza evita di considerare pronto, per una nuova sessione, un dato dashboard rimasto dal ciclo precedente.
 
-Il ref `shouldPoll` è condiviso dal vecchio e dal nuovo loop. Un nuovo Start che lo riporta a `true` può riattivare anche una closure precedente.
+Finché `dashboardContentReady` non è vero o manca `dashboardData`, `App.jsx` mantiene la shell ma mostra `SourceIdentityGateWaitingScreen` al posto della dashboard operativa.
 
-`React.StrictMode` aumenta la necessità di una cleanup idempotente perché in sviluppo monta, pulisce e rimonta gli effect.
+### Identità usata dai poller
 
-### FRONTEND-006 — Start e Stop concorrenti non serializzati
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** alta
-
-Il pulsante Start è disabilitato tramite `sofaLoading`, che appartiene al polling SofaScore e non al comando Start.
-
-Mancano:
+In `App.jsx`:
 
 ```txt
-startPending
-commandId
-single-flight Start
-deduplicazione
-invalidazione comando precedente
+sofaEventId = getSofaEventId(confirmedUrl)
 ```
 
-Anche Stop può essere richiamato più volte mentre la prima richiesta è ancora in corso.
+e l’attivazione dei consumer live è subordinata principalmente a `sessionActive`.
 
-### FRONTEND-007 — Stop Live Tracking non crea una modalità statica reale
+La relazione effettiva è:
 
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CONFERMATO E AMPLIATO`
-**Priorità:** critica
+| Consumer             | Condizione fornita da `App.jsx`                                                 |
+| -------------------- | ------------------------------------------------------------------------------- |
+| SofaScore            | `sessionActive ? confirmedUrl : ""` e `sessionActive ? sofaEventId : ""`        |
+| Betfair              | `sessionActive ? confirmedBetfairUrl : ""` e `sessionActive ? sofaEventId : ""` |
+| Evidence             | `sessionActive ? sofaEventId : ""`                                              |
+| Source Identity Gate | `sofaEventId`, con `enabled: sessionActive`                                     |
 
-Dopo Stop il frontend esegue soltanto:
+Betfair resta inattivo quando non esiste una URL Betfair confermata, perché `useBetfairJson(...)` richiede sia URL sia `sofaEventId`.
+
+Evidence è montato a livello applicativo e riceve l’`eventId` per tutta la durata della sessione attiva; il suo polling non dipende dalla vista `market-reactions` selezionata.
+
+Source Identity Gate è anch’esso applicativo. Il polling viene abilitato da `sessionActive`; la presentazione UI usa separatamente `hasBetfairUrl` per distinguere il caso in cui Source Identity non sia necessaria.
+
+### Modello comune dei poller live
+
+`useMatchPolling(...)`, `useBetfairJson(...)`, `useMarketReactionEvidence(...)` e `useSourceIdentityGateStatus(...)` implementano una protezione esplicita del ciclo asincrono mediante combinazioni dello stesso insieme di primitive:
 
 ```txt
-stopSofaPolling
-trackingStopped = true
+generation/version della catena di polling
+requestId monotono
+AbortController
+riferimento alla request attiva
+una request attiva per generation
+controllo generation prima degli update
+cleanup di timeout e request in flight
 ```
 
-Restano attivi:
+Quando cambia l’identità che abilita un hook, o l’hook viene disabilitato, la generation corrente viene invalidata e la request attiva viene abortita.
 
-- polling Betfair;
-- polling Evidence;
-- polling Source Identity Gate;
-- refresh manuale Market Reactions;
-- eventuale audio Betfair.
+Le nuove iterazioni vengono pianificate con `setTimeout`; prima di riattivare il ciclo viene verificato che la generation sia ancora quella corrente.
 
-La modalità statica approvata deve significare:
+Questa protezione appartiene ai singoli hook. `App.jsx` coordina la loro attivazione attraverso `sessionActive` e gli identificatori/configurazioni confermati.
+
+### Polling SofaScore
+
+`useMatchPolling(...)` legge:
 
 ```txt
-tutti i poller sospesi
-request in flight abortite
-nessun nuovo setState live
-ultimo snapshot verificato conservato
-refresh live disabilitato
-audio fermato
+GET /api/match/:eventId/json
 ```
 
-Inoltre la UI interpreta `ok:true` come Stop completo senza esporre cleanup parziale, `remaining` o errori Python.
+In `App.jsx` l’intervallo configurato è `2500 ms`.
 
-### FRONTEND-008 — Indicatori live derivati dalla presenza del dato
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
-
-`dashboardConnections.js` considera SofaScore connected quando esiste `backendData`, senza conoscere:
-
-- stato della sessione;
-- Stop;
-- integrity;
-- snapshot frozen;
-- cleanup parziale.
-
-La sidebar mostra quasi sempre `Live Engine Active` o `Dashboard engine active` usando principalmente la health Betfair.
-
-La TopBar mantiene un pallino verde globale animato e assegna lo stile attivo anche a badge come:
+Il payload viene normalizzato in:
 
 ```txt
-BACKEND: ERR
-POLLING: OFF
+snapshot
+localContext
+timeline
+integrity
 ```
 
-La card Betfair può mostrare `Polling active (5s)` senza ricevere `isPolling` o `trackingStopped`.
-
-#### Decisione approvata
-
-Ogni indicatore deriva dalla stessa state machine della sessione.
-
-La semplice presenza dell’ultimo dato non autorizza le label:
+Lo stato esposto comprende:
 
 ```txt
-live
-connected
-polling active
-engine active
+data
+lastKnownData
+lastUpdate / sourceUpdatedAt
+fetchedAt
+isPolling
+serverStatus
+readStatus
+integrity
+error
 ```
 
-### FRONTEND-009 — Market Reactions UI promuove rami unavailable e usa campi errati
+Gli stati HTTP rilevanti sono trattati così:
 
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
+| Risposta                          | Effetto frontend                                                                                               |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `200` valido                      | `readStatus = current`, `serverStatus = ok`                                                                    |
+| `404`                             | `serverStatus = waiting`, `readStatus = waiting`, nessun errore utente                                         |
+| `409` con `persistence_integrity` | `serverStatus = partial_persistence` oppure `recovery_failed`, `readStatus = degraded`, `integrity` conservata |
+| altri errori                      | `serverStatus = error`, `readStatus = error`                                                                   |
 
-Le card usano:
+Su una lettura non corrente `data` viene azzerato. `lastKnownData` viene aggiornato soltanto su letture riuscite, ma viene anch’esso azzerato quando cambia o scompare l’`eventId` del poller.
 
-```jsx
-<AvailabilityBadge available={!!evidence} />
-```
+### Polling Betfair
 
-Il backend può però restituire un oggetto completo con:
+`useBetfairJson(...)` prova prima:
 
 ```txt
-available:false
+GET /api/betfair/:eventId/latest
 ```
 
-L’oggetto viene quindi mostrato erroneamente come disponibile.
+con gli eventuali parametri `mode` e `cdpUrl`.
 
-La card Exchange → Field cerca:
+Se `/latest` risponde `404`, lo stesso ciclo prova:
 
 ```txt
-runnerName
-amount
-tier
-flowClassification
+GET /api/betfair/:eventId/json
 ```
 
-mentre il contratto backend usa:
+come fallback timeline.
+
+In `App.jsx` l’intervallo configurato è `5000 ms`.
+
+Il read model Betfair mantiene separati:
+
+```txt
+data
+health
+moneyFlowHistory
+sourceUpdatedAt
+fetchedAt
+integrity
+source
+```
+
+Quando la sorgente è `/latest`, health e Money Flow possono essere popolati dal relativo payload. Nel fallback timeline vengono invece impostati a `null`, evitando di associare al fallback health o history non provenienti da quella lettura.
+
+Un `409` con body `persistence_integrity` porta il poller a:
+
+```txt
+data = null
+health = null
+moneyFlowHistory = null
+integrity = payload.integrity
+readStatus = degraded
+```
+
+Gli altri errori producono `waiting` per `404` oppure `error` per gli altri status.
+
+`lastKnownData` e `lastKnownMoneyFlowHistory` consentono alla Betfair card di mostrare un fallback soltanto in condizioni `degraded` o `error` della lettura corrente. Questi valori vengono azzerati quando il poller viene riconfigurato con URL o `eventId` non attivi.
+
+### Betfair health
+
+Il frontend non riclassifica semanticamente il dominio health ricevuto dal backend. Il valore consumato è:
+
+```txt
+betfairData?.health
+oppure
+health esposta da useBetfairJson(...)
+```
+
+`useBetfairHealthAlerts(...)` gestisce transizioni, toast e audio. Il toast di alert dipende dalla transizione `to-red`; l'audio, quando abilitato, viene invece ripetuto finché resta attivo un alert Betfair `red` riconosciuto come scrape/login alert.
+
+`TopBar.jsx` presenta gli stati health come:
+
+```txt
+green    → OK
+yellow   → STALE
+red      → BETFAIR ALERT
+finished → FINISHED
+altro    → UNKNOWN
+```
+
+e rende inoltre le transizioni `to-red` e `recovered`.
+
+`BetfairDepthCard.jsx` usa lo stesso health per banner, dettagli diagnostici e stato del feed. L’associazione fra runner e serie Money Flow avviene tramite `selectionId` convertito a stringa; il nome del runner non è usato come chiave della serie.
+
+### Evidence e Market Reactions data source
+
+`App.jsx` monta una sola istanza di:
+
+```txt
+useMarketReactionEvidence(...)
+```
+
+Il risultato viene passato a `MarketReactionsPage`. La pagina non crea un secondo poller.
+
+L’endpoint letto è:
+
+```txt
+GET /api/evidence/:eventId/latest
+```
+
+Il modello normalizzato conserva:
+
+```txt
+latest
+evidence = latest.marketReactionEvidence
+sources
+integrity
+persistenceComplete = latest.dataQuality.persistenceComplete
+sourceUpdatedAt = latest.metadata.updatedAt
+fetchedAt
+```
+
+Gli stati di lettura sono:
+
+| Condizione                                            | `readStatus` |
+| ----------------------------------------------------- | ------------ |
+| nessun `eventId`                                      | `inactive`   |
+| attesa / payload non ancora disponibile               | `waiting`    |
+| payload valido con `persistenceComplete !== false`    | `current`    |
+| `persistenceComplete === false` o `404` con integrity | `degraded`   |
+| errore HTTP non gestito come attesa o errore fetch    | `error`      |
+
+Il polling Evidence è un consumer read-only del Match Evidence Snapshot per il rendering. Nel percorso montato da `App.jsx`, la conferma Source Identity della UI non viene delegata a `MarketReactionsPage`.
+
+`useMarketReactionEvidence(...)` esporta ancora anche metodi `confirmSourceIdentity` e `revokeSourceIdentityConfirmation`, ma `App.jsx` non li usa nella conferma globale.
+
+### Market Reactions UI
+
+`MarketReactionsPage.jsx` riceve dal livello applicativo:
+
+```txt
+evidence
+loading
+error
+reasons
+integrity
+sources
+persistenceComplete
+readStatus
+lastUpdate
+isPolling
+refresh
+```
+
+Le card presentazionali usano `marketReactionViewModel.js` per leggere il contratto Evidence.
+
+La disponibilità di un ramo è vera soltanto quando:
+
+```txt
+evidence.available === true
+```
+
+Per il lato market source il view model usa:
 
 ```txt
 runner
 observedFlowAmount
 absoluteFlowTier
-interpretation
+relativeFlowTier
+direction
+flowAmbiguous
 ```
 
-Altri problemi:
+La presenza del disclaimer di causalità considera `summary.causalityClaimed === false` e anche `causalityClaimed === false` al livello del ramo.
 
-- `causalityClaimed` cercato nel livello sbagliato;
-- array eventi passato a formatter numerico;
-- `not observed` usato anche per unavailable, insufficient data o finestra aperta;
-- schema vecchio non compatibile con le decisioni del Punto 5.
+Questa area presenta Evidence già costruita; non ricalcola la causalità o l’Evidence backend.
 
-### FRONTEND-010 — Modale pending non legata al vero contesto Source Identity
+### Source Identity Gate
 
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** alta
-
-La pending key contiene soltanto:
+Lo stato globale Source Identity viene letto tramite:
 
 ```txt
-eventId
+GET /api/match/:eventId/source-identity-status
+```
+
+`useSourceIdentityGateStatus(...)` usa per default un intervallo di `1000 ms`, con generation, `requestId`, `AbortController`, una request attiva e cleanup della catena.
+
+La presentazione distingue:
+
+```txt
+tracking stopped
+errore bootstrap/status
+nessuno status con Betfair configurato
+nessuno status senza Betfair
+collecting
+pending
+recording + aligned
+not-applicable
+mismatch
+```
+
+Nel caso `pending`, la conferma può essere aperta quando lo status contiene esattamente due nomi SofaScore e due runner Betfair e `sourceIdentity.status === "pending"`.
+
+La chiave locale usata per stabilire se riaprire automaticamente la modale pending è composta da:
+
+```txt
+sofaEventId
 nomi SofaScore
 nomi Betfair
 ```
 
-Non contiene:
+La conferma globale viene inviata da `useSourceIdentityGateUi(...)` tramite:
 
 ```txt
-trackingSessionId
-marketId
-epoch signature
-selectionIds
-context revision
+POST /api/evidence/:eventId/source-identity/confirm
 ```
 
-Un nuovo epoch con gli stessi nomi può quindi non riaprire automaticamente la modale.
-
-#### Decisione approvata
-
-Lo status gate deve esporre un’identità opaca e pubblica del contesto:
+con:
 
 ```txt
-trackingSessionId
-sourceIdentityContextId
-sourceIdentityRevision
+selectedPairs
+confirmationText
+trackingSessionId letto dallo status Source Identity corrente
 ```
 
-La UI non ha bisogno di URL o payload sensibili.
-
-### FRONTEND-011 — Risultati Preflight non legati agli input verificati
-
-**Classificazione:** `BUG CONFERMATO`
-**Stato:** `CORREZIONE APPROVATA`
-**Priorità:** medio-alta
-
-I check non possiedono:
+Dopo la conferma il gate viene riletto. La UI considera conclusa la conferma soltanto se il nuovo status è:
 
 ```txt
-input fingerprint
-requestId
-AbortController
-invalidazione al cambio campo
+phase = recording
+sourceIdentity.status = aligned
+status.trackingSessionId = trackingSessionId della conferma
 ```
 
-Una risposta riferita alla URL A può diventare il risultato verde mostrato accanto alla URL B.
-
-Anche modificare un input dopo un check completato non riporta il relativo stato a `idle` o `stale`.
-
-#### Decisione approvata
-
-Ogni risultato Preflight conserva:
+Quando il gate entra in `mismatch`, la UI:
 
 ```txt
-inputFingerprint
-checkedAt
-requestId
-status
+mostra il toast di mismatch
+ferma il poller Sofa
+svuota la configurazione confermata
+sessionActive = false
+trackingSessionId = null
+chiude la modale
+nasconde la session shell
+torna a overview
+resetta il bootstrap
 ```
 
-Qualsiasi modifica dell’input invalida il risultato precedente.
+Questo ramo esegue il teardown dello stato frontend; nel codice del hook non viene invocato `POST /api/match/stop`.
 
-### FRONTEND-012 — Layout responsive strutturalmente assente
+### Persistence integrity nel frontend
 
-**Classificazione:** `LIMITE NOTO + STRUTTURA ASSENTE`
-**Stato:** `TASK SEPARATA CONFERMATA`
-**Priorità:** dopo la robustezza
+SofaScore, Betfair ed Evidence espongono separatamente la loro informazione `integrity`.
 
-Sono presenti:
+`App.jsx` le aggrega con:
 
 ```txt
-sidebar fissa w-64
-root overflow-hidden
-TopBar orizzontale non comprimibile
-dashboardGrid sempre a due colonne
-h-screen rigido
-nessuna navigazione mobile
+buildPersistenceViewState({
+    sessionActive,
+    dashboardReady,
+    sofaIntegrity,
+    betfairIntegrity,
+    evidenceIntegrity,
+    evidencePersistenceComplete,
+    sofaError,
+    betfairError,
+    evidenceError
+})
 ```
 
-La correzione responsive resta separata secondo `DEC-017`.
+Lo stato aggregato è:
 
-Non deve essere inclusa nella stessa task di:
+| Condizione                                                                                                       | Stato      |
+| ---------------------------------------------------------------------------------------------------------------- | ---------- |
+| sessione non attiva                                                                                              | `inactive` |
+| integrity `partial_persistence`, `recovery_failed` o `degraded`, oppure Evidence `persistenceComplete === false` | `degraded` |
+| errore Sofa, Betfair o Evidence                                                                                  | `error`    |
+| dashboard non pronta                                                                                             | `waiting`  |
+| altrimenti                                                                                                       | `current`  |
 
-- session authority;
-- polling;
-- integrity;
-- cleanup Strategy;
-- Market Reactions contract.
+`DashboardWorkspace.jsx` mostra un banner globale quando lo stato aggregato è `degraded` o `error`.
 
-### Cleanup legacy confermato
+`OverviewDashboard.jsx` passa lo stesso stato a `BetfairDepthCard.jsx`, che lo combina con `readStatus`, stato del polling e `trackingStopped` per produrre le label locali della card.
 
-#### Strategy UI
+L’aggregatore non modifica le strutture di integrity provenienti dalle sorgenti; le conserva nell’array `integrity` del risultato quando sono presenti.
 
-Restano montate e raggiungibili:
+### Dashboard view model e dati correnti
+
+`useDashboardViewModel(...)` mappa `backendData` nel modello dashboard tramite `mapBackendDataToDashboard(...)`.
+
+Quando esiste `backendData`:
 
 ```txt
-Lay the Winner
-Banca Servizio
-Superbreak
+dashboardData = mapped backend data
+lastKnownDashboardData = stesso mapped data
 ```
 
-`LayTheWinner` effettua polling verso `http://localhost:3001`.
-
-Le altre due viste mostrano valori statici come:
+Quando `backendData` diventa `null`:
 
 ```txt
-Monitoring
-Medium
-High
-92%
+dashboardData = null
 ```
 
-Non devono essere corrette. Devono essere rimosse secondo `CODE-001` e `DEC-008`, preservando Market Reactions.
+`lastKnownDashboardData` resta nello stato del view model, ma `DashboardWorkspace` non lo usa come sostituto del `dashboardData` corrente.
 
-#### Source Identity authority legacy
-
-`useMarketReactionEvidence(...)` esporta ancora metodi di conferma/revoca.
-
-`SourceIdentityControls.jsx` conserva una seconda UI legacy non montata.
-
-Dopo ultimo inventario dei consumer vanno rimossi:
+La history Betfair esposta dal view model viene normalizzata alla forma:
 
 ```txt
-confirmSourceIdentity
-revokeSourceIdentityConfirmation
-SourceIdentityControls
-utility e test esclusivi
+{ series: [] }
 ```
 
-L’autorità globale resta `useSourceIdentityGateUi(...)`.
+quando non è disponibile una serie valida.
 
-#### Mojibake
+### Stop Live Tracking
 
-Restano stringhe renderizzate come:
+Lo Stop operativo usa:
 
 ```txt
-sequenza mojibake al posto di “Modalità”
-âEUR”
+OverviewDashboard
+→ useLiveTrackingActions.handleStopLiveTracking()
+→ liveSessionApi.stopMatchTracking(...)
+→ POST /api/match/stop
 ```
 
-La correzione è circoscritta e resta separata dal refactor sessione/polling.
+`stopMatchTracking(...)` considera riuscita la chiamata soltanto quando la risposta HTTP è `ok` e il payload contiene `ok: true`.
 
-### Polling non necessario
-
-L’abilitazione dei poller non è centralizzata.
-
-Il polling Betfair può partire con un eventId anche quando Betfair non è configurato.
-
-Evidence continua a essere interrogata anche quando la vista Market Reactions non è aperta.
-
-Policy approvata:
+Il backend costruisce `ok` combinando:
 
 ```txt
-Sofa
-→ sessione accettata e live
-
-Betfair
-→ sessione accettata, live e Betfair configurato
-
-Source Identity Gate
-→ sessione live con Betfair configurato
-
-Evidence
-→ sessione live e vista Market Reactions attiva
-→ fetch immediato all’ingresso
-
-stopped_static
-→ tutti disabilitati
+stop dei tracker
+cleanup fisico dei processi Python di tracking
+remaining === 0
 ```
 
-### DOC-028 — Session shell contraddice la session authority approvata
-
-**Classificazione:** `DOCUMENTAZIONE ERRATA`
-**Stato:** `CORREZIONE APPROVATA`
-
-`01-session-shell.mdx` descrive come comportamento da preservare:
+Il payload pubblico di Stop contiene inoltre:
 
 ```txt
-applySearchSession prima della risposta Start
+eventId
+stopped
+scope = all-live-tracking
+pythonCleanup
 ```
 
-Documenta inoltre che Betfair, Evidence e Source Identity possono continuare a leggere dopo Stop.
-
-Questi testi contraddicono `DEC-019`.
-
-### DOC-029 — Polling e view model descrivono funzioni non implementate
-
-**Classificazione:** `DOCUMENTAZIONE PIÙ FORTE DEL CODICE`
-**Stato:** `CORREZIONE APPROVATA`
-
-`02-live-polling-and-view-model.mdx` dichiara già esistenti:
-
-- propagation Evidence completa;
-- adapter persistence;
-- view state integrity;
-- cleanup session-safe di tutti i poller.
-
-Il codice corrente non implementa questi contratti.
-
-### DOC-030 — UI Betfair e Market Reactions descritta come integrity-aware
-
-**Classificazione:** `DOCUMENTAZIONE PIÙ FORTE DEL CODICE`
-**Stato:** `CORREZIONE APPROVATA`
-
-`03-betfair-and-market-reactions-ui.mdx` assegna già a BetfairDepthCard e Market Reactions UI comportamenti integrity-aware che non sono collegati nel runtime attuale.
-
-I documenti vanno aggiornati dopo l’implementazione e non usati come prova del comportamento corrente.
-
-### Strutture completamente assenti
-
-#### Riferimento audit a IMPL-025 — Frontend live-session controller
-
-Owner unico di:
+Dopo uno Stop accettato, il frontend:
 
 ```txt
-idle
-starting
-collecting
-pending_confirmation
-live
-stopping
-stopped_static
-stop_partial
-mismatch
-integrity_degraded
-error
+stopSofaPolling()
+sessionActive = false
+trackingSessionId = null
+trackingStopped = true
+sessionShellVisible resta true
 ```
 
-Deve conservare:
+Poiché `App.jsx` passa URL/`eventId` vuoti ai poller quando `sessionActive` è falso, SofaScore, Betfair ed Evidence vengono riconfigurati come inattivi e Source Identity Gate viene disabilitato.
+
+La shell resta montata. Quando i dati correnti vengono rimossi dagli hook e `dashboardData` non è più disponibile, `shouldShowDashboard` diventa falso e il contenuto operativo viene sostituito da `SourceIdentityGateWaitingScreen`. Nella sidebar, `SourceIdentityGateIndicator` deriva dalla presentazione lo stato `Tracking fermo`; la waiting screen centrale, nel ramo non-error e non-pending, mostra invece il testo generico `Verifico le fonti` / `Attendo i primi aggiornamenti di SofaScore e Betfair.`.
+
+Lo Stop Live Tracking non chiude quindi automaticamente la shell né ritorna al form dei link.
+
+### Stop e ritorno al pannello link
+
+Il percorso usato per abbandonare la shell è separato:
 
 ```txt
-trackingSessionId
-commandId
-eventId restituito dal backend
-requestedConfig
-acceptedConfig
-currentSnapshot
-lastVerifiedSnapshot
-snapshotMode
-startError
-stopResult
+stopAndReturnToLinks()
+→ POST /api/match/stop
+→ stopSofaPolling()
+→ clearConfirmedSession()
+→ sessionActive = false
+→ trackingSessionId = null
+→ sessionShellVisible = false
+→ activeView = overview
+→ trackingStopped = true
+→ resetDashboardBootstrap()
 ```
 
-#### Riferimento audit a IMPL-026 — Polling runtime session-scoped
+Questo percorso viene usato, tra l’altro, dal ritorno ai link durante il waiting flow e dal rifiuto della conferma Source Identity.
 
-Primitive condivisa da Sofa, Betfair, Evidence e Gate:
+### Indicatori di connessione
+
+`DashboardWorkspace.jsx` costruisce le connessioni tramite `buildDashboardConnections(...)`.
+
+Per SofaScore, la funzione considera:
 
 ```txt
-enabled
-sessionKey
-requestId
-AbortController
-single active request
-disposed
-schedule next after response
-retain policy
-expected HTTP classifier
+sourceIdentityGateStatus
+sofaReadStatus
+sofaServerStatus
+presenza di backendData
 ```
 
-#### Riferimento audit a IMPL-027 — Market Reactions frontend view model
+e può produrre `waiting`, `connected`, `degraded` o `disconnected`.
 
-Adapter presentazionale che produce:
+Per Betfair, il risultato include:
 
 ```txt
-pageState
-marketLedCard
-fieldLedCard
-availability
-provisional
-quality
-reasons
-source event display
-windows display
+ok
+status derivato da betfairReadStatus
+lastUpdate
+health
+transition
+audioAlertEnabled
+onToggleAudioAlert
 ```
 
-Non deve ricalcolare Evidence.
+`TopBar.jsx` usa il modello `connections` per lo stato SofaScore e per Betfair health.
 
-### Test mancanti
+La card di stato in fondo a `Sidebar.jsx` è invece separata da `buildDashboardConnections(...)`: rende `Dashboard engine active` quando `betfairHealth.status === "red"` e `Live Engine Active` negli altri casi.
 
-#### TEST-044 — Start concorrenti e risposta tardiva
+La TopBar mantiene inoltre un indicatore circolare verde accanto al proprio campo `Ultimo aggiornamento`; il valore di quel campo proviene dal `topBar` della dashboard quando disponibile e, nel fallback di `DashboardWorkspace`, da `sofaLastUpdate` oppure `—`. Questi elementi sono parte della presentazione corrente e non costituiscono una seconda authority di sessione.
+
+### Preflight
+
+`usePreflightChecks(...)` gestisce cinque famiglie di controllo:
 
 ```txt
-Start A in flight
-→ Start B
-→ risposta A ignorata
-→ soltanto B accettata
+backend
+cdp
+sofa
+betfair
+graphs
 ```
 
-#### TEST-045 — Start fallito o ambiguo
+Gli stati memorizzati in `App.jsx` hanno la forma:
 
 ```txt
-sessione richiesta
-→ Start fallisce o risposta incerta
-→ sessione confermata rimossa
-→ poller fermi
-→ cleanup compensativo
-→ errore visibile
+{
+    status,
+    message
+}
 ```
 
-#### TEST-046 — Response vecchie o fuori ordine
+I controlli possono essere eseguiti singolarmente oppure in sequenza tramite `runAllChecks()`.
+
+La sequenza completa è:
 
 ```txt
-Sofa/Betfair response vecchia
-→ nessun setState corrente
+backend
+→ CDP solo se betfairMode === "cdp"
+→ SofaScore URL
+→ Betfair URL
+→ graph URLs
 ```
 
-#### TEST-047 — Cleanup durante fetch
+In modalità persistent il check CDP viene riportato a `idle` con messaggio che ne indica la non necessità.
+
+I risultati Preflight non sono usati come gate del comando Start: il pulsante `Link Accounts & Start` chiama direttamente `handleSearch(...)` ed è disabilitato soltanto quando manca `matchUrl` oppure `sofaLoading` è vero.
+
+I preflight usano direttamente gli input catturati dalle closure dell’hook e aggiornano lo stato con `setChecks(...)`. Questi check non usano generation, `requestId`, `AbortController` o un fingerprint persistito dell’input verificato.
+
+### Navigazione e ownership delle viste
+
+La sidebar montata espone due viste:
 
 ```txt
-cleanup
-→ resolve fetch precedente
-→ nessun nuovo timeout
+Overview
+Market Reactions
 ```
 
-#### TEST-048 — Stop completo
+`App.jsx` mantiene `activeView` e decide quale contenuto renderizzare.
+
+`Overview` contiene il contesto partita, le statistiche, la Betfair depth/Money Flow, il placeholder TOT e il comando Stop.
+
+`Market Reactions` riceve il modello Evidence dall’unico hook applicativo.
+
+La sidebar non monta voci Strategy separate.
+
+### Invarianti del wiring
+
+Il comportamento della session shell può essere riassunto nelle seguenti invarianti:
 
 ```txt
-Sofa/Betfair/Evidence/Gate sospesi
-→ ultimo dato frozen
-→ audio fermo
+1. La shell può comparire durante Start, ma sessionActive resta false fino a Start accettato.
+
+2. trackingSessionId deve provenire da una risposta Start valida e non vuota.
+
+3. L’eventId consumato dal frontend viene ricavato dalla confirmedUrl SofaScore.
+
+4. I poller live vengono alimentati soltanto quando sessionActive abilita i relativi input.
+
+5. Betfair richiede anche una URL Betfair confermata.
+
+6. Evidence ha ownership applicativa unica e polla per tutta la sessione attiva.
+
+7. Source Identity live viene letto dal proprio endpoint e resta distinto da Evidence.
+
+8. Le request dei quattro poller principali sono protette da generation e AbortController.
+
+9. Persistence integrity viene mantenuta per sorgente e aggregata in uno stato UI comune.
+
+10. Market Reactions presenta Evidence già costruita e usa available === true come criterio di disponibilità.
+
+11. Lo Stop Live Tracking rende la sessione inattiva ma mantiene montata la shell.
+
+12. Il ritorno al pannello link è un percorso distinto che chiude la shell e cancella la configurazione confermata.
 ```
 
-#### TEST-049 — Stop parziale
+### Confini con il backend
 
-```txt
-cleanup parziale
-→ UI non mostra completato
-→ detail pubblico bounded
-```
+La session shell non implementa direttamente:
 
-#### TEST-050 — Persistence UI
+- come `matchTracker` raccoglie o persiste i dati;
+- come vengono scritte timeline, history o journal;
+- come funziona la recovery della persistence;
+- come viene costruita semanticamente Market Reaction Evidence;
+- come il backend decide Source Identity;
+- come il backend classifica Betfair health;
+- come vengono terminati internamente i processi Python.
 
-```txt
-partial/recovery_failed/integrity_unknown
-→ card locale
-→ indicatore globale
-→ modale
-→ ultimo dato degraded/frozen
-```
-
-#### TEST-051 — Identità sessione dalla risposta Start
-
-```txt
-eventId + trackingSessionId backend
-→ uniche authority dei poller
-```
-
-#### TEST-052 — Nuovo contesto Source Identity con stessi nomi
-
-```txt
-contextId cambia
-→ modale riaperta
-→ conferma vecchia ignorata
-```
-
-#### TEST-053 — Preflight input-bound
-
-```txt
-input cambia durante richiesta
-→ vecchio OK ignorato
-→ stato stale/idle
-```
-
-#### TEST-054 — Market Reactions unavailable
-
-```txt
-branch object presente
-+ available:false
-→ card unavailable
-```
-
-#### TEST-055 — Mapping schema Market Reactions reale
-
-```txt
-runner
-observedFlowAmount
-absoluteFlowTier
-interpretation
-→ campi mostrati correttamente
-```
-
-#### TEST-056 — Nessun falso stato live
-
-```txt
-stopped/waiting/polling off/integrity/unknown
-→ nessun verde o engine active falso
-```
-
-#### TEST-057 — Sessione Sofa-only
-
-```txt
-Betfair assente
-→ nessun polling Betfair/Gate non necessario
-```
-
-#### TEST-058 — StrictMode
-
-```txt
-mount/cleanup/remount
-→ una sola catena polling per sessione
-```
-
-#### TEST-059 — Responsive smoke
-
-```txt
-desktop/tablet/mobile
-→ navigazione, Stop, modali e contenuto raggiungibili
-```
-
-### Decisioni approvate
-
-1. implementare il lato frontend di `IMPL-006` attraverso `IMPL-025`;
-2. usare soltanto `eventId` e `trackingSessionId` restituiti dallo Start accettato;
-3. la shell può mostrare `starting`, ma i poller live partono soltanto dopo accettazione;
-4. Start fallito o ambiguo invalida la sessione e usa cleanup compensativo;
-5. tutti i poller adottano `IMPL-026`;
-6. Stop completo sospende tutti i poller e conserva lo snapshot frozen;
-7. Stop parziale resta visibile come parziale;
-8. Betfair polling parte soltanto quando Betfair è configurato;
-9. Evidence polling parte soltanto quando Market Reactions viene consumata;
-10. implementare `IMPL-009` con stato locale e globale;
-11. l’ultimo dato può restare visibile ma marcato `last_verified/frozen/degraded`;
-12. tutti gli indicatori derivano dalla state machine;
-13. Source Identity espone un context ID opaco e la UI pending è session/context scoped;
-14. rimuovere l’authority Source Identity legacy da Market Reactions;
-15. creare `IMPL-027` per il rendering Market Reactions;
-16. legare Preflight al fingerprint dell’input;
-17. rimuovere le tre viste Strategy senza correggerle;
-18. mojibake e piccole correzioni restano una task autonoma;
-19. responsive resta una task separata dopo la robustezza.
-
-### Ordine tecnico risultante
-
-```txt
-IMPL-006
-→ backend/session contract
-
-IMPL-025
-→ frontend live-session controller
-
-IMPL-026
-→ polling runtime session-scoped
-
-IMPL-009
-→ persistence UI
-
-IMPL-027
-→ Market Reactions frontend view model
-
-TEST-044…058
-→ cleanup Strategy
-→ piccole correzioni/mojibake
-→ responsive + TEST-059
-→ Punto 7 test e strutture mancanti
-```
-
-
----
+La session shell consuma gli output pubblici del backend e li traduce in stato e presentazione frontend.

@@ -1,5 +1,19 @@
 # API Evidence — latest snapshot
 
+## Scopo
+
+Questo documento definisce il contratto HTTP osservabile di:
+
+```txt
+GET /api/evidence/:eventId/latest
+```
+
+È l’owner del wrapper pubblico della risposta latest Evidence: validazione applicata all’endpoint, status HTTP, shape top-level `ok/eventId/latest/sources/integrity`, semantica dei flag esposti, stato aggregato di persistence integrity, stato osservabile del confirmation store e confini di redazione.
+
+Non è l’owner degli algoritmi che costruiscono lo snapshot Evidence, calcolano Source Identity, data quality/alignment o Market Reactions. Tali dettagli restano nei documenti di modulo collegati.
+
+Il contratto POST/DELETE di conferma e revoca Source Identity appartiene a `02-source-identity-confirmation.md`.
+
 ## Endpoint
 
 ```txt
@@ -9,78 +23,311 @@ GET /api/evidence/:eventId/latest
 Flusso pubblico:
 
 ```txt
-eventId validato secondo il limite corrente
+eventId normalizzato e validato
 → buildLatestMatchEvidence(eventId)
-→ lettura timeline, integrity e conferma tramite adapter interni
-→ costruzione snapshot
+→ lettura delle timeline persistite SofaScore e Betfair
+→ lettura read-only della persistence integrity per entrambe le fonti
+→ eventuale lookup read-only della conferma Source Identity
+→ costruzione dello snapshot
 → risposta HTTP
 ```
 
-## Validazione corrente
+La route è read-only rispetto a timeline, history, journal e confirmation store: non crea tick, non esegue recovery e non persiste conferme.
 
-Il validator condiviso accetta da 1 a 128 caratteri alfanumerici, `_` o `-`. Rifiuta separatori, traversal, caratteri di controllo, spazi interni e altri formati prima dei lookup filesystem. Lo storage timeline applica lo stesso guardrail.
+## Validazione `eventId`
 
-## Status
+La route applica la validazione comune `eventId` definita dalla facade API Evidence. La validazione termina prima della costruzione dello snapshot.
 
-| Caso                                 | HTTP  |
-| ------------------------------------ | ----: |
-| Event ID vuoto                       | `400` |
-| Nessuna timeline con entry leggibili | `404` |
-| Snapshot costruito                   | `200` |
-| Eccezione del builder                | `500` |
-
-Evidence non restituisce `409 persistence_integrity`: lo stato aggregato resta nel payload.
-
-## Integrity aggregata
-
-La priorità è `recovery_failed`, poi `partial_persistence`, poi `no_known_partial`.
+Risposta per `eventId` assente o non valido:
 
 ```json
 {
-  "status": "partial_persistence",
-  "reason": "pending_commit",
-  "affectedSources": ["betfair"],
+  "ok": false,
+  "error": "Missing or invalid eventId"
+}
+```
+
+Status: `400`.
+
+Le regole complete del guardrail comune restano di competenza di [API Evidence](../03-evidence.md); questo documento ne registra soltanto l’effetto osservabile sul GET latest.
+
+## Status HTTP
+
+| Condizione                                                                     | HTTP  | Contratto                                                            |
+| ------------------------------------------------------------------------------ | ----: | -------------------------------------------------------------------- |
+| `eventId` assente o non valido                                                 | `400` | errore di validazione comune                                         |
+| Nessuna delle due fonti fornisce almeno un tick canonico accettato dal builder | `404` | `No timeline data found for this event`, con `reasons` e `integrity` |
+| Snapshot costruito da almeno una fonte disponibile                             | `200` | wrapper `ok/eventId/latest/sources/integrity`                        |
+| Eccezione durante `buildLatestMatchEvidence(eventId)`                          | `500` | errore bounded `evidence_build_failed`                               |
+
+Il GET latest non restituisce `409 persistence_integrity`. Gli stati `partial_persistence` e `recovery_failed` restano osservabili nel blocco `integrity` del payload.
+
+## Risposta `200`
+
+Shape top-level:
+
+```json
+{
+  "ok": true,
+  "eventId": "<eventId>",
+  "latest": {},
   "sources": {
-    "sofa": {"status": "no_known_partial", "reason": null},
-    "betfair": {"status": "partial_persistence", "reason": "pending_commit"}
+    "sofaTimelineFound": true,
+    "betfairTimelineFound": true,
+    "confirmationStoreStatus": "not_applicable",
+    "confirmationStoreReason": null
+  },
+  "integrity": {
+    "status": "no_known_partial",
+    "reason": null,
+    "affectedSources": [],
+    "sources": {
+      "sofa": {
+        "status": "no_known_partial",
+        "reason": null,
+        "source": "sofa",
+        "commitId": null,
+        "affectedDocuments": []
+      },
+      "betfair": {
+        "status": "no_known_partial",
+        "reason": null,
+        "source": "betfair",
+        "commitId": null,
+        "affectedDocuments": []
+      }
+    }
   }
 }
 ```
 
-La reason aggregata è `pending_commit` per `partial_persistence` e `recovery_failed` per lo stato omonimo. Le reason specifiche restano nei blocchi delle fonti.
+`latest` contiene lo snapshot Match Evidence. La sua struttura algoritmica interna appartiene a [Snapshot Match Evidence](../../modules/evidence/01-match-evidence-snapshot.md).
 
-`persistenceComplete` è vero soltanto con `no_known_partial`. Una persistenza incompleta blocca l’uso cross-source canonico senza alterare freshness tecnica o stato Source Identity effective.
+Un solo source disponibile è sufficiente perché il builder possa restituire un risultato non `missing`; in quel caso la route può rispondere `200` con il relativo flag `*TimelineFound` a `false`.
 
-## Semantica `TimelineFound`
+## `sources`
 
-`sofaTimelineFound` e `betfairTimelineFound` significano che la timeline caricata contiene almeno una entry leggibile, non che il file esista fisicamente.
+### `sofaTimelineFound`
 
-| Stato                                | `TimelineFound` |
-| ------------------------------------ | --------------- |
-| File assente                         | `false`         |
-| Read failure o JSON invalido         | `false`         |
-| Timeline mancante, non-array o vuota | `false`         |
-| Almeno una entry                     | `true`          |
-
-Il loader collassa missing, discovery failure, read failure e JSON invalido a `null`. La route non distingue ancora queste cause e può restituire `404` anche per un problema di lettura.
-
-## Errori e confirmation store
-
-Il `500` usa `code: evidence_build_failed` e non include `error.message` o `details`.
-
-`sources.confirmationStoreStatus` rende osservabile la lettura della conferma senza esporre dettagli:
+`sofaTimelineFound` è `true` soltanto quando la timeline caricata contiene almeno una entry canonica SofaScore accettata dal filtro Evidence:
 
 ```txt
-ok → store letto o conferma fornita esplicitamente
-unavailable → store non leggibile; nessuna conferma applicata
-not_applicable → identità automatica non pending
+entry
+→ entry.data presente
+→ entry.data.source = sofa
 ```
 
-`unavailable` resta fail-closed: non abilita l’allineamento manuale.
+Non significa che esista semplicemente un file SofaScore sul filesystem.
+
+### `betfairTimelineFound`
+
+`betfairTimelineFound` è `true` soltanto quando esiste almeno una entry Betfair accettata dal filtro canonico usato dal builder. L’entry deve avere:
+
+```txt
+entry.data.source = betfair
+seq finito
+runners array
+ogni runner presente e object non-array
+```
+
+Non significa che esista semplicemente un file Betfair né che il documento JSON sia soltanto leggibile.
+
+### `confirmationStoreStatus`
+
+Il lookup del confirmation store viene eseguito soltanto quando la Source Identity automatica è `pending`.
+
+| Valore           | Significato osservabile                                                          |
+| ---------------- | -------------------------------------------------------------------------------- |
+| `not_applicable` | Source Identity automatica non `pending`; il confirmation store non è necessario |
+| `ok`             | lookup completato senza failure; può non esistere una conferma applicabile       |
+| `unavailable`    | lettura/lookup non utilizzabile; nessuna conferma viene applicata                |
+
+`unavailable` è fail-closed: non trasforma una Source Identity `pending` in `aligned`.
+
+### `confirmationStoreReason`
+
+`confirmationStoreReason` è una reason bounded associata al lookup:
+
+| Status           | Reason osservabili nel flusso corrente                                                  |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| `not_applicable` | `null`                                                                                  |
+| `ok`             | `null` oppure `not_found`                                                               |
+| `unavailable`    | `invalid_shape`, `invalid_record`, `invalid_json`, `read_failed` oppure `lookup_failed` |
+
+`not_found` indica che il file del confirmation store non esiste: il lookup resta `ok` e viene trattato come archivio vuoto.
+
+La route non espone il contenuto raw del confirmation store.
+
+## Risposta `404`
+
+Il builder restituisce `missing:true` quando né SofaScore né Betfair producono almeno un tick accettato dai rispettivi filtri.
+
+La risposta HTTP ha questa shape. Nell'esempio seguente `integrity.status` è `no_known_partial`:
+
+```json
+{
+  "ok": false,
+  "eventId": "<eventId>",
+  "error": "No timeline data found for this event",
+  "reasons": [
+    "SofaScore timeline missing",
+    "Betfair timeline missing"
+  ],
+  "integrity": {
+    "status": "no_known_partial",
+    "reason": null,
+    "affectedSources": [],
+    "sources": {
+      "sofa": {
+        "status": "no_known_partial",
+        "reason": null,
+        "source": "sofa",
+        "commitId": null,
+        "affectedDocuments": []
+      },
+      "betfair": {
+        "status": "no_known_partial",
+        "reason": null,
+        "source": "betfair",
+        "commitId": null,
+        "affectedDocuments": []
+      }
+    }
+  }
+}
+```
+
+Il blocco `integrity` conserva lo stato calcolato dal builder anche nel `404` e può quindi riportare `partial_persistence` o `recovery_failed` secondo lo stato corrente.
+
+Il `404` non equivale necessariamente all’assenza fisica di entrambi i file.
+
+`loadTimeline()` restituisce soltanto una timeline con stato interno `found`; gli altri esiti vengono esposti al builder come `null`. Di conseguenza il GET latest non distingue pubblicamente fra:
+
+- file assente;
+- discovery fallita;
+- target di storage ambiguo;
+- read failure;
+- JSON invalido;
+- shape del documento invalida.
+
+Inoltre una timeline caricata ma priva di entry canoniche accettate dal filtro della fonte non rende `*TimelineFound` vero.
+
+Se almeno una fonte contiene un tick canonico accettato, il risultato non è `missing` e la route può rispondere `200`.
+
+## Persistence integrity
+
+Il blocco top-level `integrity` ha questa forma:
+
+```json
+{
+  "status": "no_known_partial",
+  "reason": null,
+  "affectedSources": [],
+  "sources": {
+    "sofa": {
+      "status": "no_known_partial",
+      "reason": null,
+      "source": "sofa",
+      "commitId": null,
+      "affectedDocuments": []
+    },
+    "betfair": {
+      "status": "no_known_partial",
+      "reason": null,
+      "source": "betfair",
+      "commitId": null,
+      "affectedDocuments": []
+    }
+  }
+}
+```
+
+### Stato aggregato
+
+Gli status ammessi sono:
+
+```txt
+no_known_partial
+partial_persistence
+recovery_failed
+```
+
+La priorità aggregata è:
+
+```txt
+recovery_failed
+→ partial_persistence
+→ no_known_partial
+```
+
+La reason top-level è deterministica:
+
+| `integrity.status`    | `integrity.reason` |
+| --------------------- | ------------------ |
+| `no_known_partial`    | `null`             |
+| `partial_persistence` | `pending_commit`   |
+| `recovery_failed`     | `recovery_failed`  |
+
+`affectedSources` contiene soltanto `sofa` e/o `betfair` quando il relativo stato è `partial_persistence` o `recovery_failed`.
+
+Le reason specifiche delle singole fonti restano nei rispettivi blocchi `integrity.sources.sofa` e `integrity.sources.betfair` e non sostituiscono la reason aggregata.
+
+### Blocchi per fonte
+
+Ogni blocco source espone:
+
+| Campo               | Contratto                                                     |
+| ------------------- | ------------------------------------------------------------- |
+| `status`            | `no_known_partial`, `partial_persistence` o `recovery_failed` |
+| `reason`            | stringa o `null`                                              |
+| `source`            | source attesa (`sofa`/`betfair`) oppure `null`                |
+| `commitId`          | stringa oppure `null`                                         |
+| `affectedDocuments` | array filtrato ai soli valori `history` e `timeline`          |
+
+Input integrity assenti, non-object o con status non riconosciuto vengono normalizzati a `no_known_partial`. Un valore `source` non coerente con il ramo viene esposto come `null`; valori non ammessi in `affectedDocuments` vengono rimossi.
+
+## Risposta `500`
+
+Se `buildLatestMatchEvidence(eventId)` solleva un’eccezione, la route restituisce:
+
+```json
+{
+  "ok": false,
+  "eventId": "<eventId>",
+  "code": "evidence_build_failed",
+  "error": "Failed to build match evidence snapshot"
+}
+```
+
+Status: `500`.
+
+Il payload non include `error.message`, `details`, stack trace o dettagli filesystem.
+
+Le failure del confirmation store gestite dal builder non diventano automaticamente `500`: quando il lookup fallisce in modo gestito, il risultato resta fail-closed tramite `sources.confirmationStoreStatus: "unavailable"`.
+
+## Confini di esposizione
+
+Il GET latest espone soltanto il contratto pubblico costruito dalla route e dal builder. Non espone:
+
+- payload raw del journal;
+- target o path filesystem interni;
+- stack trace;
+- messaggi raw delle eccezioni del builder;
+- contenuto raw del confirmation store;
+- cookie, token o payload browser raw.
+
+Questo documento descrive gli effetti HTTP e i campi pubblici. Non replica:
+
+- l’algoritmo completo dello snapshot;
+- le regole complete di Source Identity e conferma manuale;
+- il calcolo completo di data quality/alignment;
+- l’algoritmo Market Reactions.
 
 ## Documenti collegati
 
 - [API Evidence](../03-evidence.md)
+- [Conferma e revoca Source Identity](02-source-identity-confirmation.md)
 - [Snapshot Match Evidence](../../modules/evidence/01-match-evidence-snapshot.md)
+- [Source Identity](../../modules/evidence/02-source-identity.md)
 - [Qualità, flow e allineamento](../../modules/evidence/03-quality-flow-and-alignment.md)
 - [Market Reactions](../../modules/evidence/04-market-reactions.md)

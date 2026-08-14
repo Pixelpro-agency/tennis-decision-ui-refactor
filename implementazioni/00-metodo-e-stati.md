@@ -4,19 +4,19 @@
 
 ## 1. Scopo
 
-Questo documento è il registro analitico della revisione tecnica e documentale di **Tennis Decision UI**.
+Questo documento definisce il metodo operativo della revisione tecnica e documentale di **Tennis Decision UI** e il vocabolario condiviso dai registri dell'area `implementazioni/`.
 
-Contiene esclusivamente:
+Possiede:
 
-- rilievi emersi dal confronto fra repository e documentazione;
-- motivazioni delle modifiche proposte;
-- elementi da mantenere, eliminare, riscrivere, spostare o ricontrollare;
-- verifiche ancora necessarie;
-- dipendenze fra le analisi;
-- decisioni richieste all’utente;
-- criteri di chiusura;
-- candidati per task esecutive future;
-- implementazioni utili da valutare dopo l’audit.
+- gerarchia delle fonti e delle prove;
+- distinzione fra lifecycle del workflow, stato dell'implementazione e verifiche;
+- vocabolario degli stati e dei prefissi;
+- schema minimo dei diversi tipi di record;
+- regole operative della revisione;
+- regole di ownership e coerenza dei registri;
+- confini e limiti del controllo automatico.
+
+Le schede dettagliate dei rilievi, delle implementazioni e delle decisioni appartengono ai rispettivi file owner sotto `implementazioni/`. Questo documento ne stabilisce il metodo, ma non ne duplica il contenuto.
 
 Non è:
 
@@ -34,15 +34,15 @@ La Todo operativa collegata è:
 todo-list-tennis-decision-ui.md
 ```
 
-La Todo mostra lo stato sintetico. Questo documento conserva motivazioni, evidenze, rischi, dipendenze e criteri di chiusura.
+La Todo mostra lo stato sintetico. Motivazioni, evidenze, rischi, dipendenze e criteri di chiusura restano nelle singole schede owner.
 
 Il processo è ora in steady state Markdown. Coesistenza MDX, conversione di massa e cleanup della migrazione sono fasi storiche concluse; restano operative la separazione storico/corrente, la verifica semantica, i link strict e la coerenza dei registri.
 
 ---
 
-## 2. Baseline del repository
+## 2. Baseline e autorità temporale
 
-Stato iniziale verificato:
+Baseline storiche della revisione:
 
 ```txt
 Repository: Pixelpro-agency/tennis-decision-ui-refactor
@@ -52,7 +52,9 @@ SHA checkpoint audit B1–B6: b277bd9b7373dfd8702e65446c88bab7a0f64dcc
 Commit checkpoint: docs: modularize project revision registers
 ```
 
-La revisione parte da questo SHA. Ogni aggiornamento futuro deve indicare esplicitamente:
+Questi SHA descrivono l'avvio e un checkpoint storico dell'audit; non sono automaticamente l'autorità tecnica di una verifica successiva.
+
+Ogni aggiornamento deve indicare esplicitamente:
 
 ```txt
 SHA precedente
@@ -61,7 +63,7 @@ SHA precedente
 → rilievi da riconfermare
 ```
 
-Non assumere che un rilievo resti valido dopo modifiche sostanziali al repository.
+Lo SHA nuovo esaminato è l'autorità temporale della singola verifica. Non assumere che un rilievo resti valido dopo modifiche sostanziali al repository e non usare uno SHA storico come prova dello stato corrente.
 
 ---
 
@@ -104,19 +106,19 @@ Una task può quindi essere implementata ma non verificata live, oppure avere ev
 
 Ogni rilievo usa uno dei seguenti stati:
 
-| Stato | Significato |
-| --- | --- |
-| `DA VERIFICARE` | Osservazione preliminare non ancora dimostrata |
-| `IN VERIFICA` | Controllo in corso su codice, test e documenti |
-| `CONFERMATO` | Discrepanza o necessità dimostrata |
-| `DA DECIDERE` | Esistono più soluzioni ragionevoli o serve una scelta dell’utente |
-| `APPROVATO` | L’utente ha approvato l’azione proposta |
-| `PRONTO PER TASK` | Perimetro, file, test e criteri sono definiti |
-| `IN ESECUZIONE` | Una task separata è stata avviata |
-| `COMPLETATO` | Modifica verificata e chiusa |
-| `SCARTATO` | Il rilievo non richiede più azione |
-| `RINVIATO` | Valido, ma non prioritario |
-| `FUTURO` | Dipende da fasi non ancora disponibili |
+| Stato             | Significato                                                       |
+| ----------------- | ----------------------------------------------------------------- |
+| `DA VERIFICARE`   | Osservazione preliminare non ancora dimostrata                    |
+| `IN VERIFICA`     | Controllo in corso su codice, test e documenti                    |
+| `CONFERMATO`      | Discrepanza o necessità dimostrata                                |
+| `DA DECIDERE`     | Esistono più soluzioni ragionevoli o serve una scelta dell’utente |
+| `APPROVATO`       | L’utente ha approvato l’azione proposta                           |
+| `PRONTO PER TASK` | Perimetro, file, test e criteri sono definiti                     |
+| `IN ESECUZIONE`   | Una task separata è stata avviata                                 |
+| `COMPLETATO`      | Modifica verificata e chiusa                                      |
+| `SCARTATO`        | Il rilievo non richiede più azione                                |
+| `RINVIATO`        | Valido, ma non prioritario                                        |
+| `FUTURO`          | Dipende da fasi non ancora disponibili                            |
 
 ---
 
@@ -124,25 +126,25 @@ Ogni rilievo usa uno dei seguenti stati:
 
 Prefissi stabili:
 
-| Prefisso | Categoria |
-| --- | --- |
-| `DOC-` | Errori, duplicazioni, obsolescenza o struttura documentale |
-| `CODE-` | Difetti o incoerenze nel codice |
-| `DATA-` | Provenance, timestamp, identità e qualità dei dati acquisiti |
-| `TEST-` | Copertura, test non eseguiti, test mancanti o test obsoleti |
-| `RUNTIME-` | Launcher, processi, porte, CDP, lifecycle e shutdown |
-| `SOFA-` | Acquisizione e tracking SofaScore |
-| `BETFAIR-` | Acquisizione, health, Graph URL, ladder e lifecycle Betfair |
-| `STORAGE-` | History, timeline, journal, recovery e integrity |
-| `EVIDENCE-` | Match Evidence, Source Identity e Market Reactions |
-| `FRONTEND-` | Shell, polling, view model e componenti |
-| `SCRAPER-` | Package Python, CLI e compatibilità wrapper |
-| `PYTHON-` | Concorrenza, task asincrone e comportamento interno dei package Python |
+| Prefisso    | Categoria                                                                   |
+| ----------- | --------------------------------------------------------------------------- |
+| `DOC-`      | Errori, duplicazioni, obsolescenza o struttura documentale                  |
+| `CODE-`     | Difetti o incoerenze nel codice                                             |
+| `DATA-`     | Provenance, timestamp, identità e qualità dei dati acquisiti                |
+| `TEST-`     | Copertura, test non eseguiti, test mancanti o test obsoleti                 |
+| `RUNTIME-`  | Launcher, processi, porte, CDP, lifecycle e shutdown                        |
+| `SOFA-`     | Acquisizione e tracking SofaScore                                           |
+| `BETFAIR-`  | Acquisizione, health, Graph URL, ladder e lifecycle Betfair                 |
+| `STORAGE-`  | History, timeline, journal, recovery e integrity                            |
+| `EVIDENCE-` | Match Evidence, Source Identity e Market Reactions                          |
+| `FRONTEND-` | Shell, polling, view model e componenti                                     |
+| `SCRAPER-`  | Package Python, CLI e compatibilità wrapper                                 |
+| `PYTHON-`   | Concorrenza, task asincrone e comportamento interno dei package Python      |
 | `SECURITY-` | Redazione, superfici pubbliche, path locali e dati potenzialmente sensibili |
-| `CLEANUP-` | File legacy, codice morto, duplicazioni e materiali non canonici |
-| `WORKFLOW-` | Metodo operativo, ruoli, prompt, Git e revisione |
-| `IMPL-` | Implementazione utile individuata durante l’audit |
-| `FUTURE-` | Evoluzione non ancora autorizzata o dipendente da altre fasi |
+| `CLEANUP-`  | File legacy, codice morto, duplicazioni e materiali non canonici            |
+| `WORKFLOW-` | Metodo operativo, ruoli, prompt, Git e revisione                            |
+| `IMPL-`     | Implementazione utile individuata durante l’audit                           |
+| `FUTURE-`   | Evoluzione non ancora autorizzata o dipendente da altre fasi                |
 
 Gli ID non devono essere rinumerati. Se un rilievo viene scartato, il suo ID resta riservato.
 
@@ -152,12 +154,12 @@ Gli ID non devono essere rinumerati. Se un rilievo viene scartato, il suo ID res
 
 Le schede storiche conservano la propria forma. Per nuovi record si applica un minimo realistico per tipo:
 
-| Tipo | Campi minimi |
-| --- | --- |
+| Tipo                                            | Campi minimi                                                                   |
+| ----------------------------------------------- | ------------------------------------------------------------------------------ |
 | `DOC-*`, `WORKFLOW-*`, `CODE-*` e altri finding | ID, titolo, stato, priorità, evidenza, azione, verifica e criterio di chiusura |
-| `IMPL-*` | ID, stato, obiettivo, dipendenze, perimetro, test e criterio di chiusura |
-| `TEST-*` | ID, stato, contratto verificato, comando/harness, risultato o limite |
-| `DEC-*` | ID, stato, decisione, conseguenze e riferimenti superseded |
+| `IMPL-*`                                        | ID, stato, obiettivo, dipendenze, perimetro, test e criterio di chiusura       |
+| `TEST-*`                                        | ID, stato, contratto verificato, comando/harness, risultato o limite           |
+| `DEC-*`                                         | ID, stato, decisione, conseguenze e riferimenti superseded                     |
 
 I campi estesi seguenti restano consigliati quando utili, ma non sono imposti retroattivamente a ogni scheda storica:
 
@@ -250,7 +252,7 @@ la revisione deve:
 Non scegliere arbitrariamente.
 
 
-### 7.4 Formato dei nuovi documenti tecnici
+### 7.4 Formato corrente dei documenti tecnici
 
 Decisione dell’utente:
 
@@ -265,9 +267,9 @@ La migrazione è conclusa. Per nuovi documenti o modifiche correnti:
 - sostituire le funzionalità specifiche MDX con sintassi Markdown compatibile;
 - non copiare automaticamente `export const meta`, JSX, import o componenti MDX dentro file `.md`;
 - verificare prima il loader, il generatore o il sistema che legge `docs/`;
-- definire una forma equivalente per metadata, ordine, titolo e navigazione;
-- aggiornare tutti i link interni da `.mdx` a `.md`;
-- evitare che la vecchia versione `.mdx` e la nuova `.md` restino entrambe canoniche;
+- preservare metadata, ordine, titolo e navigazione nella forma Markdown adottata dal progetto;
+- mantenere i link interni coerenti con i percorsi effettivi;
+- evitare copie canoniche parallele dello stesso documento;
 - non reintrodurre una copia `.mdx` parallela;
 - trattare le istruzioni di coesistenza e conversione di massa come procedura storica, non come flusso ordinario.
 
@@ -301,7 +303,7 @@ Ordine approvato:
 5. docs/planning come fonte storica e progettuale separata
 ```
 
-Quando verrà analizzata, ogni voce di `docs/planning` dovrà essere classificata come:
+Quando una fonte di `docs/planning` viene riesaminata, ogni voce pertinente deve essere classificata come:
 
 ```txt
 SUPERATA
@@ -327,14 +329,14 @@ La lettura deve avvenire per gruppi tematici e non come caricamento indiscrimina
 
 ### 7.6 Modalità di riscrittura e consegna dei documenti
 
-Per la riscrittura della documentazione canonica, la modalità preferita è:
+Per la riscrittura di un documento, la modalità preferita è:
 
 ```txt
 file completo sostitutivo
 → download
 → inserimento manuale dell’utente
 → verifica
-→ eliminazione del vecchio file
+→ eventuale sostituzione o rimozione del vecchio file soltanto dopo il controllo
 ```
 
 Evitare, quando possibile:
@@ -345,17 +347,18 @@ Evitare, quando possibile:
 - rinomina automatica di massa senza conversione della sintassi;
 - richieste esecutive che devono ricostruire il contenuto completo da frammenti.
 
-Per una singola area, l’assistente deve poter produrre:
+Per una singola area, la consegna deve includere soltanto gli artefatti richiesti dal perimetro:
 
 ```txt
-nuovi file .md completi
-+ manifest di migrazione
-+ elenco file .mdx da rimuovere dopo verifica
-+ elenco link aggiornati
-+ checklist di controllo
+file .md completi
++ elenco dei percorsi interessati, se necessario
++ link da aggiornare, se presenti
++ controlli eseguiti e limiti
 ```
 
-Per più file o una directory completa, la consegna consigliata è un archivio ZIP che preserva la struttura:
+Un manifest di migrazione e un archivio che preserva la struttura sono richiesti soltanto quando il perimetro comprende più file o una directory completa. Non appartengono alla consegna ordinaria di un singolo documento.
+
+Esempio per una migrazione multi-file:
 
 ```txt
 docs-tennis-decision-ui-md/
@@ -377,20 +380,21 @@ percorso precedente
 
 L’utente resta responsabile dell’inserimento nel repository e delle operazioni Git.
 
-Questa modalità riduce gli errori rispetto a una patch terminale, ma richiede comunque una revisione del contenuto completo e dei link prima della rimozione dei vecchi `.mdx`.
+Questa modalità richiede comunque una revisione del contenuto completo e dei link prima di sostituire o rimuovere file esistenti.
 
 ---
 
-## 7.7 Coerenza obbligatoria dei registri
+### 7.7 Coerenza obbligatoria dei registri
 
 Il checkpoint B6 ha dimostrato che un rilievo può essere presente nel registro analitico ma mancare dalla vista sintetica.
 
 Regola aggiuntiva:
 
 ```txt
-ogni ID dettagliato
-→ compare nella Todo
-→ compare nel BLOCCO E dei rilievi
+ogni ID dettagliato soggetto a parity
+→ compare una sola volta nella Todo
+→ compare nel BLOCCO E se è un finding
+→ compare nel BLOCCO F se è un'implementazione
 → usa un prefisso dichiarato
 → mantiene lo stesso stato sostanziale
 ```
@@ -407,9 +411,9 @@ ID
 Controlli minimi di checkpoint:
 
 ```txt
-ID nel registro documentazione
-∪ ID nel registro codice
-→ uguali agli ID sintetici della Todo
+owner card ricorsive in implementazioni/**/*.md
+escluse le decisioni DEC-*
+→ uguali agli ID sintetici dei blocchi E e F della Todo
 
 prefissi usati
 → sottoinsieme dei prefissi dichiarati
@@ -417,22 +421,24 @@ prefissi usati
 stato COMPLETATO
 → non può convivere con una Todo ancora DA VERIFICARE
 
-ID DA DECIDERE
-→ deve comparire anche nel registro decisioni quando la scelta diventa operativa
+ultima decisione DEC-*
+→ deve essere richiamata nei registri sintetici root o Todo
 ```
 
-Il controllo automatico è implementato da `IMPL-005` e deve essere eseguito prima di ogni pacchetto di checkpoint. Un esito non verde blocca la chiusura del checkpoint finché i finding non sono classificati o corretti.
+Il controllo automatico è implementato da `IMPL-005` e deve essere eseguito prima di ogni pacchetto di checkpoint. Un esito con errori blocca la chiusura del checkpoint finché le incoerenze non sono classificate o corrette; gli eventuali warning restano distinti dagli errori.
 
 Contratto effettivo del checker corrente:
 
-- discovery ricorsiva di `implementazioni/**/*.md`;
-- confronto fra owner card e righe sintetiche dei blocchi E e F della Todo;
+- discovery ricorsiva delle owner card in `implementazioni/**/*.md` mediante heading Markdown con ID e titolo;
+- confronto di parità fra owner card e righe sintetiche dei blocchi E e F della Todo;
 - esclusione delle decisioni `DEC-*` dalla parity dei finding;
-- vocabolario di stati riconosciuto e compatibilità sostanziale degli stati;
-- controlli sui metadata sintetici implementati, inclusi SHA/range, Punto e prossimo passo dove previsti;
-- duplicati owner e prefissi non dichiarati.
+- rilevazione di duplicati owner e righe sintetiche duplicate;
+- controllo dei prefissi usati nelle identità canoniche rispetto ai prefissi dichiarati in questo documento;
+- vocabolario di stati riconosciuto e controllo delle contraddizioni sostanziali esplicitamente codificate;
+- controlli sui metadata sintetici implementati: coerenza degli SHA esposti, range, ultimo ID `TEST-*` e `IMPL-*`, ultima decisione riassunta, ultimo Punto e prossimo passo;
+- output testuale o JSON, comportamento read-only e codice di ritorno non zero in presenza di errori.
 
-Il checker non prova la correttezza semantica del codice, non valida ogni campo dello schema esteso e non sostituisce link checker, test o audit manuale.
+Il checker non prova la correttezza semantica del codice o dei documenti, non esegue le task, non valida ogni campo dello schema esteso, non pretende l'identità letterale di tutti gli stati e non sostituisce link checker, test o audit manuale.
 
 ### 7.8 Owner canonico, note e addendum
 

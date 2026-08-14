@@ -252,8 +252,6 @@ ricontrollo task completate
 
 ---
 
----
-
 ## 8.2 Stato dopo il ricontrollo D1–D18
 
 Baseline invariata:

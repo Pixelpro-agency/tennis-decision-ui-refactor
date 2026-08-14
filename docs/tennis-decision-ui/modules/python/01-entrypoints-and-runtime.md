@@ -49,12 +49,16 @@ Betfair login-only
 → processo di lifecycle
 → nessun JSON finale richiesto
 
-errore di parsing o validazione CLI
+input SofaScore mancante o non valido
+→ errore JSON su stdout
+→ exit code non-zero
+
+errore di parsing o validazione CLI Betfair
 → exit code non-zero
 → diagnostica su stderr
 ```
 
-I log diagnostici devono usare `stderr`, essere bounded e redatti prima della scrittura. I logger Betfair e SofaScore applicano la stessa redazione bounded; i failure payload pubblici preferiscono code e messaggi statici.
+I log diagnostici degli scraper devono usare `stderr`, essere bounded e redatti prima della scrittura. I logger Betfair e SofaScore applicano la stessa redazione bounded; i failure payload pubblici preferiscono code e messaggi statici.
 
 Il backend Node non deve registrare stdout raw, stderr raw, argomenti completi dello spawn, URL complete o messaggi raw del child process quando possono contenere dati sensibili.
 
@@ -79,32 +83,6 @@ Il relativo helper possiede l’invocazione di `betfair_scraper.py`.
 
 Il backend Node non deve importare o invocare direttamente moduli interni di `scrapers/`.
 
-## Stato
-
-Validato live, inclusa la correzione finale del launcher:
-
-```txt
-avvio canonico
-seconda invocazione launcher bloccata dal lock attivo
-shutdown Ctrl+C
-terminazione backend/frontend owned
-preservazione CDP reused
-riavvio pulito
-```
-
-Il collaudo finale del launcher ha confermato che la seconda invocazione termina senza `session_reuse`, `browser_open` o nuovi servizi e lascia invariati lock, manifest e identità della prima sessione.
-
-Il backend Node implementa inoltre una writer authority separata dal launcher lock. I test automatici IMPL-015 sono passati, ma non è stato eseguito un collaudo manuale con due backend reali concorrenti.
-
-Restano da validare live:
-
-```txt
-fallback backend/frontend con porte occupate da processi esterni
-CDP reale alternativo
-force-kill realmente necessario
-due backend reali concorrenti sulla stessa storage identity
-```
-
 ## Launcher
 
 ```txt
@@ -115,7 +93,8 @@ launcher/
 ├── session.py
 ├── system.py
 └── tests/
-    └── test_launcher.py
+    ├── test_launcher.py
+    └── test_runtime_hardening.py
 ```
 
 | File                     | Responsabilità                                                                            |
@@ -126,6 +105,7 @@ launcher/
 | `session.py`             | Lock e manifest runtime atomico, verifica riuso e registrazione ownership.                |
 | `system.py`              | Logging, probe porte, verifiche HTTP e attese limitate.                                   |
 | `tests/test_launcher.py` | Test deterministici del lifecycle launcher.                                               |
+| `tests/test_runtime_hardening.py` | Test mirati dei contratti runtime e dell'hardening.                              |
 
 `system.py` non termina processi in base alla sola porta.
 
@@ -242,7 +222,7 @@ Il launcher riusa un endpoint CDP valido esistente.
 
 La discovery considera al massimo cinque porte candidate, dalla porta preferita fino alla quarta porta successiva.
 
-Quando non trova un endpoint valido, può richiedere l'avvio di Chrome dedicato su una porta libera e passare al frontend l'URL candidato.
+Quando non trova un endpoint valido, può richiedere all'helper l'avvio di Chrome dedicato su una porta libera e passare al frontend l'URL candidato.
 
 Il CDP non blocca l'avvio di backend e frontend.
 
@@ -341,19 +321,13 @@ Dalla root:
 ```powershell
 python -m py_compile .\avvio.py .\scraper.py .\betfair_scraper.py
 python -m compileall launcher scrapers
-python -m unittest launcher.tests.test_launcher
+python -m unittest launcher.tests.test_launcher launcher.tests.test_runtime_hardening
 ```
 
 Poi:
 
 ```powershell
 python -c "from launcher.app import main; from scrapers.sofa.cli import main as sofa_main; from scrapers.betfair.cli import main as betfair_main; print('import OK')"
-```
-
-Infine, quando necessario:
-
-```powershell
-python .\avvio.py
 ```
 
 La writer authority è verificata dai test Node owner, non dai test launcher:
@@ -364,24 +338,23 @@ backend/src/server.test.mjs
 backend/src/sofa/matchTracker.test.mjs
 ```
 
-La matrice di hardening copre:
+### Matrice di verifica
 
-```txt
-modalità scrape e login-only dei wrapper
-redazione bounded della diagnostica SofaScore
-overflow stdout e terminazione owned del child SofaScore
-failure di creazione e replace del manifest
-riconciliazione CDP delayed-ready e stato provisional
-gerarchia cross-runtime dei timeout di shutdown
-bind locale backend
-```
+| Contratto                                                                      | Implementazione primaria                        | Verifica mirata                                                                                                                     |
+| ------------------------------------------------------------------------------ | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Wrapper root sottili e importabili                                             | `avvio.py`, `scraper.py`, `betfair_scraper.py`  | `py_compile`, `compileall`, import smoke                                                                                            |
+| SofaScore scrape: JSON su stdout; input non valido: JSON e codice non-zero     | `scrapers/sofa/cli.py`                          | `launcher/tests/test_runtime_hardening.py`                                                                                          |
+| Betfair scrape e login-only distinti                                           | `scrapers/betfair/cli.py`                       | login-only: `launcher/tests/test_runtime_hardening.py`; lifecycle login: `backend/src/routes/betfair/loginWindowLifecycle.test.mjs` |
+| Diagnostica SofaScore bounded e redatta                                        | `scrapers/sofa/config.py`                       | `launcher/tests/test_runtime_hardening.py`                                                                                          |
+| Limite stdout SofaScore e terminazione del child owned                         | `backend/src/sofa/directFetch.js`               | `backend/src/sofa/directFetch.test.mjs`                                                                                             |
+| Lock, manifest atomico, riuso e ownership launcher                             | `launcher/session.py`, `launcher/app.py`        | `launcher/tests/test_launcher.py`, `launcher/tests/test_runtime_hardening.py`                                                       |
+| CDP delayed-ready e stato `starting`                                           | `launcher/services.py`                          | `launcher/tests/test_launcher.py`, `launcher/tests/test_runtime_hardening.py`                                                       |
+| Avvio diretto backend/frontend e bind locale                                   | `launcher/services.py`, `backend/src/server.js` | `launcher/tests/test_launcher.py`, `backend/src/server.test.mjs`                                                                    |
+| Gerarchia dei timeout e shutdown dei soli processi owned                       | `launcher/services.py`, `backend/src/server.js` | `launcher/tests/test_launcher.py`, `launcher/tests/test_runtime_hardening.py`, `backend/src/server.test.mjs`                        |
+| Registry dei figli Python separato dal launcher                                | `backend/src/runtime/pythonProcessRegistry.js`  | `backend/src/runtime/pythonProcessRegistry.test.mjs`, `backend/src/server.test.mjs`                                                 |
+| Writer authority acquisita prima di recovery/listen e rilasciata dopo il drain | `backend/src/server.js`                         | `backend/src/runtime/matchHistoryWriterAuthority.test.mjs`, `backend/src/server.test.mjs`, `backend/src/sofa/matchTracker.test.mjs` |
 
-I test mirati aggiuntivi sono in:
-
-```txt
-launcher/tests/test_runtime_hardening.py
-backend/src/sofa/directFetch.test.mjs
-```
+Le prove manuali di avvio, riuso, shutdown e fallback appartengono al runbook operativo e ai documenti di validation, non a questo owner tecnico.
 
 ## Confini con il runbook operativo
 

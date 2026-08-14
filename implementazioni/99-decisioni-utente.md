@@ -655,14 +655,14 @@ La decisione non autorizza:
 
 ## DEC-026 — Consolidamento e rimozione delle fonti archive
 
-**Stato:** approvata integralmente.
+**Stato:** approvata integralmente; il solo punto 3 è superato da `DEC-027`.
 
 1. il repository non deve conservare prompt, backlog, pacchetti esecutivi o ODT
    separati quando il contenuto utile è già nei documenti di lavoro;
 2. ogni fonte viene letta prima della rimozione e il contenuto unico viene
    trasferito nell'owner, nel registro o nella validation pertinente;
-3. `docs/archive/README.md` conserva una descrizione breve della provenienza e
-   della destinazione, non copie complete;
+3. `docs/archive/README.md` avrebbe dovuto conservare una descrizione breve della
+   provenienza e della destinazione; questo punto è superato da `DEC-027`;
 4. i report di collaudo con evidenza utile restano in `docs/validations/`;
 5. le idee future consolidate restano esplicitamente non implementate;
 6. i pacchetti ZIP, report di consegna e sorgenti temporanee scaricati sul PC
@@ -701,7 +701,7 @@ docs/validations/
 
 ## DEC-027 — Closeout della directory archive
 
-**Stato:** applicata; chiarimento superseding del solo punto 3 di `DEC-026`.
+**Stato:** applicata; supera il solo punto 3 di `DEC-026`.
 
 La mappa di provenienza inizialmente prevista in `docs/archive/README.md` è stata consolidata nel record di migrazione e nei registri owner. Dopo tale verifica anche il README e la directory vuota sono stati rimossi. Non esiste quindi un owner corrente sotto `docs/archive/` e la directory non deve essere ricreata automaticamente.
 

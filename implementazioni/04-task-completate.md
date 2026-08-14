@@ -1,9 +1,9 @@
 
 # Tennis Decision UI — Ricontrollo delle task considerate completate
 
-> Ogni task è stata ricontrollata sul repository corrente distinguendo implementazione, test automatici presenti, collaudi live documentati, limiti e discrepanze emerse durante l’audit B1–B6.
+> Questo registro conserva il ricontrollo D1–D18 eseguito sulla baseline storica dichiarata nella sezione 1, distinguendo implementazione osservata, test automatici presenti, collaudi live documentati, limiti e discrepanze emerse durante l’audit B1–B6.
 
-> **Snapshot storico:** gli esiti D1–D18 sotto appartengono alla baseline `b277bd9b7373dfd8702e65446c88bab7a0f64dcc`. Non descrivono automaticamente HEAD o la working tree corrente. Lo stato operativo prevalente vive nella Todo e negli owner tecnici; l'overlay seguente collega gli approfondimenti successivi senza riscrivere il checkpoint.
+> **Snapshot storico:** gli esiti D1–D18, i conteggi, i limiti, le strutture assenti e l’ordine tecnico riportati sotto appartengono alla baseline `b277bd9b7373dfd8702e65446c88bab7a0f64dcc`. Non descrivono automaticamente HEAD o la working tree corrente. Per lo stato operativo successivo prevalgono la Todo e gli owner tecnici. Il riscontro separato della sezione 3 collega il checkpoint al CODE AUTHORITY senza ricertificare né riscrivere retroattivamente la campagna storica.
 
 ## 1. Baseline del ricontrollo
 
@@ -32,14 +32,14 @@ contratto dichiarato
 
 ## 2. Esiti consentiti
 
-| Esito | Significato |
-| --- | --- |
-| `CONFERMATA` | Implementazione e prove disponibili coerenti con il contratto della task |
-| `CONFERMATA CON LIMITI` | Nucleo corretto, ma restano validazioni o hardening separati |
-| `DOCUMENTAZIONE DA CORREGGERE` | Codice corretto, testo non allineato |
-| `TEST DA AGGIORNARE` | Implementazione plausibile, copertura insufficiente o obsoleta |
-| `DA RIAPRIRE` | Esiste una discrepanza concreta nello scope dichiarato della task |
-| `NON VERIFICABILE` | Mancano codice, ambiente o evidenze sufficienti |
+| Esito                          | Significato                                                              |
+| ------------------------------ | ------------------------------------------------------------------------ |
+| `CONFERMATA`                   | Implementazione e prove disponibili coerenti con il contratto della task |
+| `CONFERMATA CON LIMITI`        | Nucleo corretto, ma restano validazioni o hardening separati             |
+| `DOCUMENTAZIONE DA CORREGGERE` | Codice corretto, testo non allineato                                     |
+| `TEST DA AGGIORNARE`           | Implementazione plausibile, copertura insufficiente o obsoleta           |
+| `DA RIAPRIRE`                  | Esiste una discrepanza concreta nello scope dichiarato della task        |
+| `NON VERIFICABILE`             | Mancano codice, ambiente o evidenze sufficienti                          |
 
 Non usare `DA RIAPRIRE` per una semplice proposta futura.
 
@@ -47,42 +47,49 @@ Quando una task è `DA RIAPRIRE`, va riaperta soltanto la parte difettosa. Non s
 
 ---
 
-## 3. Esito complessivo D1–D18
+## 3. Esito storico complessivo D1–D18
 
-| ID | Task | Esito reale |
-| --- | --- | --- |
-| D1 | Source Identity Task 1A | `CONFERMATA CON LIMITI` |
-| D2 | Source Identity frontend Task 1B | `CONFERMATA CON LIMITI` |
-| D3 | Money Flow 2A | `CONFERMATA` |
-| D4 | Money Flow 2B | `CONFERMATA` |
-| D5 | Money Flow 2C | `CONFERMATA` |
-| D6 | Money Flow 2D | `CONFERMATA` |
-| D7 | Money Flow 2E | `CONFERMATA` |
-| D8 | Validazione live Betfair 2F | `CONFERMATA CON LIMITI` |
-| D9 | Runtime launcher Task 2 | `CONFERMATA CON LIMITI` |
-| D10 | Stop globale Task 3a | `CONFERMATA` |
-| D11 | Timeline store Task 4 | `CONFERMATA` |
-| D12 | Commit journal Task 6 | `CONFERMATA` |
-| D13 | Recovery | `CONFERMATA CON LIMITI` |
-| D14 | Persistence integrity | `DA RIAPRIRE` — solo chiusura frontend/cross-layer |
-| D15 | Evidence degradation | `CONFERMATA` |
-| D16 | Context locale V1 | `CONFERMATA CON LIMITI` |
-| D17 | Diagnostica Betfair | `DA RIAPRIRE` — solo hardening pubblico e capture |
-| D18 | Retention cache runtime | `CONFERMATA CON LIMITI` |
+| ID  | Task                             | Esito al checkpoint `b277bd9`                      |
+| --- | -------------------------------- | -------------------------------------------------- |
+| D1  | Source Identity Task 1A          | `CONFERMATA CON LIMITI`                            |
+| D2  | Source Identity frontend Task 1B | `CONFERMATA CON LIMITI`                            |
+| D3  | Money Flow 2A                    | `CONFERMATA`                                       |
+| D4  | Money Flow 2B                    | `CONFERMATA`                                       |
+| D5  | Money Flow 2C                    | `CONFERMATA`                                       |
+| D6  | Money Flow 2D                    | `CONFERMATA`                                       |
+| D7  | Money Flow 2E                    | `CONFERMATA`                                       |
+| D8  | Validazione live Betfair 2F      | `CONFERMATA CON LIMITI`                            |
+| D9  | Runtime launcher Task 2          | `CONFERMATA CON LIMITI`                            |
+| D10 | Stop globale Task 3a             | `CONFERMATA`                                       |
+| D11 | Timeline store Task 4            | `CONFERMATA`                                       |
+| D12 | Commit journal Task 6            | `CONFERMATA`                                       |
+| D13 | Recovery                         | `CONFERMATA CON LIMITI`                            |
+| D14 | Persistence integrity            | `DA RIAPRIRE` — solo chiusura frontend/cross-layer |
+| D15 | Evidence degradation             | `CONFERMATA`                                       |
+| D16 | Context locale V1                | `CONFERMATA CON LIMITI`                            |
+| D17 | Diagnostica Betfair              | `DA RIAPRIRE` — solo hardening pubblico e capture  |
+| D18 | Retention cache runtime          | `CONFERMATA CON LIMITI`                            |
 
-### Overlay corrente sugli esiti storici
+### Riscontro separato sul CODE AUTHORITY
 
-| Esiti | Owner successivi | Stato corrente sintetico |
-| --- | --- | --- |
-| D5–D6 | `TECH-SAMPLE-*`, moduli Betfair | validità tecnica, identità runner e missing semantics implementate e verificate |
-| D9 | `PY-RUNTIME-*`, `LOCAL-RUNTIME-*` | launcher, ownership, manifest, readiness e reuse hardenizzati |
-| D10 | `SOFA-LIVE-*`, `LIVE-CTRL-*` | Stop e session authority migliorati; retry dopo cleanup remaining resta aperto |
-| D11 | `STORAGE-TH-*` | timeline/history fail-closed e materialità separate |
-| D12–D13 | `JOURNAL-REC-*` | journal e recovery semanticamente verificati e testati |
-| D14 | Todo e owner persistence/frontend | resta riaperta per il residuo cross-layer dichiarato |
-| D16 | `MATCH-CONTEXT-*`, `LOCAL-PBP-*` | contratto versionato, current-game identity e PBP validati |
-| D17 | `BETFAIR-DIAG-*` | gran parte dell'hardening è confluita nel codice e nei runbook; la recovery auth completa resta aperta |
-| D18 | `RETENTION-*` | policy cache e partial apply documentati; snapshot backup coerente resta aperto |
+Il riscontro seguente è limitato al commit `12b344ea96e71b2bdaa6931c98419ce925b5c228`. Non costituisce una nuova esecuzione della campagna D1–D18 e non sostituisce gli esiti storici. Indica soltanto se il codice corrente consultato e gli owner operativi mostrano evoluzioni pertinenti rispetto al checkpoint.
+
+```txt
+CODE AUTHORITY: 12b344ea96e71b2bdaa6931c98419ce925b5c228
+Test: file e contratti presenti ispezionati; suite non rieseguite per questa revisione documentale
+Stato operativo: demandato a todo-list-tennis-decision-ui.md e agli owner tecnici
+```
+
+| Esiti storici interessati | Riferimento corrente                                                    | Riscontro limitato al CODE AUTHORITY                                                                                                                                             |
+| ------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D2, D14                   | `frontend/src/App.jsx`; Todo, blocco C11                                | il residuo frontend/cross-layer di persistence integrity è ancora registrato come aperto; il checkpoint non viene promosso a chiuso                                              |
+| D5–D6                     | `backend/src/sofa/betfair/processor/runnerProcessing.js`; owner Betfair | identità `selectionId`, valori runner distinti e blocco delle regressioni sono presenti nel codice consultato; nessuna nuova esecuzione test è attestata qui                     |
+| D10                       | `backend/src/routes/match/trackingResponses.js`; Todo runtime           | Stop restituisce anche l’esito strutturato del cleanup Python e può segnalare `ok:false`; gli ulteriori finding di autorità/sessione restano responsabilità degli owner correnti |
+| D11–D13                   | owner storage/recovery e Todo                                           | il CODE AUTHORITY conserva bootstrap recovery e contratti di persistenza richiamati; la loro evoluzione successiva non modifica gli esiti del checkpoint                         |
+| D16                       | owner Match Context/PBP e Todo                                          | il comportamento corrente resta descritto dagli owner dedicati; il limite live storico non viene rimosso senza una nuova evidenza di collaudo                                    |
+| D17–D18                   | owner diagnostica/retention e Todo                                      | risultano ancora attività operative o di hardening separate; questo registro non ne assume la chiusura né ne ridefinisce il perimetro                                            |
+
+Le task non elencate nel riscontro non ricevono uno stato corrente implicito. L’assenza di una riga non significa né conferma né riapertura.
 
 Conteggio:
 
@@ -1008,7 +1015,7 @@ Aprire un hardening separato prima di usare l’apply come procedura operativa o
 
 ---
 
-## 4. Task da riaprire
+## 4. Task da riaprire secondo il checkpoint storico
 
 Soltanto due task ricevono lo stato primario `DA RIAPRIRE`.
 
@@ -1045,7 +1052,7 @@ non riaprire:
 
 ---
 
-## 5. Strutture e procedure completamente assenti emerse dal ricontrollo
+## 5. Strutture e procedure assenti emerse nel checkpoint storico
 
 Il ricontrollo ha confermato quattro strutture non presenti come componente unico o procedura ripetibile.
 
@@ -1069,7 +1076,7 @@ Queste voci devono essere analizzate dopo il ricontrollo, insieme al raggruppame
 
 ---
 
-## 6. Ordine tecnico risultante
+## 6. Ordine tecnico risultante dal checkpoint storico
 
 Ordine consigliato, ancora da trasformare in task esecutive:
 
@@ -1119,7 +1126,7 @@ Prima delle task esecutive vanno risolte soltanto le decisioni che cambiano il p
 
 ---
 
-## 7. Esito del blocco D
+## 7. Esito storico del blocco D
 
 ```txt
 D1–D18

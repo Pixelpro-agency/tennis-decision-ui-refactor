@@ -1,104 +1,107 @@
 # Tennis Decision UI — Validazione, fixture e test harness
 
-> **Registro principale:** [06-implementazioni-proposte.md](../06-implementazioni-proposte.md)
-> **Perimetro:** IMPL-028…031
-> **Parte precedente:** [Frontend, sessione live e polling](05-frontend-session-polling.md)
+> **Registro principale:** [06-implementazioni-proposte.md](../06-implementazioni-proposte.md)  
+> **Perimetro:** `IMPL-028…031`  
+> **Parte precedente:** [Frontend, sessione live e polling](05-frontend-session-polling.md)  
 > **Parte successiva:** [Migrazione documentale e normalizzazione dei registri](07-documentazione-e-normalizzazione.md)
 
-## 21. Implementazioni approvate dal Punto 7
+## 21. Modulo di validazione
 
-**Baseline:** `275008a5cd6451f24c6895068639ee3055395986`
-**Stato:** `APPROVATE`
+Questo file è la facade stabile del modulo di validazione.
 
-### IMPL-028 — Manifest e runner canonico di validazione
+Le responsabilità owner sono separate nei tre documenti tematici:
 
-**Classificazione:** `NECESSARIA`
-**Stato:** `IMPLEMENTATA E VALIDATA LOCALMENTE`
-**Priorità:** critica
+| Documento                                                                                         | Owner                  | Responsabilità                                                           | Stato                                                           |
+| ------------------------------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| [01-runner-e-result-ledger.md](06-validazione-e-fixture/01-runner-e-result-ledger.md)             | `IMPL-028`, `IMPL-031` | runner, manifest, run artifact JSON v1, result contract e ledger storico | `IMPL-028` completata; `IMPL-031` aperta con copertura parziale |
+| [02-fixture-e-sandbox.md](06-validazione-e-fixture/02-fixture-e-sandbox.md)                       | `IMPL-029`             | fixture catalog, provenance, sandbox e cleanup                           | aperta                                                          |
+| [03-frontend-interaction-harness.md](06-validazione-e-fixture/03-frontend-interaction-harness.md) | `IMPL-030`             | harness DOM, lifecycle e interazioni frontend                            | aperta con copertura parziale                                   |
 
-### Problema
+Il path di questa facade resta stabile per la navigazione dal registro principale e dai moduli adiacenti.
 
-Il repository non possiede una lista eseguibile unica dei test e dei controlli.
-
-Backend, frontend e Python espongono comandi diversi, mentre il runbook copia manualmente i path.
-
-### Obiettivo
-
-Creare un runner locale deterministico che:
+### Boundary degli owner
 
 ```txt
-legge un manifest
-→ valida path e schema
-→ seleziona un profilo
-→ esegue i comandi in processi isolati
-→ applica timeout e serial group
-→ normalizza gli esiti
-→ produce un result artifact bounded
+IMPL-028
+→ possiede manifest e runner canonico
+→ possiede il run artifact JSON v1 necessario al runner
+→ resta completata e validata localmente
+
+IMPL-031
+→ estende il result contract oltre il run artifact v1
+→ possiede ledger storico, latest-result authority e semantiche mancanti
+→ resta aperta
+→ TEST-069 e TEST-070 restano parziali
+
+IMPL-029
+→ possiede fixture catalog e sandbox condivisa
+→ resta aperta
+
+IMPL-030
+→ possiede frontend interaction harness
+→ resta aperta
 ```
 
-### Struttura proposta
+`IMPL-031` non è una hard prerequisite per l'esistenza del runner o del run artifact v1 di `IMPL-028`.
+
+La relazione corretta è:
 
 ```txt
-scripts/validation/
-├── test-manifest.json
-├── run.mjs
-├── result-schema.json
-└── support/
+IMPL-028
+→ runner + manifest + v1 run artifact
+
+IMPL-031
+→ estensione del result contract
+→ historical/result ledger
+→ latest result/reference state
+→ requirement coverage semantics
 ```
 
-Non è richiesto un package root generale prima della prima versione.
+Questa distinzione evita una dipendenza ciclica tra i due owner e preserva il closeout di `IMPL-028`.
 
-Il comando canonico può essere:
+### Riferimenti TEST
 
-```bash
-node scripts/validation/run.mjs <profilo>
-```
+Il blocco `TEST-060…075` dell'ordine approvato resta preservato.
 
-### Profili minimi
+I child documentano i TEST-ID attribuiti esplicitamente ai rispettivi owner:
 
 ```txt
-fast
-→ test puri e rapidi
-→ nessun browser
-→ nessuna rete esterna
-→ nessun tracking
+01-runner-e-result-ledger.md
+→ TEST-060…064
+→ TEST-068
+→ TEST-069
+→ TEST-070
+→ TEST-073
 
-backend
-→ test backend offline
+02-fixture-e-sandbox.md
+→ TEST-065…067
 
-frontend
-→ test frontend + build
-
-python
-→ unittest + compile check
-
-persistence
-→ harness IMPL-008
-
-full-offline
-→ tutte le verifiche deterministiche
-
-benchmark
-→ misure IMPL-013
-→ mai gate ordinario
-
-live
-→ soltanto esplicito
-→ mai incluso per default
+03-frontend-interaction-harness.md
+→ TEST-044…058
+→ TEST-059
+→ TEST-071
 ```
 
-### Manifest entry
+`TEST-069` e `TEST-070` non sono chiusi: il run artifact v1 fornisce copertura parziale, ma il result ledger completo non è ancora implementato.
 
-Campi minimi:
+I riferimenti del range `TEST-060…075` non attribuiti in modo più specifico in queste card restano parte del perimetro di validazione senza essere ridefiniti artificialmente.
+
+---
+
+## 21.1 Estensioni condivise
+
+Le relazioni trasversali restano centralizzate in questa facade per evitare duplicazioni nei tre child.
+
+### IMPL-003 — Test map machine-checkable
+
+Il manifest di validazione espone già campi utili alla mappa:
 
 ```txt
 id
-label
 area
 owner
 requirementIds
 command
-cwd
 type
 profiles
 timeoutSec
@@ -106,668 +109,88 @@ serialGroup
 fixtures
 mutatesFilesystem
 liveRequired
-enabled
 ```
 
-### Strategia di migrazione
-
-La prima versione non importa i test legacy nello stesso processo.
-
-Ogni entry viene eseguita come child process separato:
+Il runner applica già:
 
 ```txt
-cwd esplicita
-command esplicito
-timeout
-stdout/stderr bounded
-exit code
-signal
-startedAt/completedAt
-durationMs
+formato TEST-NNN
+ownership univoca dei TEST-ID tra le entry
 ```
 
-Vantaggi:
+La mappa completa test ↔ owner ↔ documento non è però equivalente al solo manifest corrente.
 
-- nessuna contaminazione dei global state;
-- `process.exitCode` resta isolato;
-- i mini-runner esistenti continuano a funzionare;
-- la migrazione non richiede una riscrittura massiva;
-- il runner può essere introdotto prima delle correzioni funzionali.
+### IMPL-005 — Coerenza registri
 
-### Preflight obbligatorio
-
-Prima di avviare la suite:
+Il manifest integra due entry documentali read-only:
 
 ```txt
-manifest valido
-path esistenti
-ID univoci
-profili validi
-timeout finiti
-cwd interna al repository
-command allow-list
-fixture esistenti
+documentation-registry-consistency
+documentation-link-check
 ```
 
-Un path mancante è un errore di configurazione, non un test fallito.
-
-### Process isolation e serial group
-
-Entry con risorse condivise dichiarano un `serialGroup`, per esempio:
-
-```txt
-filesystem-persistence
-local-http-port
-launcher-global-state
-frontend-build
-```
-
-Il runner può parallelizzare soltanto entry che non condividono lo stesso gruppo.
-
-La prima versione può essere interamente seriale per ridurre rischio e complessità.
-
-### Timeout
-
-Ogni entry possiede un timeout esplicito.
-
-In caso di superamento:
-
-```txt
-terminate child
-→ escalation bounded se necessario
-→ stato timeout
-→ nessun loop infinito
-→ output bounded
-```
-
-### Stati normalizzati
-
-```txt
-planned
-implemented
-executed
-passed
-failed
-blocked
-skipped
-live_observed
-not_applicable
-```
-
-`planned` non è un esito di esecuzione.
-
-### Vincoli
-
-Il runner non deve:
-
-- avviare implicitamente Chrome;
-- usare credenziali;
-- effettuare login;
-- avviare tracking live;
-- modificare persistence reale;
-- inventare PASS per test assenti;
-- correggere automaticamente documenti o manifest;
-- inglobare fixture, replay e benchmark in un unico modulo monolitico.
-
-### Dipendenze
-
-```txt
-IMPL-005
-→ coerenza registri
-
-IMPL-031
-→ result artifact
-
-IMPL-003
-→ test map
-```
-
-### Test minimi
-
-```txt
-TEST-060
-TEST-061
-TEST-062
-TEST-063
-TEST-064
-TEST-068
-TEST-073
-```
-
-### Implementazione iniziale — 2026-08-03
-
-File introdotti:
-
-```txt
-scripts/validation/test-manifest.json
-scripts/validation/manifest-schema.json
-scripts/validation/result-schema.json
-scripts/validation/run.mjs
-scripts/validation/run.test.mjs
-scripts/validation/support/
-scripts/validation/README.md
-```
-
-Profili eseguibili:
+Entrambe appartengono ai profili:
 
 ```txt
 fast
-backend
-frontend
-python
 full-offline
 ```
 
-Profili riconosciuti ma non eseguibili:
+Questa integrazione resta separata dalle responsabilità specifiche dei tre child.
+
+### IMPL-008 — Profilo persistence
+
+Il profilo:
 
 ```txt
-persistence → dipende da IMPL-008
-benchmark → dipende da IMPL-013
-live → non implementato e mai implicito
+persistence
 ```
 
-Contratti applicati:
+è riconosciuto dal manifest ma resta:
 
 ```txt
-manifest preflight completo
-→ ID e comando univoci
-→ cwd/path/fixture interne alla repository
-→ command allow-list con shell:false
-→ child process separato
-→ timeout con escalation bounded
-→ stdout/stderr redatti e limitati
-→ artifact JSON sotto test-results/
+enabled: false
+status: planned
 ```
 
-Il manifest iniziale registra la superficie verificata nel Punto 7 e i checker documentali. Non viene dichiarato inventario completo di ogni test legacy: il completamento della mappa test ↔ owner ↔ documento resta `IMPL-003`.
+La sua attivazione richiede una sandbox persistence dedicata e non riapre `IMPL-028`.
 
-Esito dei test isolati del runner nel pacchetto di consegna:
+### IMPL-012 — Replay
+
+Il replay resta un modulo dedicato.
+
+Nel manifest corrente non esiste un profilo `replay` né una entry replay dedicata.
+
+L'eventuale integrazione nel runner deve restare un'invocazione isolata e non incorporare il replay nel runner stesso.
+
+### IMPL-013 — Profilo benchmark
+
+Il profilo:
 
 ```txt
-17 passati
-0 falliti
+benchmark
 ```
 
-È stata eseguita anche una prova strutturale dei cinque profili su repository sintetica: `fast 6/6`, `backend 6/6`, `frontend 5/5`, `python 5/5`, `full-offline 19/19`. La prova non contiene il codice applicativo e non viene registrata come PASS delle suite reali.
-
-La chiusura operativa richiede ancora l'esecuzione dei profili sulla working tree Windows dell'utente. Nessun profilo live è stato eseguito o simulato.
-
-#### Addendum post-validazione locale — 2026-08-03
-
-Il primo preflight reale ha correttamente bloccato tutti i profili con exit code `2`, perché il manifest conteneva due percorsi storici inesistenti:
+resta:
 
 ```txt
-backend/src/sofa/matchHistory/commitJournal.test.mjs
-backend/src/sofa/matchHistory/recovery.test.mjs
+enabled: false
+status: planned
 ```
 
-La prova sintetica precedente aveva creato i path dichiarati dal manifest e quindi validava il runner, non la correttezza dell'inventario applicativo. Le due entry sono state rimosse; non sono state sostituite con percorsi dedotti.
+Non è incluso in `full-offline` e non è un gate ordinario.
 
-Conteggi correnti delle entry abilitate:
+### CODE-005 — Lint
 
-```txt
-fast → 6
-backend → 4
-frontend → 5
-python → 5
-full-offline → 17
-```
+Il frontend espone uno script lint, ma il manifest di validazione non contiene una entry lint.
 
-Journal e recovery restano una lacuna esplicita da coprire con `IMPL-003` e `IMPL-008`.
-
-#### Esito finale della validazione locale
-
-Dopo la correzione del manifest e l'hotfix Windows per l'invocazione di `npm.cmd`, i profili eseguibili sono stati rieseguiti sulla working tree reale con esito positivo:
-
-```txt
-fast → PASS
-backend → PASS
-frontend → PASS
-python → PASS
-full-offline → PASS
-```
-
-La validazione locale di `IMPL-028` è quindi completata. I profili `persistence`, `benchmark` e `live` restano non implementati e non sono inclusi implicitamente in questo esito.
+La presenza dello script non equivale quindi a integrazione del lint nel runner canonico.
 
 ---
-
-### IMPL-029 — Fixture catalog e sandbox condivisa
-
-**Classificazione:** `NECESSARIA`
-**Stato:** `CONFERMATA E APPROVATA`
-**Priorità:** alta
-
-### Problema
-
-Le fixture sono prevalentemente inline e le directory temporanee non sono gestite in modo uniforme.
-
-Alcuni contratti condivisi rischiano di divergere fra test, mentre almeno un test scrive sotto `process.cwd()` senza cleanup finale.
-
-### Obiettivo
-
-Fornire:
-
-```txt
-catalogo fixture versionate
-factory condivise quando utili
-schema e provenance
-sandbox temporanea
-cleanup garantito
-protezione delle directory runtime
-```
-
-### Struttura proposta
-
-```txt
-test/
-├── fixtures/
-│   ├── sofa/
-│   ├── betfair/
-│   ├── evidence/
-│   ├── persistence/
-│   └── frontend/
-├── factories/
-├── manifests/
-└── schemas/
-```
-
-### Metadata fixture
-
-```txt
-fixtureId
-schemaVersion
-kind
-origin
-redactionStatus
-expectedInvariants
-createdFor
-```
-
-Valori `origin`:
-
-```txt
-constructed
-sanitized_capture
-```
-
-Una capture sanitizzata non viene accettata senza revisione redaction.
-
-### Cosa resta locale
-
-Factory piccole e specifiche del singolo modulo possono restare nello stesso file test.
-
-Esempi:
-
-```txt
-oggetto da tre campi
-fake logger locale
-semplice response builder
-```
-
-Il catalogo condiviso serve soltanto quando il contratto viene riutilizzato o deve rappresentare una sequenza temporale stabile.
-
-### Sandbox
-
-Ogni test che scrive riceve una root temporanea:
-
-```txt
-os.tmpdir / tempfile
-→ directory univoca
-→ path interni derivati
-→ cleanup in finally
-```
-
-Il runner registra soltanto un identificatore opaco della sandbox, non il path completo nel result pubblico.
-
-### Directory vietate nei profili offline
-
-```txt
-backend/match_history
-backend/source_identity_confirmations.json
-backend/betfair_cache
-backend/scraper_cache
-backend/betfair_network_dump
-profili Chrome
-launcher/.runtime reale
-```
-
-### Relazioni
-
-```txt
-IMPL-008
-→ fixture persistence/recovery
-
-IMPL-012
-→ fixture temporali e replay
-
-IMPL-030
-→ fixture frontend
-
-IMPL-013
-→ input benchmark controllati
-```
-
-Queste implementazioni condividono utility, ma non vengono fuse in un mega-harness.
-
-### Test minimi
-
-```txt
-TEST-065
-TEST-066
-TEST-067
-```
-
----
-
-### IMPL-030 — Frontend interaction test harness
-
-**Classificazione:** `NECESSARIA`
-**Stato:** `CONFERMATA E APPROVATA`
-**Priorità:** critica per il Punto 6
-
-### Problema
-
-I test frontend correnti verificano soprattutto utility pure.
-
-Non esiste un ambiente DOM in cui montare hook e componenti e osservare lifecycle asincroni.
-
-### Stack approvato
-
-```txt
-Vitest
-jsdom
-React Testing Library
-@testing-library/user-event quando necessario
-fake timer Vitest
-```
-
-L’introduzione deve essere minima e locale al frontend.
-
-### Responsabilità
-
-Il harness deve coprire:
-
-```txt
-StrictMode
-mount/unmount
-fake timer
-AbortController
-request in flight
-session switching
-Stop
-snapshot frozen
-modale Source Identity
-indicatori live
-persistence UI
-Market Reactions presentation
-```
-
-### Network
-
-Le request vengono intercettate con fake controllati o adapter iniettati.
-
-Nessun test frontend offline chiama:
-
-- backend locale reale;
-- SofaScore;
-- Betfair;
-- internet.
-
-### Time control
-
-```txt
-fake timer
-→ avanzamento esplicito
-→ flush Promise controllato
-→ nessun sleep reale
-```
-
-### StrictMode
-
-Il harness deve poter montare i componenti sotto `React.StrictMode` per verificare:
-
-```txt
-mount
-cleanup
-remount
-→ una sola catena polling effettiva
-```
-
-### Cosa non sostituisce
-
-Non sostituisce:
-
-- build Vite;
-- smoke browser reale;
-- responsive visuale;
-- collaudo live;
-- classificazione backend degli stati.
-
-### Test minimi
-
-```txt
-TEST-044…058
-TEST-071
-```
-
-`TEST-059` conserva anche una componente manuale/visuale responsive.
-
----
-
-### IMPL-031 — Validation result ledger e artefatti JSON
-
-**Classificazione:** `NECESSARIA`
-**Stato:** `CONFERMATA E APPROVATA`
-**Priorità:** alta
-
-### Problema
-
-Gli output correnti sono umani e non consentono di collegare in modo affidabile un esito a:
-
-```txt
-SHA
-profilo
-ambiente
-comando
-durata
-limiti
-```
-
-### Artefatto locale
-
-```txt
-test-results/
-└── <timestamp>-<sha>-<profile>.json
-```
-
-La directory resta esclusa da Git salvo richiesta esplicita di archiviazione controllata.
-
-### Schema minimo
-
-```txt
-schemaVersion
-repositorySha
-profile
-startedAt
-completedAt
-durationMs
-environment
-workingTreeStatus
-commands
-passed
-failed
-skipped
-blocked
-warnings
-limits
-perTestResults
-buildResult
-browserValidationStatus
-```
-
-### Per-command result
-
-```txt
-id
-commandLabel
-status
-exitCode
-signal
-timedOut
-durationMs
-stdoutSummary
-stderrSummary
-limits
-```
-
-`stdoutSummary` e `stderrSummary` sono bounded e redatti.
-
-### Sicurezza
-
-Il result non contiene:
-
-- segreti;
-- cookie;
-- token;
-- URL operative complete;
-- profili;
-- path locali sensibili;
-- payload reali;
-- stack illimitati.
-
-### Relazione con il report umano
-
-Il result JSON non sostituisce:
-
-```txt
-file modificati
-comandi eseguiti
-exit code
-pass/fail/skip/warning
-limiti
-massimo tre tentativi
-stato working tree
-PRONTO PER LA REVISIONE DELLA CHAT ANALISI
-```
-
-`fileModificati.md` resta parte del workflow Desktop quando richiesto.
-
-### Stato dei TEST-ID
-
-Il ledger può registrare soltanto test realmente presenti nel manifest.
-
-Un TEST-ID documentato ma non implementato resta:
-
-```txt
-planned
-```
-
-Non viene emesso come skipped/passato da una suite che non lo possiede.
-
-### Test minimi
-
-```txt
-TEST-069
-TEST-070
-```
-
----
-
-## 21.1 Estensioni di implementazioni esistenti
-
-### Estensione di IMPL-003 — Test map machine-checkable
-
-La matrice test ↔ modulo ↔ documento viene alimentata dal manifest di `IMPL-028`.
-
-Campi:
-
-```txt
-testId
-area
-owner
-requirementIds
-command
-type
-profile
-timeoutSec
-serialGroup
-fixtures
-mutatesFilesystem
-liveRequired
-status
-lastResultSha
-```
-
-Il checker non dichiara PASS senza un result artifact coerente.
-
-### Estensione di IMPL-005 — Coerenza completa dei registri
-
-Verificare:
-
-```txt
-insieme ID
-stati incompatibili
-prefissi sconosciuti
-SHA baseline
-ultimo Punto
-ultimo TEST-ID
-ultimo IMPL-ID
-ultima DEC
-range sintetici
-prossimo punto
-```
-
-Il controllo resta read-only.
-
-### Estensione di IMPL-008 — Profilo persistence
-
-Il harness persistence/recovery viene esposto come profilo del runner:
-
-```txt
-node scripts/validation/run.mjs persistence
-```
-
-Continua a usare directory temporanee e non tocca lo storage runtime.
-
-### Estensione di IMPL-012 — Fixture e replay
-
-Le fixture temporali e i replay vengono registrati nel catalogo di `IMPL-029`.
-
-Il replay resta un modulo dedicato e non viene incorporato direttamente nel runner.
-
-Il runner lo invoca come comando isolato.
-
-### Estensione di IMPL-013 — Profilo benchmark
-
-Il profilo benchmark registra:
-
-```txt
-SHA
-ambiente
-fixtureId
-iterazioni
-warmup
-mediana
-p95
-dimensioni
-tolleranza
-```
-
-Non è un gate ordinario e non usa dati live.
-
-### Estensione di CODE-005 — Lint verificabile
-
-Il comando lint deve essere:
-
-```txt
-realmente configurato e testato
-oppure
-rimosso dalla superficie ufficiale
-```
-
-Il full lint non diventa obbligatorio finché la baseline esistente non è stata classificata.
 
 ## 21.2 Ordine approvato
+
+L'ordine di riferimento del modulo resta:
 
 ```txt
 IMPL-005 esteso
@@ -784,6 +207,64 @@ IMPL-005 esteso
 → raggruppamento delle task Punti 1–7
 ```
 
+Questo ordine non rende `IMPL-031` prerequisito della parte già completata di `IMPL-028`.
 
+Il run artifact v1 appartiene al closeout del runner; `IMPL-031` completa successivamente il ledger e le semantiche avanzate del risultato.
 
 ---
+
+## 21.3 Invarianti del modulo
+
+```txt
+runner implementato
+≠ inventario completo di tutti i test
+
+run artifact JSON v1 implementato
+≠ ledger IMPL-031 completato
+
+metadata fixtures presente nel manifest
+≠ catalogo fixture IMPL-029 implementato
+
+test frontend puri o component-level presenti
+≠ frontend interaction harness IMPL-030 completato
+
+profilo planned
+≠ profilo eseguibile
+
+serialGroup presente
+≠ scheduling concorrente implementato
+
+requires metadata
+≠ sandbox di sicurezza
+
+JSON Schema presente
+≠ validazione runtime automatica dello schema
+```
+
+La superficie eseguibile comune resta:
+
+```txt
+manifest controllato
+→ preflight
+→ profilo offline abilitato
+→ entry abilitate
+→ child process seriali
+→ timeout
+→ output bounded/redatto
+→ risultato normalizzato
+→ artifact locale opzionale
+```
+
+Restano fuori dalla superficie completata del runner:
+
+```txt
+fixture catalog condiviso
+sandbox applicativa comune
+frontend DOM interaction harness generale
+persistence profile
+benchmark profile
+live profile
+ledger storico degli esiti
+CI di validazione
+inventario completo test ↔ owner ↔ documento
+```

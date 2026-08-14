@@ -344,18 +344,6 @@ error/waiting
 
 Il view model non conserva silenziosamente `dashboardData` quando `backendData` diventa indisponibile. Timestamp di fetch locale e timestamp della sorgente restano campi distinti.
 
-### Verifica
-
-```text
-frontend/src/hooks/useMatchPolling.test.mjs
-frontend/src/hooks/useBetfairJson.test.mjs
-frontend/src/utils/dashboardConnections.test.mjs
-```
-
-La matrice comprende race fra sessioni, abort, timer teardown, `404`, `409`, fallback Betfair e reset dell'integrity Evidence.
-
-Suite principali:
-
 ## Test
 
 ```txt

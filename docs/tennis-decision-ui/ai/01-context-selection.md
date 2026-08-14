@@ -2,7 +2,7 @@
 
 ## Scopo
 
-Questo documento definisce come scegliere il contesto minimo necessario per una task su Tennis Decision UI. Non definisce il ciclo di esecuzione, gli artefatti di consegna o i criteri di chiusura: per questi aspetti l’owner è [Workflow esecutivo e criteri di chiusura](./03-workflow-esecutivo.md).
+Questo documento definisce come scegliere il contesto minimo necessario per una task su Tennis Decision UI. Non definisce il ciclo di esecuzione o i criteri di chiusura, che appartengono a [Workflow esecutivo e criteri di chiusura](./03-workflow-esecutivo.md). Formato degli artefatti, consegna `CHAT_ESECUTORE`, evidenze di revisione e report finale appartengono ad [Artefatti esecutivi e revisione](./05-artefatti-esecutivi.md).
 
 Per analizzare responsabilità, confini ed eventuali estrazioni di moduli, usare [Diagnosi e modularizzazione](./04-diagnosi-e-modularizzazione.md).
 
@@ -35,7 +35,7 @@ Un file consultabile non diventa modificabile. Un file non incluso nello scope d
 | `DESKTOP_ESECUTORE`    | File locali autorizzati, dipendenze dirette e controlli pertinenti                         |
 | `DESKTOP_COLLAUDATORE` | Contratto da verificare, ambiente osservabile e criteri di esito, senza file da modificare |
 
-Ruoli, tentativi, consegna, report e criteri di stop sono regolati esclusivamente dal [workflow esecutivo](./03-workflow-esecutivo.md).
+Ruoli, modalità, tentativi e criteri di stop sono regolati dal [workflow esecutivo](./03-workflow-esecutivo.md). Formato degli artefatti, consegna `CHAT_ESECUTORE`, evidenze di revisione e report finale sono regolati da [Artefatti esecutivi e revisione](./05-artefatti-esecutivi.md).
 
 ## 3. Gerarchia sintetica delle fonti
 
@@ -48,6 +48,8 @@ In caso di divergenza, usare questo ordine:
 5. documento owner;
 6. registri correnti;
 7. planning e report storici.
+
+Questa gerarchia serve qui come orientamento per selezionare il contesto. Il contratto operativo completo resta nel [workflow esecutivo](./03-workflow-esecutivo.md).
 
 Non fondere fonti incompatibili. Segnalare la divergenza e chiedere una decisione solo se cambia il risultato richiesto.
 
@@ -64,7 +66,7 @@ Includere soltanto:
 7. decisioni utente pertinenti;
 8. criterio osservabile di successo e di stop.
 
-Metodo di consegna, `fileModificati.md` e report finale si includono soltanto quando la modalità e il [workflow esecutivo](./03-workflow-esecutivo.md) li richiedono. Le modalità read-only, in particolare `CHAT_ANALISI` e `DESKTOP_COLLAUDATORE`, non creano né aggiornano `fileModificati.md`.
+Metodo di consegna, artefatti di revisione e report finale si includono soltanto quando la modalità e il [workflow esecutivo](./03-workflow-esecutivo.md) li richiedono; formato e lifecycle degli artefatti sono definiti in [Artefatti esecutivi e revisione](./05-artefatti-esecutivi.md). Le modalità read-only, in particolare `CHAT_ANALISI` e `DESKTOP_COLLAUDATORE`, non creano né aggiornano `fileModificati.md`.
 
 ## 5. Esclusioni predefinite
 
@@ -90,7 +92,7 @@ Oltre al contesto comune, indicare:
 - contratti da preservare;
 - consumer interessati;
 - controlli da eseguire;
-- eventuali artefatti e modalità di consegna richiesti dal workflow.
+- eventuali artefatti e modalità di consegna richiesti dal workflow, secondo l’owner [Artefatti esecutivi e revisione](./05-artefatti-esecutivi.md).
 
 ### Attività read-only
 
@@ -133,15 +135,17 @@ I guardrail tecnici non vanno copiati in ogni prompt. Includere solo quelli rela
 | Area attraversata                                       | Owner da consultare                                                                                                 |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | Processi, porte, ownership e terminazione               | [Confini di sistema](../architecture/01-system-boundaries.md) e [Runtime locale](../operations/01-local-runtime.md) |
-| Persistenza, recovery, journal e authority di scrittura | [Commit journal e recovery](../modules/storage/02-commit-journal-and-recovery.md)                                   |
+| Persistenza canonica, timeline e history                | [Timeline e history: facade e contratti core](../modules/storage/01-timelines-and-history.md)                       |
+| Commit journal e recovery                               | [Commit journal e recovery](../modules/storage/02-commit-journal-and-recovery.md)                                   |
+| Writer authority ed esclusività process-level           | [Writer authority](../modules/storage/05-writer-authority.md)                                                       |
 | Evidence e composizione dello snapshot                  | [Match Evidence Snapshot](../modules/evidence/01-match-evidence-snapshot.md)                                        |
 | Source Identity                                         | [Source Identity](../modules/evidence/02-source-identity.md)                                                        |
 | Qualità, freshness e allineamento delle fonti           | [Qualità, flow e allineamento](../modules/evidence/03-quality-flow-and-alignment.md)                                |
 | Causalità e Market Reactions                            | [Market Reactions](../modules/evidence/04-market-reactions.md)                                                      |
 | Identità Betfair e `selectionId`                        | [Validità tecnica del campione](../modules/betfair/02-technical-sample-validity.md)                                 |
 | Lifecycle Start/Stop e attivazione frontend             | [Session shell](../modules/frontend/01-session-shell.md)                                                            |
-| Betfair Depth, Money Flow e health UI                    | [Betfair Depth e health UI](../modules/frontend/05-betfair-depth-and-health-ui.md)                                   |
-| Presentazione Market Reactions                           | [Market Reactions UI](../modules/frontend/06-market-reactions-ui.md)                                                 |
+| Betfair Depth, Money Flow e health UI                   | [Betfair Depth e health UI](../modules/frontend/05-betfair-depth-and-health-ui.md)                                  |
+| Presentazione Market Reactions                          | [Market Reactions UI](../modules/frontend/06-market-reactions-ui.md)                                                |
 | Entry point e wrapper Python                            | [Entry point e runtime Python](../modules/python/01-entrypoints-and-runtime.md)                                     |
 
 Se la task non attraversa una di queste aree, il relativo guardrail non fa parte del contesto minimo.
@@ -189,7 +193,7 @@ Criterio di stop:
 - ...
 ```
 
-Per una task di modifica aggiungere soltanto i campi esecutivi richiesti dal workflow: consegna, artefatti, report e vincoli sulle operazioni Git. Per una task read-only aggiungere invece evidenze e formato dell’esito, senza `fileModificati.md`.
+Per una task di modifica aggiungere soltanto i campi esecutivi richiesti dal workflow; per consegna, artefatti e report usare l’owner [Artefatti esecutivi e revisione](./05-artefatti-esecutivi.md). Per una task read-only aggiungere invece evidenze e formato dell’esito, senza `fileModificati.md`.
 
 ## 11. Checklist
 
@@ -202,7 +206,7 @@ Per una task di modifica aggiungere soltanto i campi esecutivi richiesti dal wor
 [ ] Il controllo è reale, mirato e ripetibile.
 [ ] Ogni fonte aggiunta risponde a una domanda aperta.
 [ ] Nessun dato sensibile è incluso.
-[ ] Artefatti e report sono presenti solo se richiesti dal workflow.
+[ ] Artefatti e report sono presenti solo se richiesti dal workflow e seguono il relativo owner.
 [ ] Una modalità read-only non crea fileModificati.md.
 ```
 

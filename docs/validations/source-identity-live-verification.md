@@ -2,17 +2,27 @@
 
 ## Metadati
 
-| Campo | Valore |
-| --- | --- |
-| Tipo | Osservazione live manuale |
-| Periodo | Osservazioni consolidate fino al 4 luglio 2026 |
-| SHA | Non registrato nel documento sorgente |
-| Sorgente migrata | `docs/tennis-decision-ui/operations/06-source-identity-live-verification.mdx` |
-| Stato | Parziale: alcuni flussi osservati, pending reale non verificato |
+| Campo            | Valore                                                                                         |
+| ---------------- | ---------------------------------------------------------------------------------------------- |
+| Tipo             | Osservazione live manuale storica                                                              |
+| Periodo          | Osservazioni consolidate fino al 4 luglio 2026                                                 |
+| SHA              | Non registrato nel documento sorgente                                                          |
+| Sorgente migrata | `docs/tennis-decision-ui/operations/06-source-identity-live-verification.mdx`                  |
+| Stato            | Parziale: alcuni flussi osservati; pending reale, conferma e decline non verificati end-to-end |
 
 ## Scopo
 
-Registrare ciò che è stato osservato nel browser per Source Identity e frontend. Questo documento non definisce il contratto del gate o della persistenza.
+Registrare ciò che è stato osservato nel browser durante la campagna storica relativa a Source Identity e alla relativa UI.
+
+Questo documento non definisce il contratto corrente del gate, della persistenza o della session shell. Il comportamento corrente appartiene ai documenti owner elencati in fondo. Le verifiche sul codice successive alla campagna non modificano retroattivamente lo stato probatorio delle osservazioni qui registrate.
+
+## Classificazione delle evidenze
+
+| Stato                   | Significato                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| `live_observed`         | Comportamento osservato direttamente durante la campagna live                        |
+| `historically_reported` | Comportamento riferito, ma privo di screenshot, payload o log archiviati sufficienti |
+| `not_executed`          | Scenario non eseguito end-to-end durante la campagna live                            |
 
 ## Osservazioni confermate
 
@@ -69,7 +79,9 @@ GET /api/match/:eventId/json → 200
 
 ## Osservazioni riferite ma non archiviate
 
-È stato riferito che durante buffering, con timeline SofaScore non ancora disponibile, la TopBar mostrava `Sofa: In attesa`. L'assenza di errori di polling e l'eventuale `404` non furono verificate. Non sono stati archiviati screenshot, payload o log sufficienti; il caso resta `historically_reported` e non viene presentato come evidenza riproducibile.
+È stato riferito che durante buffering, con timeline SofaScore non ancora disponibile, la TopBar mostrava `Sofa: In attesa`.
+
+L'assenza di errori di polling e l'eventuale risposta `404` non furono verificate. Non sono stati archiviati screenshot, payload o log sufficienti; il caso resta `historically_reported` e non viene presentato come evidenza riproducibile.
 
 ## Scenari non verificati
 
@@ -86,13 +98,15 @@ phase=pending
 → dashboard
 ```
 
-Da verificare anche:
+Non sono stati verificati live neppure:
 
 - pending prodotto da fonti plausibilmente correlate;
-- nessuna modale su runner estraneo e mismatch;
-- assenza di URL, marketId e selectionId nella modale;
+- assenza della modale su runner estraneo e mismatch;
+- assenza di URL, `marketId` e `selectionId` nella modale;
 - toast verde una sola volta per transizione;
 - bootstrap fallito che lascia il gate pending con errore sicuro.
+
+Il fatto che il CODE AUTHORITY contenga oggi logiche e test relativi a questi comportamenti non costituisce evidenza live per questa campagna storica.
 
 ### Decline
 
@@ -107,9 +121,9 @@ pending
 → nessun toast mismatch
 ```
 
-## Limite noto osservabile
+## Limite cross-source registrato
 
-Il bootstrap cross-source non è transazionale:
+Il documento sorgente registrava il bootstrap cross-source come non transazionale:
 
 ```txt
 commit SofaScore riuscito
@@ -118,26 +132,32 @@ commit SofaScore riuscito
 → tick SofaScore non rollbackato
 ```
 
-Il documento sorgente registrava questo limite come contratto corrente, non come evento live riprodotto nella stessa validazione.
+Questo limite era riportato come contratto corrente della sorgente storica, non come evento riprodotto durante la stessa campagna live. Non viene quindi classificato come `live_observed`.
 
 ## Interpretazione
 
-Stato dei casi:
+| Caso                                                                 | Stato della campagna                                                 |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| collecting → recording                                               | `live_observed`                                                      |
+| mismatch → form                                                      | `live_observed`                                                      |
+| correzione → nuovo Start → aligned                                   | `live_observed`                                                      |
+| TopBar Connected con timeline e `GET /api/match/:eventId/json → 200` | `live_observed`                                                      |
+| buffering → In attesa                                                | `historically_reported`                                              |
+| pending reale → confirm                                              | `not_executed`                                                       |
+| pending reale → decline                                              | `not_executed`                                                       |
+| pending plausibile                                                   | `not_executed`                                                       |
+| mismatch senza modale                                                | `not_executed`                                                       |
+| privacy della modale                                                 | `not_executed`                                                       |
+| toast singolo per transizione                                        | `not_executed`                                                       |
+| bootstrap failure con ritorno a pending                              | `not_executed`                                                       |
+| limite cross-source non transazionale                                | contratto storicamente registrato; non osservato live nella campagna |
 
-| Caso | Stato |
-| --- | --- |
-| collecting → recording | `live_observed` |
-| mismatch → form | `live_observed` |
-| correzione → nuovo Start → aligned | `live_observed` |
-| TopBar Connected con timeline | `live_observed` |
-| buffering → In attesa | osservazione riferita, artefatto non archiviato |
-| pending reale → confirm | non eseguito |
-| pending reale → decline | non eseguito |
-| pending plausibile | non eseguito |
-| mismatch senza modale | non eseguito |
-| privacy della modale | non eseguito |
-| toast singolo per transizione | non eseguito |
-| bootstrap failure con ritorno a pending | non eseguito |
+## Limiti della campagna
+
+- La working tree esatta della sessione live non è registrata.
+- Alcune osservazioni manuali non dispongono di screenshot, payload o log archiviati.
+- Le verifiche statiche e automatiche successive restano separate dalle osservazioni live storiche.
+- Una futura campagna live deve essere registrata in un artifact separato, senza aggiornare retroattivamente gli esiti di questa campagna.
 
 ## Documenti owner correnti
 

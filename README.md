@@ -13,7 +13,7 @@ Il progetto separa acquisizione, normalizzazione, persistenza canonica, Evidence
 ## Requisiti
 
 - Python disponibile nel terminale;
-- una release LTS supportata di Node.js con npm; la versione ufficialmente supportata deve restare allineata ai manifest del backend e del frontend;
+- Node.js con npm; i manifest del backend e del frontend non dichiarano una versione Node specifica;
 - Google Chrome e PowerShell per il runtime locale completo.
 
 ## Installazione
@@ -76,22 +76,22 @@ node scripts/validation/run.mjs python
 node scripts/validation/run.mjs full-offline
 ```
 
-Il runner legge `scripts/validation/test-manifest.json`, esegue ogni entry in un child process separato, applica timeout e salva sotto `test-results/` un risultato JSON con output limitato. I checker documentali restano read-only e fanno parte dei profili `fast` e `full-offline`.
+Il runner legge `scripts/validation/test-manifest.json`, esegue ogni entry in un child process separato, applica timeout e salva sotto `test-results/` un risultato JSON. L'output standard e di errore è limitato per entry. I checker documentali restano read-only e fanno parte dei profili `fast` e `full-offline`.
 
 I profili `persistence`, `benchmark` e `live` sono riconosciuti ma non ancora eseguibili. Un profilo pianificato non viene dichiarato `skipped` o `passed`.
 
 ## Struttura principale
 
-| Percorso                   | Responsabilità                                                         |
-| -------------------------- | ---------------------------------------------------------------------- |
-| `backend/`                 | API, tracking live, normalizzazione, persistenza, recovery ed Evidence |
-| `frontend/`                | Dashboard React, polling e presentazione degli stati live              |
-| `launcher/`                | Coordinamento del runtime locale                                       |
-| `scrapers/`                | Implementazione Python per SofaScore e Betfair                         |
-| `scripts/`                 | Avvio, diagnostica, manutenzione e runner di validazione locale        |
-| `docs/tennis-decision-ui/` | Documentazione tecnica canonica corrente                               |
-| `docs/validations/`        | Validazioni e collaudi storici separati dagli owner tecnici            |
-| `docs/archive/`            | Materiali storici o futuri non canonici conservati per uso successivo  |
+| Percorso                   | Responsabilità                                                                |
+| -------------------------- | ----------------------------------------------------------------------------- |
+| `backend/`                 | API, tracking live, normalizzazione, persistenza, recovery ed Evidence        |
+| `frontend/`                | Dashboard React, polling e presentazione degli stati live                     |
+| `launcher/`                | Coordinamento del runtime locale                                              |
+| `scrapers/`                | Implementazione Python per SofaScore e Betfair                                |
+| `scripts/`                 | Avvio, diagnostica, manutenzione e runner di validazione locale               |
+| `docs/tennis-decision-ui/` | Documentazione tecnica canonica corrente                                      |
+| `docs/validations/`        | Validazioni e collaudi storici separati dagli owner tecnici                   |
+| `docs/archive/`            | Radice opzionale non canonica per materiali storici o futuri preservati       |
 
 ## Dati locali e sensibili
 
@@ -111,6 +111,6 @@ L'indice canonico è:
 
 [Documentazione tecnica Tennis Decision UI](docs/tennis-decision-ui/index.md)
 
-La documentazione canonica usa Markdown ordinario `.md`. I collaudi storici con evidenza utile restano in `docs/validations/`; `docs/archive/` conserva materiali storici o futuri non canonici che l’utente ha deciso di mantenere per uso successivo. Il contenuto archive non descrive lo stato corrente del prodotto, non prova che una funzione sia implementata e non sostituisce i registri o gli owner tecnici.
+La documentazione canonica usa Markdown ordinario `.md`. I collaudi storici con evidenza utile restano in `docs/validations/`. `docs/archive/`, quando presente, è una radice non canonica per materiali storici o futuri esplicitamente preservati: non descrive lo stato corrente del prodotto, non prova che una funzione sia implementata e non sostituisce i registri o gli owner tecnici.
 
 Per lo stato reale del progetto consultare [Stato corrente](docs/tennis-decision-ui/roadmap/01-current-state.md). Per task, decisioni e finding dell'audit usare i registri dedicati, non il README.

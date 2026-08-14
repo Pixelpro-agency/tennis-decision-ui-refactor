@@ -2,34 +2,34 @@
 
 ## Scopo
 
-Questo documento fotografa ciò che esiste oggi nel codice e distingue base implementata, limiti correnti, validazioni storiche e componenti deprecati.
+Questo documento fotografa ciò che esiste nel codice alla baseline indicata e distingue base implementata, limiti correnti, componenti rimossi o legacy, validazioni storiche e funzioni non presenti.
 
 Non contiene la progettazione delle soluzioni future. Finding, priorità e implementazioni approvate ma non ancora presenti restano nei registri cumulativi.
 
 ## Baseline e autorità temporale
 
-| Piano | Baseline |
-| --- | --- |
-| Codice/runtime di riferimento | commit `f86ac267919ca13859c98db7015362f26176ba36`, integrato dalle modifiche presenti nella working tree e verificate il 10 agosto 2026 |
-| Documentazione | working tree corrente non ancora pubblicata; nessuno SHA viene attribuito alle correzioni locali |
-| Evidenze live | esclusivamente gli artifact collegati in `docs/validations/`, con i rispettivi metadata |
+| Piano                              | Baseline                                                                                           |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Codice/runtime di riferimento      | commit `12b344ea96e71b2bdaa6931c98419ce925b5c228`                                                  |
+| Struttura documentale di confronto | commit `4c5f43b007149f3210c27d7565357a447a3a6ef4`, usato soltanto per forma, ordine e granularità  |
+| Evidenze storiche                  | esclusivamente gli artifact indicizzati in `docs/validations/`, con i rispettivi metadata e limiti |
 
-Le affermazioni sotto descrivono il contenuto corrente verificato. Lo SHA storico non viene usato come prova delle modifiche locali non committate.
+Le affermazioni sul comportamento corrente sono riferite al commit di codice indicato. Le validazioni storiche dimostrano soltanto ciò che è stato osservato nella specifica esecuzione documentata e non equivalgono a una riesecuzione sulla baseline corrente.
 
 ## Base implementata
 
-| Area                  | Stato corrente                                                                                                                                            |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Runtime locale        | Launcher Python con lock operativo, riconoscimento dei servizi, porte preferite, ownership selettiva e shutdown dei processi owned                        |
-| Backend               | Express con router Match, Betfair, Evidence, Preflight e Runtime Health; writer authority acquisita in `startServer()` prima della recovery               |
-| SofaScore             | Acquisizione Python, normalizzazione Node, point-by-point supportato e `localContext` descrittivo                                                         |
-| Betfair               | Modalità persistent/CDP, Graph URL, quote, ladder, health, lifecycle dei processi, Money Flow non direzionale e diagnostica redatta                       |
-| Tracking              | Scheduler separato SofaScore/Betfair, Source Identity Gate, stop globale, registro delle operazioni attive, terminal tracker barrier e tracker drain      |
-| Persistenza           | Timeline, history aggregata, atomic write per file, commit journal, writer authority esclusiva, recovery bootstrap e integrity read-only                  |
-| Evidence              | Snapshot read-only, qualità, Source Identity effective, no-trade reasons e Market Reactions senza causalità dichiarata                                    |
-| Frontend              | Form, shell dashboard, polling dati, stato Source Identity, health Betfair, Money Flow, contesto punti e Market Reactions                                 |
-| Sicurezza dati        | `.env` locale, chiave Betfair fuori dal codice, redazione diagnostica e cache/dump esclusi dalle fonti canoniche                                          |
-| Tooling e validazione | Checker documentali read-only e runner locale a manifest con profili offline, timeout, process isolation e artefatti JSON bounded                         |
+| Area                  | Stato corrente                                                                                                                                                   |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime locale        | Launcher Python con lock operativo, riconoscimento dei servizi, porte preferite, ownership selettiva e shutdown dei processi owned                               |
+| Backend               | Express con router Match, Betfair, Evidence, Preflight e Runtime Health; confine HTTP locale; writer authority acquisita in `startServer()` prima della recovery |
+| SofaScore             | Acquisizione Python, normalizzazione Node, point-by-point supportato e `localContext` descrittivo                                                                |
+| Betfair               | Modalità persistent/CDP, Graph URL, quote, ladder, health, lifecycle dei processi, Money Flow non direzionale e diagnostica redatta                              |
+| Tracking              | Scheduler separato SofaScore/Betfair, Source Identity Gate, stop globale, registro delle operazioni attive, terminal tracker barrier e tracker drain             |
+| Persistenza           | Timeline, history aggregata, atomic write per file, commit journal, writer authority esclusiva, recovery bootstrap e integrity read-only                         |
+| Evidence              | Snapshot read-only, qualità, Source Identity effective, no-trade reasons e Market Reactions senza causalità dichiarata                                           |
+| Frontend              | Form, shell dashboard, polling dati, stato Source Identity, health Betfair, Money Flow, contesto punti e Market Reactions                                        |
+| Sicurezza dati        | `.env` locale, chiave Betfair fuori dal codice, redazione diagnostica e cache/dump esclusi dalle fonti canoniche                                                 |
+| Tooling e validazione | Checker documentali read-only e runner locale a manifest con profili offline, timeout, process isolation e artifact JSON con output limitato                     |
 
 ## Comportamenti importanti già presenti
 
@@ -49,32 +49,32 @@ Le affermazioni sotto descrivono il contenuto corrente verificato. Lo SHA storic
 - `recording` abilita bootstrap e persistenza;
 - `mismatch` blocca il campione e ferma il tracking coordinato;
 - la conferma manuale è separata dalle timeline;
-- il frontend mostra status, attesa, modale e mismatch.
+- il frontend mostra stato, attesa, modale e mismatch.
 
 ### Persistenza
 
 - history e timeline restano documenti canonici distinti;
 - il journal rende osservabile un commit incompleto;
-- `startServer()` crea e acquisisce la writer authority prima della recovery;
-- la recovery parte soltanto dopo l'acquisizione della writer authority e prima dell'apertura del listener;
+- `startServer()` acquisisce la writer authority prima di eseguire la recovery;
+- la recovery viene eseguita prima dell'apertura del listener;
 - un secondo backend sulla stessa storage identity viene bloccato prima di recovery e listener;
 - un owner positivamente morto può essere recuperato;
 - un owner vivo (`active`) o un'identità non verificabile (`unknown`) bloccano l'avvio in modalità fail-closed;
-- il listener viene considerato pronto soltanto dopo la readiness reale;
-- Match e Betfair possono restituire `409 persistence_integrity`;
-- Evidence può esporre `persistenceComplete:false`;
+- il listener viene considerato pronto soltanto dopo l'effettivo evento di readiness;
+- le letture Match e Betfair possono restituire `409 persistence_integrity` quando manca un documento coinvolto in una persistenza parziale o in una recovery fallita;
+- Evidence espone l'integrità delle fonti e sospende l'evidenza canonica cross-source quando la persistenza è incompleta;
 - le route read-only non eseguono recovery.
 
 ### Shutdown e tracker drain
 
-- le operazioni SofaScore e Betfair capaci di raggiungere la persistenza sono registrate process-local;
+- le operazioni SofaScore e Betfair capaci di raggiungere la persistenza sono registrate nel processo;
 - lo shutdown attiva una terminal tracker barrier che impedisce nuovi Start e nuovi update;
-- lo stop ordinario del tracking resta riutilizzabile e non rilascia l'authority;
+- lo stop ordinario del tracking resta riutilizzabile e non rilascia la writer authority;
 - gli update già avviati vengono drenati fino a registro vuoto;
-- il cleanup Python viene avviato prima di attendere il completamento del drain;
+- il cleanup dei processi Python viene avviato prima di attendere il completamento del drain;
 - la writer authority viene rilasciata soltanto dopo drain positivo e listener chiuso;
-- drain fallito o force timeout conservano il record authority per il recupero stale/dead successivo;
-- segnali ripetuti condividono la stessa shutdown promise e non duplicano drain, release o exit.
+- drain fallito o force timeout conservano il record di authority per il successivo recupero stale/dead;
+- segnali ripetuti condividono la stessa shutdown promise e non duplicano drain o release.
 
 ### Evidence
 
@@ -93,18 +93,18 @@ Le affermazioni sotto descrivono il contenuto corrente verificato. Lo SHA storic
 - lo Stop può avere cleanup parziale senza una semantica top-level completa;
 - il lifecycle Betfair confronta anche la session authority, ma la provenance persistita end-to-end resta incompleta.
 
-La writer authority di IMPL-015 protegge la storage identity a livello di processo backend. È distinta dalla session authority runtime e non completa da sola la provenance end-to-end prevista da IMPL-006.
+La writer authority protegge la storage identity a livello di processo backend. È distinta dalla session authority runtime e non completa da sola la provenance end-to-end prevista dai registri.
 
 ### Confine locale
 
-- il server usa ancora un confine HTTP locale non completamente irrigidito;
-- CORS e binding non rappresentano ancora una control-plane policy esplicita.
+- il backend effettua il bind predefinito su `127.0.0.1` e applica un controllo locale a `Host` e `Origin`;
+- CORS resta configurato in modo riflessivo dopo il controllo locale e non costituisce una policy di autenticazione o autorizzazione.
 
 ### Persistenza
 
 - la shared history non possiede ancora un'autorità event-scoped cross-source completa;
 - il journal non contiene revision, document head e digest verificabili;
-- esiste un validator `eventId` canonico usato da API e writer principali, ma recovery e alcuni moduli journal/storage mantengono validator locali più permissivi;
+- esiste un validator `eventId` canonico usato da API e writer principali, mentre recovery e alcuni moduli journal/storage mantengono controlli locali meno uniformi;
 - non esiste una transazione unica fra commit SofaScore e Betfair;
 - i documenti vengono riscritti integralmente.
 
@@ -118,56 +118,48 @@ La writer authority di IMPL-015 protegge la storage identity a livello di proces
 - lo stato della sessione è distribuito fra più hook e flag;
 - la sessione viene promossa soltanto dopo uno Start backend riuscito con `trackingSessionId` valido;
 - bootstrap e conferma Source Identity sono vincolati alla sessione corrente;
-- Match, Betfair, Evidence e Source Identity usano cleanup, abort e generation locali, pur senza un unico controller condiviso;
+- Match, Betfair, Evidence e Source Identity usano cleanup, abort o generation locali, senza un unico controller condiviso;
 - Stop disattiva i consumer live; dati persistiti e last-known restano presentati come non correnti;
-- persistence integrity è esposta nelle viste principali senza accesso frontend allo storage.
+- persistence integrity è esposta nelle viste principali senza accesso frontend diretto allo storage.
+
+### Cleanup e retention
+
+- `scripts/cleanup_runtime_cache.py` opera soltanto sulle cache esplicitamente consentite;
+- il comportamento predefinito è dry-run;
+- la rimozione reale richiede `--apply` e `--offline-confirmed` e viene bloccata se il lock del launcher esiste o se le porte runtime controllate risultano occupate;
+- non esiste una retention automatica periodica.
 
 ### Validazione
 
 - esistono checker separati per link documentali e coerenza dei registri;
-- `scripts/validation/run.mjs` fornisce profili `fast`, `backend`, `frontend`, `python` e `full-offline`;
-- il manifest iniziale registra una superficie verificata, non ancora ogni test legacy;
+- `scripts/validation/run.mjs` fornisce profili `fast`, `backend`, `frontend`, `python` e `full-offline` definiti dal manifest;
+- il manifest registra una superficie verificata, non necessariamente ogni test legacy;
 - backend e frontend non espongono uno script `test` aggregato nei rispettivi package;
-- il comando lint frontend non è utilizzabile come gate corrente;
-- esistono test React e di lifecycle per hook, polling, stale response, Stop/Resume e componenti principali; non costituiscono ancora un harness end-to-end generale;
-- i profili persistence, benchmark e live non sono implementati;
-- manca ancora il ledger storico completo e una coverage affidabile;
-- la presenza di un file test non equivale a esecuzione o PASS sul commit corrente.
-
-Per IMPL-015 sono stati eseguiti e superati i test automatici pubblicati:
-
-```txt
-writer authority
-→ 26 passati
-→ 0 falliti
-
-matchTracker
-→ 10 passati
-→ 0 falliti
-
-server
-→ 30 passati
-→ 0 falliti
-```
-
-Questi test includono l'esclusione deterministica di un secondo bootstrap sulla stessa storage identity prima di recovery e listener. Non è stato eseguito un collaudo manuale con due backend reali concorrenti; il test con due authority e filesystem temporaneo non viene presentato come prova live.
+- il comando lint frontend non è assunto come gate corrente;
+- esistono test React e di lifecycle per hook, polling, stale response, Stop/Resume e componenti principali, ma non un harness end-to-end generale;
+- i profili persistence, benchmark e live non sono abilitati dal runner;
+- manca un ledger storico completo e una misura di coverage affidabile;
+- la presenza di un file test non equivale a esecuzione o PASS sulla baseline corrente.
 
 ## Componenti rimossi o legacy
 
-API/UI Strategy e la route Betfair `/odds` sono state rimosse. Gli endpoint Match di debug o untrack eventualmente ancora presenti restano legacy e non devono essere estesi senza una decisione coordinata.
+API/UI Strategy e la route Betfair `/odds` non sono presenti. Gli endpoint Match di debug, analyze, snapshot o untrack ancora esposti sono superfici legacy e non costituiscono la base per nuove funzionalità documentate in questo stato corrente.
 
 ## Validazioni storiche
 
-Sono state osservate manualmente:
+Gli artifact indicizzati in `docs/validations/` registrano, con i rispettivi limiti:
 
-- transizione Source Identity collecting → recording;
-- mismatch e ritorno al form;
-- restart dopo correzione dei link;
-- Betfair con Graph URL e senza Graph URL;
-- logout Graph, alert e ritorno a Connected;
-- launcher, Stop e lifecycle ordinario risultano descritti storicamente, ma non sono attribuiti a `docs/validations/` senza un artifact identificabile.
+- la transizione Source Identity `collecting` → `recording`;
+- il mismatch con ritorno al form;
+- un nuovo Start dopo la correzione dei link;
+- Source Identity aligned con timeline disponibile;
+- sessioni Betfair con Graph URL e senza Graph URL;
+- soppressione di un volume anomalo;
+- logout Graph, alert e ritorno a Connected.
 
-Queste osservazioni appartengono a `docs/validations/`. Non equivalgono a una riesecuzione automatica sul commit corrente e non coprono gli scenari esplicitamente dichiarati come non osservati.
+Il pending reale con conferma o decline non è stato osservato end-to-end negli artifact Source Identity. Per Betfair non risultano osservati, fra gli altri, login già scaduto all'avvio, Graph URL malformate, mismatch `marketId`, errore rete/API reale e mercato realmente concluso.
+
+Launcher, Stop e lifecycle ordinario possono essere descritti da documentazione o test, ma non vanno presentati come validazioni live senza uno specifico artifact indicizzato. Nessuna osservazione storica equivale a una riesecuzione automatica sul commit corrente.
 
 ## Funzioni non presenti
 
@@ -182,15 +174,13 @@ Non sono implementati:
 - CI deterministica;
 - profili persistence, benchmark e live del runner.
 
-Le specifiche storiche di replay e Journal sono state consolidate nei registri (`IMPL-010`, `IMPL-012` e `IMPL-023`). Le copie sotto `docs/archive/` e il relativo README sono stati rimossi dopo il consolidamento; i registri correnti costituiscono la provenance disponibile. Queste specifiche restano non implementate e non sono owner attivi.
+Le specifiche storiche di replay e Journal sono consolidate nei registri (`IMPL-010`, `IMPL-012` e `IMPL-023`). Le copie sotto `docs/archive/` e il relativo README non sono presenti nella baseline; i registri correnti costituiscono la provenance documentale disponibile. Queste specifiche restano non implementate e non sono owner attivi.
 
 ## Fonti per le task aperte
 
-Le decisioni e le strutture approvate ma non implementate si trovano in:
-
 Per le task aperte usare la [Todo cumulativa](../../../todo-list-tennis-decision-ui.md). I dettagli tecnici sono nell'[Audit](../../../implementazioni/03-audit-codice.md); le strutture approvate ma assenti sono nelle [Implementazioni proposte](../../../implementazioni/06-implementazioni-proposte.md), mentre le scelte vincolanti sono nelle [Decisioni dell'utente](../../../implementazioni/99-decisioni-utente.md).
 
-Questi registri orientano le task. Il presente documento resta invece limitato allo stato reale.
+Questi registri orientano le task. Il presente documento resta limitato allo stato reale della baseline.
 
 ## Documenti collegati
 

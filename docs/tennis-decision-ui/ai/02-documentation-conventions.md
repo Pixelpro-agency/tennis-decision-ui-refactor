@@ -8,12 +8,12 @@ La documentazione deve spiegare responsabilità, confini, contratti, invarianti,
 
 ## Radici documentali
 
-| Percorso                   | Ruolo                                                                                                                          |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `docs/tennis-decision-ui/` | Documentazione tecnica canonica e corrente                                                                                     |
-| `docs/validations/`        | Collaudi e verifiche storiche con data, SHA, ambiente e limiti                                                                 |
-| `docs/archive/`            | Materiali storici, planning, brief o fonti future non canoniche preservati; non è un owner tecnico e non prova implementazione |
-| `implementazioni/`         | Audit, proposte e decisioni; non sostituisce gli owner tecnici                                                                 |
+| Percorso                   | Ruolo                                                                                                                                                       |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/tennis-decision-ui/` | Documentazione tecnica canonica e corrente                                                                                                                  |
+| `docs/validations/`        | Collaudi e verifiche storiche con baseline, ambiente, risultati osservati e limiti                                                                          |
+| `docs/archive/`            | Radice non canonica per materiali storici, planning, brief o fonti future esplicitamente preservati; può essere vuota o assente e non prova implementazione |
+| `implementazioni/`         | Audit, proposte e decisioni; non sostituisce gli owner tecnici                                                                                              |
 
 Una specifica futura non implementata non appartiene all'indice canonico. I requisiti futuri restano nei registri e vengono trasformati in documentazione owner soltanto insieme all'implementazione.
 
@@ -129,25 +129,25 @@ Documentare soltanto elementi verificati nel codice o in un test eseguito sullo 
 - invarianti;
 - limiti.
 
-Quando una capacità manca, descrivere il limite corrente senza presentare la soluzione approvata come già disponibile.
+Quando una capacità manca, descrivere il limite corrente senza presentare una soluzione approvata come già disponibile.
 
 Esempio:
 
 ```txt
-Stato corrente: lo Start restituisce eventId e non una trackingSessionId.
+Stato corrente: la retention delle cache runtime è disponibile come utility standalone; non esiste una retention automatica periodica.
 ```
 
 Non scrivere:
 
 ```txt
-Lo Start restituisce trackingSessionId.
+La retention delle cache runtime viene eseguita automaticamente.
 ```
 
-finché il codice non lo implementa.
+finché codice e configurazione non implementano quel comportamento.
 
 ## Documentazione e codice nella stessa task
 
-Quando una task modifica un comportamento osservabile, aggiornare nello stesso scope i documenti owner coinvolti, se già migrati.
+Quando una task modifica un comportamento osservabile, aggiornare nello stesso scope i documenti owner coinvolti, quando esistono.
 
 Aggiornamento obbligatorio quando cambia:
 
@@ -184,29 +184,36 @@ Il controllo ricorsivo disponibile è:
 python scripts/check_documentation_links.py --forbid-mdx-links
 ```
 
-Il gate deve restare verde: target, anchor e riferimenti legacy `.mdx` non sono ammessi nella documentazione attiva.
+Il gate deve restare verde: target mancanti, anchor mancanti o non verificabili e riferimenti legacy `.mdx` non sono ammessi nella documentazione attiva.
 
 Il checker è read-only: segnala file, riga, target e tipo di problema, ma non riscrive i documenti.
 
 ## Validazioni storiche
 
-Un report di collaudo deve stare in `docs/validations/` e contenere almeno:
+Le validazioni storiche stanno in `docs/validations/` e restano separate dai documenti owner del comportamento corrente.
+
+Ogni nuova validazione deve indicare almeno:
 
 - data;
-- SHA verificato;
+- baseline o SHA;
 - ambiente;
-- precondizioni;
-- passaggi;
-- risultato;
-- finding;
+- scopo;
+- comandi o azioni;
+- risultati osservati;
+- scenari non osservati;
+- artefatti disponibili;
 - limiti;
-- stato finale.
+- run identity.
 
-Un report storico non viene usato come prova che lo stesso comportamento passa sullo SHA corrente.
+Quando un dato non è stato registrato dalla fonte, non deve essere ricostruito per inferenza.
+
+Una validazione storica non viene usata come prova che lo stesso comportamento passi sulla baseline corrente.
 
 ## Materiale non canonico e archivio
 
-`docs/archive/` conserva materiali storici, planning, brief o fonti future non canoniche che l'utente ha deciso di mantenere per uso successivo.
+`docs/archive/` è una radice non canonica per materiali storici, planning, brief o fonti future che l'utente ha deciso di preservare per uso successivo.
+
+Può essere vuota o assente e non deve essere creata o popolata soltanto per soddisfare una descrizione documentale.
 
 Il contenuto archive:
 
@@ -252,6 +259,8 @@ Il controllo confronta Blocchi E/F e schede owner, prefissi, stati strettamente 
 
 ## Procedura per modifiche documentali
 
+Questa sezione descrive il passaggio documentale. Ruoli, modalità operative, tentativi, artefatti di consegna, revisione e criteri di chiusura appartengono al workflow esecutivo e al relativo documento sugli artefatti.
+
 Procedura per una modifica documentale:
 
 ```txt
@@ -259,6 +268,7 @@ leggere owner e codice interessato
 → aggiornare il file .md completo
 → verificare contenuto e link
 → eseguire i checker e il profilo offline pertinente
+→ applicare revisione e chiusura secondo il workflow esecutivo
 → pubblicare soltanto con working tree coerente
 ```
 
@@ -289,3 +299,5 @@ La migrazione MDX → Markdown è conclusa. La sola documentazione tecnica canon
 - [Workflow esecutivo e criteri di chiusura](./03-workflow-esecutivo.md)
 - [Artefatti esecutivi e revisione](./05-artefatti-esecutivi.md)
 - [Mappa del repository](../reference/01-repository-map.md)
+- [Retention e pulizia dati](../operations/05-retention-and-cleanup.md)
+- [Validazioni storiche](../../validations/README.md)

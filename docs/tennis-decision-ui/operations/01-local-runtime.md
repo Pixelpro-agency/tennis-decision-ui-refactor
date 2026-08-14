@@ -2,196 +2,287 @@
 
 ## Scopo
 
-`avvio.py` coordina CDP, backend Express e frontend Vite. Il launcher non possiede Chrome, non modifica dati canonici e non esegue recovery della persistenza.
+Questo runbook descrive l'avvio, il riuso, la readiness e lo shutdown locale dello stack di sviluppo:
 
-## Stato
+```text
+Chrome CDP
+→ backend Express
+→ frontend Vite
+```
 
-Il launcher usa lock e manifest schema 2, riuso working-copy-aware, discovery bounded e ownership esplicita. La writer authority resta backend-owned.
+`avvio.py` è l'entry point dell'orchestrazione. Il launcher coordina i servizi locali, ma non è owner del tracking, degli scraper, dei dati canonici, del commit journal o della recovery. La writer authority della persistenza resta backend-owned.
 
-## Responsabilità operative
+## Prerequisiti
 
-Il runbook descrive il percorso completo dall'avvio alla terminazione: coordinamento launcher, risoluzione dei servizi, verifica delle identity, readiness, handoff al browser e shutdown owned-only. I dettagli implementativi delle primitive Python restano nell'owner runtime Python.
+- Python e Node.js disponibili nel terminale.
+- Dipendenze frontend installate, inclusa la CLI Vite locale.
+- PowerShell e Chrome disponibili se il launcher deve richiedere l'avvio di Chrome con CDP.
+- Per i flussi Betfair che la richiedono, `BETFAIR_APP_KEY` disponibile nell'ambiente o nel file `.env` locale della root.
 
-## Sequenza di avvio
+Il file `.env` è locale: non deve essere condiviso o versionato.
+
+## Avvio
+
+Dalla root del repository:
+
+```text
+python avvio.py
+```
+
+Sequenza operativa:
 
 ```text
 lettura del manifest precedente
+→ creazione dell'identità della nuova invocazione
 → acquisizione o reclaim conservativo del launcher lock
 → eventuale riuso della sessione verificata
+→ creazione del manifest di startup
 → risoluzione CDP bounded
 → discovery read-only dei backend candidati
 → riuso oppure avvio di un solo backend
-→ risoluzione frontend coerente con backendTarget
+→ risoluzione del frontend coerente con il backend selezionato
 → manifest ready
 → apertura browser best-effort
+→ attesa di Ctrl+C o di un segnale di arresto
 ```
 
-Il fast path di riuso avviene dopo il lock. Nessuna sessione viene riusata sulla sola presenza del manifest.
+Il fast path di riuso viene valutato soltanto dopo l'acquisizione o il reclaim positivo del lock. La sola presenza di un manifest non rende riusabile una sessione.
 
-## Authority distinte
+## Servizi e porte
+
+| Servizio        | Porta preferita | Verifica                                     |
+| --------------- | --------------: | -------------------------------------------- |
+| Chrome CDP      | `9222`          | `http://127.0.0.1:<porta>/json/version`      |
+| Backend Express | `3001`          | `http://127.0.0.1:<porta>/api/health`        |
+| Frontend Vite   | `3000`          | `http://127.0.0.1:<porta>/__launcher/health` |
+
+Le porte sono preferite, non riservate. La discovery e i tentativi di avvio sono bounded; il launcher non termina processi in base alla sola porta occupata.
+
+Il backend viene avviato con `PORT` impostata sulla porta selezionata e ascolta su `127.0.0.1`. Il frontend viene avviato tramite la CLI Vite locale, con `--host 127.0.0.1`, `--strictPort`, `VITE_BACKEND_TARGET` e `VITE_CDP_URL`.
+
+Vite espone API relative sotto `/api` e le inoltra al `backendTarget` selezionato.
+
+## Risoluzione e riuso dei servizi
+
+### Backend
+
+La risoluzione esegue prima una discovery read-only delle cinque porte candidate, dalla preferita alle quattro successive. Un backend è riusabile soltanto se `/api/health` conferma:
+
+- `ok: true`;
+- progetto `tennis-decision-ui`;
+- `repositoryIdentity` della working copy corrente;
+- `storageIdentity` dello storage corrente;
+- `instanceId` non vuoto;
+- PID positivo.
+
+Le identity di repository e storage sono hash SHA-256 dei percorsi canonici normalizzati; la health non espone i percorsi locali.
+
+Se nessun candidato è riusabile, il launcher seleziona una porta libera e avvia un solo child alla volta. La readiness deve restituire l'identità attesa e il PID dichiarato deve coincidere con il child avviato. Un avvio fallito viene ripulito tramite il registry owned prima del tentativo successivo.
+
+Un listener estraneo o un backend Tennis Decision UI con repository/storage identity differenti è esterno alla sessione corrente: viene saltato e non viene terminato.
+
+### Frontend
+
+Il frontend viene riusato soltanto se l'endpoint `__launcher/health` restituisce un'identità completa e il suo `backendTarget` coincide con il backend selezionato.
+
+La discovery delle porte occupate precede gli spawn. In assenza di un frontend riusabile, il launcher tenta al massimo cinque avvii su porte libere. Se la CLI Vite locale manca, il bootstrap del frontend fallisce immediatamente senza ulteriori tentativi su altre porte.
+
+### CDP
+
+Il launcher valuta al massimo cinque endpoint loopback, dalla porta `9222` alle quattro successive. Accetta soltanto un `/json/version` con `webSocketDebuggerUrl` locale, coerente con la porta interrogata e con path browser valido.
+
+Un endpoint già valido è `reused`. Se nessun endpoint è valido, il launcher può invocare lo script PowerShell su una porta osservata libera. Chrome e il relativo helper restano esterni: non entrano mai nel registry owned e non vengono terminati dal launcher.
+
+L'esito CDP può essere `ready`, `starting` oppure `unavailable`. CDP non determina la readiness di backend e frontend. La URL risolta, anche vuota, viene passata a Vite tramite `VITE_CDP_URL`; il frontend la normalizza, la conserva nello stato della sessione e la propaga alle richieste applicative che la usano. Il launcher non configura direttamente backend o scraper con questa variabile.
+
+## Authority e stato della sessione
 
 ```text
 launcher lock
-→ una sola orchestrazione launcher attiva
+→ autorizza una sola orchestrazione launcher
 
 manifest schema 2
-→ stato osservato della sessione e dei servizi
+→ descrive lo stato osservato della sessione e dei servizi
 
 owned process registry
-→ soli processi avviati da questa invocazione
+→ contiene soltanto i processi avviati dall'invocazione corrente
 
 writer authority backend
-→ un solo writer per storage identity
+→ autorizza un solo backend writer per la stessa storage identity
 ```
 
-Nessuna di queste authority sostituisce le altre. In particolare, PID presente nel manifest non implica ownership e launcher lock acquisito non autorizza scritture in `backend/match_history/`.
+Queste responsabilità sono distinte. Un PID presente nel manifest non dimostra ownership; un lock launcher acquisito non autorizza scritture nello storage backend; un servizio riusato non diventa owned.
 
-## Esito CLI
+Gli artefatti effimeri del launcher vivono in `launcher/.runtime/`:
 
-Il processo termina con `0` soltanto quando la sessione è pronta, è stata riusata correttamente oppure è terminata normalmente. Lock bloccato, backend/frontend falliti, manifest non persistibile ed eccezioni di bootstrap producono un exit code non-zero.
+```text
+launcher/.runtime/
+├── launcher.lock
+├── launcher.lock.guard
+└── manifest.json
+```
 
-I failure restituiscono reason bounded. Stack, path locali, token e payload non fanno parte dell'esito pubblico del launcher.
+Lock e manifest usano schema 2. Il lock lega `sessionId`, PID e identità del processo launcher. Il guard serializza acquisizione, reclaim e rilascio. Un lock con owner verificato `active` blocca una seconda invocazione; un lock `stale` può essere recuperato; uno stato `unknown` non viene rimosso aggressivamente.
 
-## Identità e riuso backend
+Il manifest registra la sessione e i ruoli `backend`, `frontend` e `cdp`, con stato, endpoint, identity, PID quando applicabile, source, reason e ownership.
 
-`/api/health` espone `project`, identità di istanza, PID, timestamp e due identity SHA-256 bounded: repository e storage. Gli hash derivano dai percorsi canonici ma non espongono i percorsi locali.
+Valori principali:
 
-Il launcher riusa un backend soltanto quando progetto, repository identity e storage identity corrispondono alla working copy corrente. Un backend Tennis Decision UI appartenente a un'altra copia viene trattato come processo esterno e non viene terminato.
+```text
+session.status
+→ starting | ready | stopping | stopped | failed
 
-La risoluzione esegue prima una discovery read-only bounded di tutte le cinque porte candidate. Solo se non trova un backend riusabile sceglie una porta libera e avvia un child. Questo evita spawn inutili davanti a un backend valido su porta alternativa.
+service.status
+→ pending | starting | ready | failed | unavailable
 
-Un servizio con progetto corretto ma identity repository o storage differente è `foreign` rispetto alla sessione corrente. La porta può essere saltata, ma il processo non viene terminato. Un child che termina durante readiness produce failure immediata senza attendere inutilmente il timeout massimo.
+ownership
+→ owned | reused | external | unknown
+```
 
-Il frontend viene riusato soltanto se la sua identity è completa e `backendTarget` coincide con il backend selezionato.
+La writer authority vive invece nello storage backend. Il backend la acquisisce prima della recovery e prima di aprire il listener. Se l'acquisizione non riesce o ha esito invalido, il backend non esegue recovery e non entra in ascolto. Se la recovery restituisce un esito fatal, il backend rilascia l'authority e interrompe il bootstrap.
 
-## Lock, guard e manifest
+Il launcher non legge, interpreta o ripara commit journal e record della writer authority.
 
-Il launcher lock persistente classifica l'owner come active, stale o unknown usando PID, start fingerprint ed executable quando disponibile. `unknown` blocca il reclaim aggressivo; un PID riciclato non dimostra ownership.
+## Readiness, browser ed esito CLI
 
-La coordination guard serializza acquisizione, reclaim e rilascio del lock, ma non è una writer authority applicativa. Il manifest schema 2 descrive sessione e servizi osservati; una failure di scrittura o replace è un errore di bootstrap, non un successo silenzioso.
+La sessione diventa `ready` quando backend e frontend sono stati validati. L'apertura del browser avviene dopo la persistenza dello stato ready ed è best-effort: l'esito viene registrato, ma un browser non aperto non provoca il teardown di servizi già pronti.
 
-Il manifest registra PID dei servizi quando disponibili e verificati. Solo i processi `owned` sono stati avviati dalla sessione corrente e possono essere terminati dal launcher. Un servizio `reused` può avere PID verificato senza diventare owned.
+Il processo launcher restituisce:
 
-## CDP
+| Scenario                                     | Codice   |
+| -------------------------------------------- | -------: |
+| lock acquisito e sessione esistente riusata  | `0`      |
+| sessione avviata e poi arrestata normalmente | `0`      |
+| lock non acquisibile perché active o unknown | `2`      |
+| backend non risolto                          | `3`      |
+| frontend non risolto                         | `4`      |
+| eccezione non gestita di bootstrap           | non-zero |
 
-Il launcher cerca al massimo cinque endpoint loopback. Chrome/CDP resta `external` o `reused`, mai `owned`.
-
-La URL CDP scelta entra nel frontend tramite `VITE_CDP_URL`; il frontend la conserva nello stato della sessione e la invia alle API che la consumano. Il launcher non configura direttamente scraper o backend con `VITE_CDP_URL`. Il riuso di una sessione esistente non costituisce una nuova validazione CDP.
-
-Uno stato CDP provvisorio resta esplicito e non viene presentato come readiness definitiva. La provenienza effettiva segue launcher, ambiente Vite, stato frontend confermato, request backend e scraper.
-
-## Readiness e browser
-
-Backend e frontend validati determinano la readiness. `webbrowser.open()` è una convenience best-effort: successo o failure vengono registrati in forma bounded, ma un browser non aperto non rende indisponibili servizi già pronti.
-
-L'URL frontend resta disponibile nel manifest e nei messaggi operativi, così l'operatore può aprirlo manualmente.
+Una failure di scrittura del manifest non viene trasformata in successo silenzioso. Log e reason del launcher sono bounded e sanificati; URL, credenziali, token e percorsi locali vengono redatti dai campi testuali runtime.
 
 ## Ownership e shutdown
 
-Solo backend e frontend avviati dalla sessione sono `owned`. Processi reused, listener esterni e Chrome non vengono terminati.
-
-Su Ctrl+C il launcher ferma soltanto i process tree owned. Il backend drena tracker e scheduler prima di rilasciare la [writer authority](../modules/storage/05-writer-authority.md). Un drain fallito o force timeout non autorizza release anticipato.
-
-Il budget del parent deve lasciare al backend il tempo necessario per drain, cleanup Python, chiusura listener e rilascio dell'authority prima dell'escalation. La force termination resta l'ultima fase ed è indirizzata al PID owned, mai alla porta.
-
-Launcher lock, manifest e writer authority sono distinti. Gli artefatti launcher vivono in `launcher/.runtime/`; writer authority e commit journal appartengono allo storage backend.
-
-```text
-Ctrl+C
-→ snapshot del registry owned
-→ stop di ciascun entry registrato nell'ordine del registry
-   ├── frontend: terminazione del process tree owned
-   └── backend: segnale pulito
-       → drain tracker e scheduler
-       → cleanup child Python posseduti dal backend
-       → chiusura listener
-       → release writer authority
-→ escalation launcher solo dopo il budget previsto
-```
-
-```text
-reused / external / foreign
-→ mai inserito nel registry owned
-→ mai terminato dal launcher
-```
-
-## Riferimenti implementativi
-
-| Responsabilità          | Implementazione                                      |
-| ----------------------- | ---------------------------------------------------- |
-| entry point compatibile | `avvio.py`                                           |
-| orchestrazione          | `launcher/app.py`                                    |
-| lock e manifest         | moduli sotto `launcher/`                             |
-| probe/identity backend  | health backend e client launcher                     |
-| frontend identity       | endpoint locale Vite                                 |
-| writer authority        | `backend/src/runtime/matchHistoryWriterAuthority.js` |
-
 ### Matrice di ownership
 
-| Servizio                        | Stato possibile       | Terminabile dal launcher                |
-| ------------------------------- | --------------------- | --------------------------------------- |
-| backend avviato nella sessione  | `owned`               | sì, tramite PID/process tree registrato |
-| frontend avviato nella sessione | `owned`               | sì                                      |
-| backend/frontend esistente      | `reused`              | no                                      |
-| listener estraneo               | `foreign`             | no                                      |
-| Chrome/CDP                      | `external` o `reused` | no                                      |
+| Servizio                                    | Ownership                              | Terminabile dal launcher                    |
+| ------------------------------------------- | -------------------------------------- | ------------------------------------------- |
+| backend avviato nella sessione              | `owned`                                | sì, tramite il PID/process group registrato |
+| frontend avviato nella sessione             | `owned`                                | sì, tramite il PID/process group registrato |
+| backend o frontend verificato già esistente | `reused`                               | no                                          |
+| listener estraneo                           | esterno/foreign rispetto alla sessione | no                                          |
+| Chrome/CDP                                  | `external`, `reused` o `unknown`       | no                                          |
 
-### Risoluzione backend
+Su Ctrl+C, SIGTERM e, su Windows, SIGBREAK, la prima richiesta di stop avvia un unico percorso protetto di shutdown. Il launcher opera su uno snapshot del registry e tenta di arrestare soltanto le entry che dimostrano ancora la propria registrazione e il proprio PID.
+
+Per ogni processo owned viene inviato prima un segnale pulito. Dopo il grace period, l'escalation può colpire soltanto lo stesso PID/process tree registrato e deve confermarne l'uscita. Non esiste kill per porta.
+
+Per il backend, il segnale pulito attiva il lifecycle backend-owned:
 
 ```text
-probe bounded delle cinque candidate
-→ health Tennis Decision UI?
-→ repositoryIdentity attesa?
-→ storageIdentity attesa?
-   sì → reuse
-   no → foreign, non terminare
-
-nessun reusable
-→ prima porta libera
-→ spawn di un solo child
-→ readiness o early-exit
+richiesta di chiusura listener
+→ avvio stop e drain dei tracker
+→ cleanup dei processi Python registrati dal backend
+→ attesa del drain tracker
+→ attesa della chiusura listener
+→ release writer authority soltanto con drain valido
+→ terminazione del backend
 ```
 
-### Failure matrix
+Il timer interno del backend è di 6 secondi; il grace period del launcher è di 8 secondi. Se il drain fallisce o non dimostra zero operazioni attive, la writer authority viene trattenuta. Il timeout forza l'uscita del backend senza autorizzare un release anticipato. Solo dopo il proprio budget il launcher può escalare sul child owned.
 
-| Failure                   | Esito                   | Cleanup                                 |
-| ------------------------- | ----------------------- | --------------------------------------- |
-| lock active/unknown       | blocked, exit non-zero  | nessun processo esterno toccato         |
-| manifest non persistibile | bootstrap failure       | solo risorse owned                      |
-| backend early exit        | startup failure bounded | registry owned ripulito                 |
-| frontend failure          | sessione non ready      | backend owned fermato secondo lifecycle |
-| browser open false        | servizi restano ready   | nessun teardown                         |
-| CDP unavailable           | stato esplicito         | Chrome non terminato                    |
+Il launcher non cancella history, timeline, journal, conferme Source Identity, dump o cache. Processi reused, listener esterni e Chrome/CDP restano intatti.
+
+## Failure matrix
+
+| Failure                                         | Esito operativo                       | Cleanup                                  |
+| ----------------------------------------------- | ------------------------------------- | ---------------------------------------- |
+| lock `active` o `unknown`                       | seconda invocazione bloccata          | nessun servizio toccato                  |
+| manifest non persistibile                       | bootstrap fallito                     | soltanto risorse owned                   |
+| backend non avviabile o identity/PID non validi | startup backend fallito               | child owned ripulito                     |
+| frontend non avviabile o identity non valida    | sessione non ready                    | risorse owned arrestate nel `finally`    |
+| CLI Vite locale assente                         | failure frontend immediata            | nessun ulteriore spawn frontend          |
+| browser non aperto                              | servizi restano ready                 | nessun teardown                          |
+| CDP non disponibile                             | stato `unavailable` e URL vuota       | Chrome/listener esterni non terminati    |
+| shutdown parzialmente fallito                   | sessione `failed` quando persistibile | nessuna estensione ai processi non owned |
+
+## Diagnostica rapida
+
+| Sintomo                             | Controllo                                                                                                 |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Launcher già attivo                 | Verificare lo stato bounded del lock; non rimuoverlo se `active` o `unknown`.                             |
+| Backend non riusato                 | Confrontare `repositoryIdentity` e `storageIdentity` della health con la working copy corrente.           |
+| Frontend non riusato                | Verificare identità completa e `backendTarget`.                                                           |
+| Backend fallisce prima del listener | Verificare gli esiti bounded di writer authority e recovery; non cancellare manualmente i record.         |
+| Frontend non parte                  | Verificare dipendenze e CLI Vite locale.                                                                  |
+| Chiamate `/api` falliscono          | Verificare `VITE_BACKEND_TARGET` e il proxy Vite.                                                         |
+| Browser non si apre                 | Aprire manualmente l'URL frontend registrato nei messaggi o nel manifest.                                 |
+| CDP `starting` o `unavailable`      | Verificare gli endpoint bounded senza terminare Chrome o listener esterni.                                |
+| API segnala `persistence_integrity` | Trattare lo stato secondo gli owner storage/API; non come autorizzazione al riavvio o alla cancellazione. |
 
 ## Verifica
 
-Il contratto corrente è supportato dai test launcher/backend. Gli esiti della run del 2026-08-10 sono registrati in [Local runtime hardening](../../validations/local-runtime-hardening-2026-08-10.md). L'artifact è evidenza offline e non equivale a un collaudo live completo con browser e due working copy reali.
+La verifica ordinaria usa le suite pertinenti. I test launcher e server sono registrati nel manifest di validation; il test della writer authority viene eseguito direttamente:
 
-La matrice copre working-copy identity, discovery-before-spawn, exit code, browser best-effort, CDP provenance, frontend binding e non terminazione dei processi non owned.
-
-```powershell
-python -m unittest launcher.tests.test_launcher -q
-python -m unittest launcher.tests.test_runtime_hardening -q
+```text
+python -m unittest -v launcher.tests.test_launcher
 node backend/src/server.test.mjs
 node backend/src/runtime/matchHistoryWriterAuthority.test.mjs
 ```
 
-## Diagnostica rapida
+La suite launcher copre, fra gli altri, lock e manifest schema 2, riuso working-copy-aware, discovery-before-spawn, contratto CLI, browser best-effort, propagazione CDP, identity frontend/backend, shutdown owned-only e redazione dei log. I test backend coprono bootstrap, recovery prima del listener, writer authority e shutdown.
 
-| Sintomo              | Controllo                                                                          |
-| -------------------- | ---------------------------------------------------------------------------------- |
-| Launcher già attivo  | Verificare lo stato bounded del launcher lock; non rimuoverlo se active o unknown. |
-| Backend non riusato  | Confrontare repository/storage identity della health con la working copy corrente. |
-| Frontend non riusato | Verificare `backendTarget` e identity endpoint Vite.                               |
-| Browser non aperto   | Usare l'URL frontend del manifest; i servizi possono essere comunque ready.        |
-| CDP unavailable      | Verificare gli endpoint bounded senza terminare Chrome o listener esterni.         |
+I test offline non equivalgono a un collaudo live con browser reale, porte realmente occupate e più working copy concorrenti.
+
+Scenari operativi minimi:
+
+```text
+avvio normale
+→ backend autorizzato e ready
+→ frontend coerente e ready
+→ manifest ready
+
+backend valido già attivo
+→ identity repository/storage coerenti
+→ reuse senza nuovo backend
+
+listener estraneo su porta preferita
+→ fallback bounded
+→ listener non terminato
+
+CDP assente
+→ stato esplicito
+→ backend e frontend ancora avviabili
+
+Ctrl+C
+→ solo processi owned arrestati
+→ backend dispone del proprio budget di shutdown
+→ servizi riusati e Chrome preservati
+```
 
 ## Confini
 
-Il runbook non ridefinisce scraper, tracking, journal, retention o API. Non autorizza kill per porta, cancellazione di sidecar o riuso fra working copy diverse.
+Questo runbook non ridefinisce tracking, scraper, Source Identity, health applicativa, commit journal, recovery, retention o contratti API. Spiega soltanto come questi sottosistemi incontrano il lifecycle locale.
+
+Non autorizza kill per porta, cancellazione di sidecar, riuso fra working copy differenti o interventi manuali sulla writer authority.
+
+## Riferimenti implementativi
+
+| Responsabilità                           | Implementazione                                      |
+| ---------------------------------------- | ---------------------------------------------------- |
+| entry point                              | `avvio.py`                                           |
+| orchestrazione                           | `launcher/app.py`                                    |
+| configurazione porte e percorsi          | `launcher/config.py`                                 |
+| lock e manifest                          | `launcher/session.py`                                |
+| discovery, startup, ownership e shutdown | `launcher/services.py`                               |
+| probe e logging bounded                  | `launcher/system.py`                                 |
+| bootstrap e shutdown backend             | `backend/src/server.js`                              |
+| writer authority                         | `backend/src/runtime/matchHistoryWriterAuthority.js` |
+| identity e proxy frontend                | `frontend/vite.config.js`                            |
+| stato CDP frontend                       | `frontend/src/hooks/useAnalysisSessionState.js`      |
 
 ## Documenti collegati
 
+- [API Runtime Health](../api/06-runtime-health.md)
 - [Entry point e runtime Python](../modules/python/01-entrypoints-and-runtime.md)
 - [Tracking live](../modules/sofa/01-live-tracking.md)
 - [Timeline e history](../modules/storage/01-timelines-and-history.md)
@@ -202,4 +293,13 @@ Il runbook non ridefinisce scraper, tracking, journal, retention o API. Non auto
 - [Validazione e rollback](./04-validation-and-rollback.md)
 - [Retention e cleanup](./05-retention-and-cleanup.md)
 - [Repository map](../reference/01-repository-map.md)
-- [Validazione local runtime](../../validations/local-runtime-hardening-2026-08-10.md)
+
+## Quando leggerlo
+
+Consultare questo runbook prima di:
+
+- avviare `python avvio.py`;
+- modificare launcher, porte, proxy Vite, startup o shutdown;
+- diagnosticare il riuso di CDP, backend o frontend;
+- distinguere launcher lock, process ownership e writer authority;
+- decidere se un processo locale può essere terminato dal launcher.

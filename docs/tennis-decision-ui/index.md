@@ -112,6 +112,7 @@ Le procedure descrivono strumenti e comportamenti realmente disponibili. I risul
 - [Chiusura della migrazione documentale — 3 agosto 2026](../validations/documentation-migration-finalization-2026-08-03.md)
 - [Commit journal hardening — 10 agosto 2026](../validations/commit-journal-hardening-2026-08-10.md)
 - [Local runtime hardening — 10 agosto 2026](../validations/local-runtime-hardening-2026-08-10.md)
+- [Source contract SofaScore point-by-point — 10 agosto 2026](../validations/sofascore-point-by-point-source-contract-2026-08-10.md)
 
 Una validazione storica dimostra ciò che è stato osservato nello specifico ambiente; non equivale a un PASS corrente.
 
@@ -123,7 +124,7 @@ Una validazione storica dimostra ciò che è stato osservato nello specifico amb
 - [Implementazioni proposte](../../implementazioni/06-implementazioni-proposte.md)
 - [Decisioni dell'utente](../../implementazioni/99-decisioni-utente.md)
 
-Essere presenti in questo indice significa essere un owner tecnico corrente, non essere privi di finding. Limiti, task aperte e implementazioni approvate appartengono alla roadmap e ai registri, non a note ad hoc accanto ai singoli gruppi.
+L'indice collega gli owner canonici e, dove necessario, riferimenti operativi esterni alla radice canonica. Validazioni storiche, audit e registri sono riferimenti separati e non acquisiscono ownership tecnica per il solo fatto di essere collegati da questo indice. La presenza di un owner nell'indice non certifica l'assenza di finding: limiti, task aperte e implementazioni approvate appartengono alla roadmap e ai registri, non a note ad hoc accanto ai singoli gruppi.
 
 ## Materiale non canonico
 

@@ -2,177 +2,315 @@
 
 ## Scopo
 
-Il tracking live coordina aggiornamenti SofaScore e Betfair, Source Identity Gate, processi Python e persistenza canonica. Il suo owner principale è `backend/src/sofa/matchTracker.js`; le route Start e Stop sono in `backend/src/routes/match/trackingResponses.js`.
+Il tracking live coordina scheduler, aggiornamenti SofaScore e Betfair, Source Identity Gate, processi Python owned e accesso alla persistenza canonica. Il coordinatore principale è `backend/src/sofa/matchTracker.js`; i contratti pubblici di Start, Untrack e Stop sono costruiti in `backend/src/routes/match/trackingResponses.js`.
 
-## Autorità di sessione
+Il tracker non possiede browser, parsing degli scraper, algoritmo Source Identity, writer o file storage, Evidence, point-by-point e frontend. Coordina quando gli update possono partire e quando un campione può raggiungere il relativo percorso di persistenza.
 
-Ogni Start valido crea un `trackingSessionId` monotono. L’autorità di una callback richiede contemporaneamente:
+## Stato process-local
 
-- appartenenza dell’evento a `trackedMatches`;
-- uguaglianza del `trackingSessionId` catturato con quello corrente;
-- generation Python ancora valida;
-- sessione Source Identity Gate corrispondente.
+Il tracker mantiene due registri distinti:
 
-Stop, nuovo Start dello stesso evento e cambio evento revocano l’autorità precedente. Gli update SofaScore e Betfair ricontrollano la sessione dopo l’I/O e immediatamente prima di osservazione e persistenza. Una callback stale restituisce `stale_tracking_session` e non scrive.
+```text
+trackedMatches
+→ sessioni logiche attive e relativo stato dello scheduler
 
-`bufferGeneration` appartiene al lifecycle interno del Source Identity Gate e non sostituisce `trackingSessionId` o la generation dei processi Python.
+activeTrackerOperations
+→ Promise Node già avviate che possono ancora raggiungere la persistenza
+```
+
+Svuotare `trackedMatches`, fermare lo scheduler o rimuovere un gate non implica che un’operazione già avviata sia terminata. Il registro delle operazioni attive serve al drain terminale dello shutdown; non conserva payload o risultati e rimuove ogni Promise sia su fulfillment sia su rejection.
+
+## Autorità della sessione
+
+Ogni Start accettato crea un `trackingSessionId` process-local monotono nel formato `tracking-<n>`. Gli update catturano la sessione corrente e la ricontrollano:
+
+- dopo l’I/O;
+- prima dell’osservazione del gate;
+- immediatamente prima della persistenza ordinaria.
+
+L’autorità applicativa richiede che `trackedMatches` contenga ancora lo stesso `eventId` con lo stesso `trackingSessionId`. Il gate riceve a sua volta quel valore e rifiuta una sessione diversa con `stale_tracking_session`. Una callback riconosciuta come stale restituisce un risultato skipped e non effettua una nuova scrittura ordinaria.
+
+La generation Python dello scope `tracking` protegge invece spawn e lifecycle fisico dei processi owned. Stop e mismatch la invalidano attraverso il registry Python. Non è equivalente al `trackingSessionId`, al `bufferGeneration` interno del gate o alla terminal tracker barrier.
 
 ## Start
 
-La route valida URL SofaScore, runtime Betfair e CDP prima di chiamare `trackMatch()`. Il successo HTTP è ammesso soltanto se il tracker restituisce l’evento attivato.
+La route Start:
+
+1. richiede un URL SofaScore dal quale sia ricavabile l’event ID;
+2. valida l’URL Betfair, se presente;
+3. normalizza la modalità a `persistent` oppure `cdp`;
+4. in modalità CDP richiede e valida la base URL CDP;
+5. verifica che non esista uno scraper Betfair attivo con runtime incompatibile;
+6. chiama `trackMatch(...)` e considera riuscito lo Start soltanto se il tracker restituisce l’event ID attivato.
 
 ```text
 trackMatch accettato
 → HTTP 200
-→ ok=true
-→ trackingSessionId
+→ { ok: true, eventId, trackingSessionId }
 
 trackMatch rifiutato
 → HTTP 409
-→ ok=false
-→ code=tracking_start_rejected
+→ { ok: false, eventId, code: "tracking_start_rejected" }
 ```
 
-Un nuovo Start elimina gli altri tracker logici e i gate precedenti prima di creare la nuova sessione.
+`trackMatch(...)` rifiuta lo Start se la barriera terminale è già attiva o se l’event ID non è valido. In caso di accettazione:
+
+```text
+event switch
+→ rimozione degli altri tracker logici
+→ pulizia di tutti i gate precedenti
+→ nuova sessione Source Identity
+→ nuova entry trackedMatches
+→ avvio scheduler
+→ primo update SofaScore immediato
+```
+
+Se sono presenti Graph URL viene pulita la cache Betfair prima della creazione della nuova entry. Il primo tentativo Betfair non è eseguito direttamente dal bootstrap: passa dalla prima iterazione utile dello scheduler.
+
+Il tracking può operare con il solo SofaScore. Senza URL Betfair il gate è `not-applicable` e i campioni SofaScore validi seguono la persistenza ordinaria.
 
 ## Scheduler
 
-Lo scheduler controlla ogni secondo se una sorgente può ripartire. Le soglie sono:
+Lo scheduler gira ogni secondo e usa flag di concorrenza separati:
 
-```text
-SofaScore: 5 secondi
-Betfair:   6 secondi
-```
+| Sorgente  | Soglia minima dopo la completion precedente | Flag in-flight    |
+| --------- | ------------------------------------------: | ----------------- |
+| SofaScore | 5 secondi                                   | `updatingSofa`    |
+| Betfair   | 6 secondi                                   | `updatingBetfair` |
 
-Sono ritardi minimi dalla conclusione dell’update precedente, non una periodicità start-to-start garantita. Finché `updatingSofa` o `updatingBetfair` è vero non parte un secondo update della stessa sorgente.
+Le soglie sono misurate da quando l’update precedente termina e aggiorna `lastSofaUpdate` o `lastBetfairUpdate`; non garantiscono una periodicità start-to-start. Un secondo update della stessa sorgente non parte mentre il relativo flag è attivo.
 
 Occorre distinguere:
 
-- scheduling dell’operazione;
-- tentativo di scrape;
-- scrape riuscito;
-- tick canonico prodotto;
-- commit completato.
+```text
+scheduler eleggibile
+→ update avviato
+→ tentativo di scrape
+→ acquisizione riuscita
+→ campione canonico utilizzabile
+→ decisione del gate
+→ commit completo, recovery o failure
+```
 
-I timestamp runtime non sono intercambiabili con il timestamp del dato o del commit.
+I timestamp dello scheduler e del runtime Betfair non sostituiscono il timestamp del dato canonico o del commit.
 
-## Source Identity e persistenza
+## Update SofaScore
 
-Durante il bootstrap, i campioni delle due sorgenti restano nel gate. Solo una decisione `persist-current` autorizza un nuovo commit ordinario. `bootstrapped`, `buffered`, `blocked` e `no-gate` non producono un nuovo tick canonico.
+Owner dell’update: `backend/src/sofa/trackerUpdate.js`.
 
-Un campione Betfair tecnicamente inutilizzabile non passa dal gate e non genera un nuovo sample-derived tick. Può tuttavia invocare la persistenza con `repairOnly:true` per completare un commit precedente già registrato. Un recupero viene propagato; una failure di repair resta failure.
+```text
+loadSofaPayload(eventId)
+→ event + statistics + point-by-point
+→ validazione evento
+→ normalizeSnapshot
+→ buildLocalContext(snapshot)
+→ osservazione Source Identity
+→ persistenza soltanto se autorizzata
+```
 
-## Finished
+Il sample consegnato al gate contiene `snapshot`, `tournamentName` e `dateStr`; `localContext` viaggia separatamente come dato opaco destinato all’eventuale persistenza bootstrap.
 
-Il polling Betfair termina soltanto con `event_status.hasFinished === true`. Il producer Python riserva questo valore ai marker strutturali authoritative. `weakFinishedHint=true` resta diagnostico e non imposta `betfairFinished`.
+| Azione del gate   | Effetto dell’update SofaScore                                                            |
+| ----------------- | ---------------------------------------------------------------------------------------- |
+| `persist-current` | esegue la persistenza ordinaria del campione corrente                                    |
+| `bootstrapped`    | nessuna seconda scrittura: il callback di apertura recording ha già gestito il bootstrap |
+| `buffered`        | nessuna scrittura                                                                        |
+| `blocked`         | nessuna scrittura                                                                        |
+
+Quando non scrive, l’update restituisce comunque un envelope `sofa_commit` valido con stato `unchanged`, `commitId: null` e warning `source_identity_gate:<azione>`. Il tracker normalizza inoltre risultati di persistenza non conformi in una failure `persistence_incomplete`; non promuove un esito ambiguo a successo.
+
+## Update Betfair e runtime effimero
+
+Owner dell’update: `backend/src/sofa/betfair/trackerUpdate.js`.
+
+Ogni sessione tracciata conserva in memoria:
+
+```text
+lastScrapeAttemptAt
+lastSuccessfulScrapeAt
+lastTechnicalErrorAt
+lastTechnicalErrorReason
+```
+
+Questi campi sono effimeri, scompaiono quando la entry del match viene rimossa e sono leggibili tramite `getBetfairTrackingRuntime(eventId)` come copia dei soli quattro valori. Non entrano in timeline, history, Source Identity o Evidence e non sostituiscono la freshness del tick canonico. Possono essere consumati dagli endpoint di health tramite gli owner dedicati.
+
+Flusso dell’update:
+
+```text
+lastScrapeAttemptAt aggiornato
+→ fetchBetfairData(..., deferPersistence: true)
+→ controllo sessione dopo l’I/O
+→ event_status.hasFinished === true?
+   → sì: successful scrape, betfairFinished=true, nessun gate, nessuna persistenza
+   → no: classificazione tecnica
+→ campione utilizzabile?
+   → no: errore tecnico, polling attivo, nessun gate
+          → tentativo repairOnly sul journal preesistente
+   → sì: successful scrape
+          → osservazione del gate
+          → persistenza soltanto su persist-current
+```
+
+Una fetch rejection aggiorna la diagnostica tecnica, lascia `betfairFinished=false` e non chiama key resolver, gate o persistenza. Un campione ricevuto ma tecnicamente inutilizzabile non entra nel gate e non genera un nuovo tick derivato dal sample; chiama però `persistBetfairTrackingSample(..., { repairOnly: true })` per tentare di completare un commit precedente. Solo uno stato `recovered` viene propagato come recovery; una risposta `ok:false` resta failure, mentre l’assenza di recovery non viene promossa a nuovo dato.
+
+Un campione valido aggiorna `lastSuccessfulScrapeAt` prima della decisione del gate. `bootstrapped`, `buffered` e `blocked` non producono una seconda persistenza; `persist-current` invoca il percorso canonico Betfair.
+
+## Source Identity Gate e bootstrap
+
+Il gate possiede valutazione, conferma manuale e lifecycle Source Identity. Il tracker ne possiede soltanto l’integrazione nella sessione live.
+
+Con entrambe le sorgenti, il lifecycle può attraversare:
+
+```text
+collecting → recording
+     ↓           ↑
+   pending ──────┘
+
+collecting/pending → mismatch
+```
+
+Senza Betfair la sessione è `not-applicable`. Prima di `recording`, i campioni validi sono conservati dal gate e non vengono scritti come workaround.
+
+Quando il gate apre `recording`, il callback bootstrap persiste in ordine:
+
+```text
+SofaScore
+→ soltanto se il commit SofaScore è valido e ok
+→ Betfair
+```
+
+Il bootstrap SofaScore include `localContext` già calcolato dall’update. Una failure o un envelope SofaScore non valido impedisce il bootstrap Betfair. Il tick che apre `recording` restituisce `bootstrapped` e non viene persistito una seconda volta dall’update chiamante.
+
+| Fase/azione                                    | Acquisizione                       | Nuovo commit ordinario          |
+| ---------------------------------------------- | ---------------------------------- | ------------------------------- |
+| `collecting` / `buffered`                      | continua                           | no                              |
+| `pending` / `buffered`                         | continua                           | no                              |
+| apertura `recording` / `bootstrapped`          | continua                           | eseguito dal callback bootstrap |
+| `recording` / `persist-current`                | continua                           | sì                              |
+| `mismatch` / `blocked`                         | transizione terminale del tracking | no                              |
+| `not-applicable` / `persist-current` SofaScore | continua                           | sì                              |
+
+## Fine match Betfair
+
+L’auto-stop del polling Betfair dipende esclusivamente da:
+
+```text
+result.event_status.hasFinished === true
+```
+
+In quel caso l’update registra lo scrape come riuscito, imposta `betfairFinished=true` e non inoltra il campione al gate o alla persistenza. Errori di fetch, logout, `api_error`, runner mancanti o vuoti e `total_matched` non valido non vengono trattati come fine evento. Eventuali hint deboli prodotti dallo scraper restano diagnostici e non acquisiscono autorità nel tracker.
 
 ## Mismatch
 
-Un mismatch Source Identity:
+Il callback di mismatch avvia questa sequenza:
 
-1. ferma tutti i tracker logici preservando il gate mismatch per la diagnosi;
-2. invalida la generation Python `tracking`;
-3. termina gli scraper Betfair attivi;
-4. termina tutti i processi Python owned dello scope `tracking`, inclusi i child SofaScore;
-5. preserva processi `betfair_login` e Chrome/CDP.
+```text
+tick causale non persistito
+→ stopAllMatchTrackers({ preserveGateEventId: eventId })
+→ generation Python tracking invalidata
+→ terminateActiveBetfairScrapers()
+→ terminatePythonProcesses("tracking")
+```
 
-Entrambi i cleanup vengono tentati anche se uno fallisce. Il risultato è bounded e rende osservabile l’eventuale incompletezza fisica.
+Lo stop logico preserva soltanto il gate mismatch dell’evento, così lo status resta consultabile. I due cleanup fisici vengono entrambi tentati tramite `Promise.allSettled(...)`, anche se uno fallisce; il risultato aggregato espone `ok` e i relativi summary bounded.
 
-## Stop
+Il cleanup scoped termina i processi owned `sofa_tracking` e `betfair_tracking`, ma preserva `betfair_login` e non chiude Chrome/CDP. Il mismatch non cancella timeline, history, journal o conferme già persistite e non attiva la barriera terminale irreversibile del processo backend.
 
-Lo Stop ordinario separa:
+## Stop ordinario
 
-- stop logico dei tracker;
-- cleanup fisico dei processi owned nello scope `tracking`.
+| Funzione                        | Effetto                                                                                              |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `untrackMatch(eventId)`         | rimuove un evento e il relativo gate, quindi ferma lo scheduler se la mappa è vuota                  |
+| `stopMatchTracker(eventId)`     | rimuove un evento esistente e restituisce l’esito logico; non è il percorso della route Stop globale |
+| `stopAllMatchTrackers(options)` | svuota i tracker, ferma lo scheduler e rimuove i gate, salvo quello esplicitamente preservato        |
 
-La risposta resta bounded con HTTP 200, ma `body.ok` è vero soltanto se lo stop logico riesce, il cleanup fisico dichiara `ok=true` e `remaining=0`. `stopped` descrive il solo stop logico. Il summary `pythonCleanup` conserva contatori e codici statici.
+La route globale esegue:
 
-Lo Stop non termina login-only, browser Chrome o endpoint CDP.
+```text
+POST /api/match/stop
+→ stopAllMatchTrackers()
+→ terminatePythonProcesses("tracking")
+→ attesa del summary di cleanup
+→ HTTP 200 bounded
+```
 
-## Diagnostica Betfair runtime
+La risposta distingue lo stop logico dal cleanup fisico:
 
-Gli eventi del tracker usano il runtime logger strutturato. URL, profili, token e detail remoti non vengono inseriti nei campi pubblici.
+- `stopped` descrive il successo di `stopAllMatchTrackers()`;
+- `pythonCleanup` descrive processi richiesti, terminazioni, residui ed errori statici;
+- `ok` è vero soltanto se lo stop logico riesce, `pythonCleanup.ok === true` e `remaining === 0`.
 
-`lastTechnicalErrorReason` è bounded e redatto. Le failure di processo usano codici statici come `fetch_failed`; i campioni JSON conservano soltanto detail già redatti e troncati. `/latest` può esporre lo stato tecnico, non segreti o path locali.
+Lo Stop ordinario non attiva `terminalTrackerBarrier`, non esegue il drain delle Promise Node, non rilascia la writer authority e consente un nuovo Start. Non termina processi `betfair_login`, browser Chrome, CDP, backend o frontend e non cancella dati persistiti.
 
-## Terminal barrier
+## Shutdown e terminal drain
 
-Durante lo shutdown, `stopAndDrainAllMatchTrackers()` impedisce nuovi update, revoca i tracker e attende tutte le operazioni registrate prima del rilascio dell’autorità di scrittura. La terminal barrier completa l’autorità di sessione ma non sostituisce i controlli per callback stale.
+Lo shutdown backend usa `stopAndDrainAllMatchTrackers()`:
+
+1. imposta sincronicamente `terminalTrackerBarrier=true`;
+2. blocca nuovi Start e nuovi update dello scheduler;
+3. applica lo stop globale a tracker e gate;
+4. attende tutte le Promise presenti in `activeTrackerOperations`;
+5. ripete la verifica finché il registro è vuoto.
+
+Risultato positivo:
+
+```js
+{
+  ok: true,
+  drained: true,
+  activeOperations: 0
+}
+```
+
+Una rejection di un update è assorbita dal normale handler e non impedisce di verificare il drain. La barriera non viene riaperta: appartiene esclusivamente alla terminazione del processo.
+
+Nel server, tracker drain e cleanup Python vengono avviati prima del rilascio della writer authority. Il rilascio avviene soltanto dopo drain verificato (`ok`, `drained` e zero operazioni attive) e chiusura del listener; altrimenti l’authority resta trattenuta in modalità fail-closed.
+
+## Diagnostica e confini pubblici
+
+Gli eventi Start, Stop, update e mismatch usano il logger runtime strutturato. Le route non inseriscono URL Betfair, profili locali o dettagli remoti nei campi pubblici. `lastTechnicalErrorReason` è redatto e bounded; le failure di cleanup usano codici statici come `cleanup_failed`.
+
+Il tracking coordina i sottosistemi, ma non deve:
+
+- leggere o scrivere direttamente file JSON;
+- acquisire o rilasciare direttamente la writer authority;
+- implementare browser o parser Python;
+- calcolare Source Identity internamente;
+- costruire Evidence o componenti frontend;
+- implementare la normalizzazione point-by-point o `localContext`;
+- usare errori tecnici Betfair come prova di fine match;
+- trattare polling read-only del frontend come meccanismo di acquisizione.
 
 ## Riferimenti implementativi
 
-| Responsabilità                   | Implementazione                              |
-| -------------------------------- | -------------------------------------------- |
-| tracker e registry               | `backend/src/sofa/matchTracker.js`           |
-| ciclo update SofaScore           | `backend/src/sofa/trackerUpdate/`            |
-| update e Source Identity routing | `backend/src/sofa/trackerUpdate.js`          |
-| persistenza SofaScore            | `backend/src/sofa/matchHistory/sofaUpdates/` |
-| processor Betfair                | `backend/src/sofa/betfair/processor/`        |
-| terminal barrier                 | tracker e shutdown backend                   |
-
-### Lifecycle della sessione
-
-```text
-POST /track
-→ validazione input e session authority
-→ creazione tracker univoco per eventId
-→ scheduler SofaScore
-→ osservazione Source Identity
-→ gate recording
-→ update SofaScore canonico
-→ eventuale ciclo Betfair
-→ finished/mismatch/stop
-→ terminal barrier
-→ rimozione registry
-```
-
-### Matrice del gate
-
-| Stato Source Identity | SofaScore               | Betfair                    | Persistenza cross-source |
-| --------------------- | ----------------------- | -------------------------- | ------------------------ |
-| observing             | acquisizione consentita | secondo policy             | bloccata/degradata       |
-| confirmation required | continua osservazione   | nessuna falsa associazione | bloccata                 |
-| confirmed/recording   | commit autorizzato      | epoch attiva               | consentita con integrity |
-| mismatch              | stop terminale          | terminazione scoped        | vietata                  |
-
-### Autorità e idempotenza
-
-Il registry backend è authority della sessione attiva. Chiamate duplicate non creano scheduler paralleli; Stop e shutdown condividono una barriera terminale che attende timer, update in-flight e processi Python posseduti.
-
-```text
-stop requested
-→ impedire nuovi tick
-→ attendere update in-flight
-→ terminare child posseduti
-→ completare/lasciare osservabile la persistenza
-→ rimuovere tracker
-```
-
-La chiusura dell'evento e il mismatch non vengono trattati come semplici errori di polling. Producono una transizione terminale con reason strutturata.
-
-### Failure model
-
-| Failure              | Comportamento                                          |
-| -------------------- | ------------------------------------------------------ |
-| fetch SofaScore      | retry bounded, nessun documento sintetico              |
-| gate non autorizzato | nessun commit cross-source                             |
-| commit partial       | integrity osservabile, niente promotion                |
-| child Betfair attivo | terminazione scoped alla sessione                      |
-| drain timeout        | failure esplicita, niente release authority anticipata |
+| Responsabilità                                  | Implementazione                                                                   |
+| ----------------------------------------------- | --------------------------------------------------------------------------------- |
+| registry sessioni, scheduler, bootstrap e drain | `backend/src/sofa/matchTracker.js`                                                |
+| contratti Start, Untrack e Stop                 | `backend/src/routes/match/trackingResponses.js`                                   |
+| update e persistenza SofaScore                  | `backend/src/sofa/trackerUpdate.js`                                               |
+| lifecycle Source Identity                       | `backend/src/sofa/sourceIdentityGate.js` e `backend/src/sofa/sourceIdentityGate/` |
+| update Betfair                                  | `backend/src/sofa/betfair/trackerUpdate.js`                                       |
+| classificazione e processor Betfair             | `backend/src/sofa/betfair/processor.js` e `backend/src/sofa/betfair/processor/`   |
+| acquisizione e persistenza Betfair              | `backend/src/sofa/betfairFetch.js`                                                |
+| registry e generation Python                    | `backend/src/runtime/pythonProcessRegistry.js`                                    |
+| shutdown e writer authority release             | `backend/src/server.js`                                                           |
 
 ## Verifica automatica
+
+Dalla root del repository:
 
 ```powershell
 node backend/src/routes/match/trackingResponses.test.mjs
 node backend/src/sofa/matchTracker.test.mjs
 node backend/src/sofa/matchTracker.lifecycle.test.mjs
+node backend/src/sofa/sourceIdentityGate/lifecycle.test.mjs
 node backend/src/sofa/trackerUpdate/gateRouting.test.mjs
 node backend/src/sofa/betfair/trackerUpdate/gateRouting.test.mjs
 node backend/src/sofa/betfair/trackerUpdate/technicalRecovery.test.mjs
 node backend/src/sofa/betfair/trackerUpdate/runtimeHealth.test.mjs
 ```
 
-La verifica automatica copre Start rifiutato, Stop parziale, mismatch, event switch, callback stale, `repairOnly`, redazione, finished authoritative, weak hint e routing del gate. Le osservazioni live appartengono agli artefatti in `docs/validations/` e non sostituiscono questi test.
+Queste suite verificano i contratti Start/Stop, il nuovo Start dopo Stop, il drain delle operazioni in-flight, il blocco terminale dei nuovi Start, il cleanup mismatch, il lifecycle del gate, il routing senza doppia persistenza, `repairOnly` e il runtime tecnico Betfair. Gli artefatti live in `docs/validations/` conservano osservazioni storiche con una provenance propria e non sostituiscono la verifica del codice corrente.
 
 ## Documenti collegati
 

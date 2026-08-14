@@ -2,13 +2,13 @@
 
 ## Metadati
 
-| Campo | Valore |
-| --- | --- |
-| Data | 10 agosto 2026 |
-| Tipo | Verifica automatica offline |
-| SHA | Non registrato; nessuna operazione Git eseguita |
-| Perimetro | `JOURNAL-REC-001…010` |
-| Stato | Completata con limiti documentati |
+| Campo     | Valore                                          |
+| --------- | ----------------------------------------------- |
+| Data      | 10 agosto 2026                                  |
+| Tipo      | Verifica automatica offline                     |
+| SHA       | Non registrato; nessuna operazione Git eseguita |
+| Perimetro | `JOURNAL-REC-001…010`                           |
+| Stato     | Completata con limiti documentati               |
 
 ## Scopo
 

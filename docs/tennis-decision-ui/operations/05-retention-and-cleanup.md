@@ -2,356 +2,298 @@
 
 ## Stato
 
-**Implementato, da validare.**
-
-La utility standalone di retention cache runtime è implementata e verificata in dry-run.
-
-Il percorso distruttivo:
-
-```txt
---apply --offline-confirmed
-```
-
-non è ancora validato operativamente su cache reali.
-
-La prima validazione apply deve avvenire in una sessione offline dedicata, con launcher lock assente e porte runtime libere.
-
-La retention automatica periodica non è implementata:
-
-```txt
-nessun cron
-nessun job schedulato
-nessun avvio automatico dal launcher
-nessun cleanup periodico
-```
-
-Commit journal, `.pending_commits/` e `.writer_authority/` non sono cache runtime e non rientrano nella utility.
-
-## Scopo
-
-Questo documento classifica gli artefatti locali e definisce cosa conservare, cosa escludere dai backup e cosa può essere pulito solo con una procedura project-owned.
-
-La retention non è recovery, non ripara commit incompleti e non deve cancellare sidecar journalizzati o record authority per forzare uno stato pulito.
-
-## Match Evidence non è uno store persistito
-
-Il Match Evidence Snapshot corrente è una vista read-only derivata da timeline canoniche, stato Source Identity applicabile e persistence integrity.
-
-```txt
-timeline SofaScore + timeline Betfair
-→ builder Evidence
-→ snapshot restituito dall’API
-```
-
-Non esiste un archivio canonico autonomo di file Evidence da sottoporre a retention.
-
-Quindi:
-
-```txt
-Evidence runtime
-→ non è una directory da pulire
-→ non è un file da includere automaticamente nei backup
-→ non è un artefatto persistito da cancellare
-```
-
-Per rendere riproducibile o auditabile uno snapshot Evidence occorre preservare gli input e le prove pertinenti:
-
-```txt
-timeline
-history quando necessaria
-journal richiesto da recovery o audit
-conferme Source Identity
-validazioni storiche o export esplicitamente creati
-```
-
-Eventuali export o journal Evidence futuri dovranno avere un owner e una policy dedicati quando saranno realmente implementati.
-
-## Classificazione
-
-| Categoria                      | Percorsi tipici                                  | Policy                                                                                         |
-| ------------------------------ | ------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| Dati canonici                  | `backend/match_history/`                         | Non cancellare automaticamente                                                                 |
-| Journal di commit              | `backend/match_history/.pending_commits/`        | Non cancellare con retention; gestito solo da writer/recovery                                  |
-| Writer authority               | `backend/match_history/.writer_authority/`       | Sidecar process-level; non cache; non modificare manualmente                                   |
-| Conferme operatore             | `backend/source_identity_confirmations.json`     | Non cancellare automaticamente                                                                 |
-| Cache SofaScore                | `backend/scraper_cache/`                         | Rigenerabile; pulibile solo dalla utility allow-list                                           |
-| Cache Betfair                  | `backend/betfair_cache/`                         | Rigenerabile; redatta in lettura/scrittura; pulibile solo dalla utility                         |
-| Dump diagnostici               | `backend/betfair_network_dump/`                  | Solo diagnostica esplicita; non inclusi nella utility cache                                    |
-| Log tecnici                    | `backend/*_debug.log`, `backend/*_scraper.log`   | Rotazione futura; non cancellare durante incidente aperto                                      |
-| Warning legacy                 | stato `legacyWarning` del commit Betfair         | Osservabile; non invalida commit riuscito e non autorizza cleanup retroattivo                  |
-| Build e dipendenze             | `frontend/dist/`, `node_modules/`                | Rigenerabili; non includere nel backup                                                         |
-| Profilo browser                | profilo locale Chrome                            | Sensibile; non pulire automaticamente                                                          |
-| Credenziali                    | cookie, token, `.env`, password                  | Non salvare, non condividere, non includere nei backup                                         |
-| Match Evidence Snapshot runtime| nessun percorso canonico autonomo                | Derivato; preservare gli input, non inventare una retention per uno store inesistente          |
-
-## Modalità normale
-
-In modalità normale il progetto conserva:
-
-```txt
-timeline canoniche
-history aggregata
-commit journal necessari a recovery
-writer authority necessaria all’esclusione del backend writer
-conferme Source Identity
-configurazione necessaria
-log tecnici essenziali
-```
-
-Un journal pending non è cache sporca: rappresenta un commit incompleto o recuperabile.
-
-Un record `.writer_authority/` non è cache sporca: rappresenta l’owner della storage identity oppure un residuo da classificare come `active`, `unknown`, `reclaimed` o `already_owned`.
-
-Il live tracking normale non attiva network capture e non crea nuovi file in:
-
-```txt
-backend/betfair_network_dump/
-```
-
-Non deve salvare automaticamente HTML, asset, media, cache browser, cookie, token, header di autorizzazione o profili browser.
-
-## Journal, writer authority, recovery e cleanup legacy
-
-Il commit journal è un sidecar tecnico del commit canonico.
-
-```txt
-commit canonico completo
-→ rimozione journal completata
-→ eventuale cleanup legacy consentito
-```
-
-La writer authority è distinta:
-
-```txt
-backend bootstrap
-→ acquire writer authority
-→ recovery e runtime
-→ shutdown con tracker drain
-→ release authority
-```
-
-Non è un dato canonico, un commit journal, una cache o un input Evidence.
-
-Un record residuo viene recuperato soltanto quando il processo owner è positivamente morto. Owner vivo o identità non verificabile producono fail-closed.
-
-Non risolvere un avvio bloccato cancellando `.writer_authority/`.
-
-Il cleanup legacy Betfair può avvenire solo dopo commit canonico riuscito e rimozione journal completata.
-
-`legacyWarning`:
-
-```txt
-resta osservabile
-→ non invalida il commit riuscito
-→ non diventa partial_persistence
-→ non autorizza cleanup manuale retroattivo
-```
-
-La retention non deve mai eseguire:
-
-```txt
-repair journal
-rimozione journal pending
-rimozione o modifica writer authority
-forzatura recovery_failed
-cleanup legacy pre-commit
-normalizzazione history o timeline
-ricostruzione o persistenza artificiale di Evidence
-```
-
-## Modalità diagnostica
-
-La diagnostica deve essere esplicita.
-
-La precedente route HTTP `/api/betfair/odds` è stata rimossa. Il live tracking non abilita la capture e non esiste un endpoint HTTP diagnostico sostitutivo.
-
-Il CLI Python diretto abilita la capture salvo `--no-network-capture`; non usarlo senza valutare il rischio di dump.
-
-La redazione diagnostica è implementata su log, errori, dump, output scraper, cache Betfair e bridge Node/Python.
-
-La redazione non rende i dump una fonte canonica e non autorizza la condivisione di payload reali.
-
-Restano distinti:
-
-```txt
-redazione diagnostica
-→ implementata
-
-retention cache runtime
-→ utility standalone implementata e verificata in dry-run
-
-retention dump/log
-→ policy documentata, non inclusa nella utility cache
-
-journal e recovery
-→ non sono retention cache
-
-writer authority
-→ non è retention cache
-
-Evidence runtime
-→ vista derivata, non store persistito
-
-rotazione automatica
-→ non implementata
-```
-
-Ogni dump utile deve essere collegabile a evento, mercato, timestamp e causa diagnostica.
-
-Gli stati `partial_persistence` e `recovery_failed` possono essere osservati, ma non autorizzano cancellazioni manuali.
-
-Gli stati authority `active` e `unknown` non autorizzano la rimozione del record.
-
-## Retention cache runtime offline
-
-Utility:
+La retention delle cache runtime è implementata come utility standalone:
 
 ```txt
 scripts/cleanup_runtime_cache.py
 ```
 
-Può selezionare esclusivamente:
+Il comportamento predefinito è il dry-run. La rimozione reale richiede entrambe le opzioni:
 
 ```txt
-backend/betfair_cache
-backend/scraper_cache
+--apply --offline-confirmed
 ```
 
-Il comportamento predefinito è dry-run.
+Il CODE AUTHORITY contiene test unitari per selezione, dry-run, blocchi di sicurezza e rimozione best-effort. Questi test usano directory temporanee e dipendenze controllate: non costituiscono prova di un dry-run o di un apply eseguito sulle cache reali della working copy.
 
-L’azione reale richiede entrambi:
+La utility è standalone e non pianifica autonomamente esecuzioni periodiche.
+
+## Scopo
+
+Questo runbook descrive:
+
+- quali cache runtime possono essere selezionate;
+- quali policy determinano i candidati;
+- quali controlli precedono un apply;
+- come interpretare output ed exit code;
+- i confini fra retention delle cache e dati non governati dalla utility;
+- i requisiti minimi per backup e pulizia controllata.
+
+La utility è allow-list-only: non accetta una directory arbitraria e non deve essere usata come strumento generico di cancellazione.
+
+## Classificazione degli artefatti
+
+| Categoria                     | Percorso o esempio                           | Trattamento                                           |
+| ----------------------------- | -------------------------------------------- | ----------------------------------------------------- |
+| Cache SofaScore               | `backend/scraper_cache/`                     | Rigenerabile; selezionabile come `--cache sofa`       |
+| Cache Betfair                 | `backend/betfair_cache/`                     | Rigenerabile; selezionabile come `--cache betfair`    |
+| Dati canonici                 | `backend/match_history/`                     | Fuori allow-list; non cancellare con questa utility   |
+| Commit journal                | `backend/match_history/.pending_commits/`    | Fuori allow-list; appartiene a commit e recovery      |
+| Writer authority              | `backend/match_history/.writer_authority/`   | Fuori allow-list; non è una cache runtime             |
+| Conferme Source Identity      | `backend/source_identity_confirmations.json` | Fuori allow-list                                      |
+| Dump diagnostici              | `backend/betfair_network_dump/`              | Fuori allow-list; richiede una policy separata        |
+| Log runtime                   | per esempio `backend/betfair_scraper.log`    | Fuori allow-list; richiede una policy separata        |
+| Profilo browser e credenziali | profilo Chrome, cookie, token, `.env`        | Non pulire o copiare mediante questa procedura        |
+| Build e dipendenze            | `frontend/dist/`, `node_modules/`            | Rigenerabili, ma non governate dalla utility          |
+| Evidence derivata             | nessun percorso selezionabile                | Non aggiungere un percorso artificiale all’allow-list |
+
+L’esclusione delle categorie non-cache deriva dal confine positivo della utility: i soli root selezionabili sono `backend/betfair_cache` e `backend/scraper_cache`.
+
+## Cache applicativa e retention su disco
+
+Le cache applicative hanno una propria validità temporale in lettura:
+
+| Cache     | TTL applicativo nel CODE AUTHORITY |
+| --------- | ---------------------------------: |
+| SofaScore | 5 secondi                          |
+| Betfair   | 4 secondi                          |
+
+Il TTL decide se un file può essere riutilizzato dall’applicazione. Non elimina il file dal disco.
+
+La retention opera invece sui metadati dei file presenti nelle directory allow-list. Non legge il contenuto JSON e non modifica i TTL applicativi.
+
+## Selezione delle cache e delle policy
+
+Almeno una cache è obbligatoria:
 
 ```txt
---apply
---offline-confirmed
+--cache betfair
+--cache sofa
 ```
 
-Policy:
+L’opzione può essere ripetuta; selezioni duplicate vengono deduplicate mantenendo l’ordine.
+
+È obbligatoria almeno una policy:
 
 ```txt
---max-age-days
---max-files
---max-total-bytes
+--max-age-days N
+--max-files N
+--max-total-bytes N
 ```
 
-`--max-files` e `--max-total-bytes` vengono valutati separatamente per ciascuna cache selezionata. Non costituiscono un tetto globale condiviso fra SofaScore e Betfair.
+I valori devono essere interi maggiori o uguali a zero.
 
-Soglia operativa iniziale verificata:
+Le policy operano così:
+
+| Policy              | Criterio                                                             |
+| ------------------- | -------------------------------------------------------------------- |
+| `--max-age-days`    | seleziona i file con `mtime` strettamente precedente alla soglia     |
+| `--max-files`       | seleziona i file più vecchi necessari a rientrare nel numero massimo |
+| `--max-total-bytes` | seleziona i file più vecchi necessari a rientrare nel limite di byte |
+
+`--max-files` e `--max-total-bytes` sono valutati separatamente per ciascuna cache selezionata. Non formano un limite globale condiviso fra SofaScore e Betfair.
+
+Quando più policy selezionano lo stesso file, il candidato compare una sola volta e conserva tutte le motivazioni applicabili.
+
+Esempio di dry-run basato sull’età:
 
 ```txt
---max-age-days 7
+python scripts/cleanup_runtime_cache.py --cache betfair --cache sofa --max-age-days 7
 ```
 
-La utility considera solo file `.json` regolari nelle directory allow-list.
+Il valore `7` è un parametro esplicito dell’esempio, non un default incorporato nella utility.
 
-Sono esclusi:
+## Ambito della scansione
+
+Per ogni cache selezionata la utility esamina soltanto le entry dirette della directory; non ricorre nelle sottodirectory.
+
+Sono eleggibili esclusivamente file:
 
 ```txt
-directory
+regolari
+non symlink
+con suffisso .json
+```
+
+Sono registrati come `skipped`, secondo il caso:
+
+```txt
+directory cache assente
+directory cache rappresentata da symlink
+percorso cache non-directory
+directory figlia
 symlink
+file non regolare
 file non JSON
-percorsi fuori allow-list
-timeline
-history
-Source Identity
-commit journal
-.pending_commits
-.writer_authority
-recovery metadata
-legacyWarning
-dump diagnostici
-log runtime
-profili browser
-launcher lock
-manifest
-file temporanei
+file cambiato prima della rimozione
 ```
 
-Non esiste una directory Evidence da aggiungere all’allow-list o all’exclusion list: lo snapshot è derivato a runtime.
+Errori di accesso o di lettura dei metadati vengono registrati in `errors`.
 
-I controlli di sicurezza bloccano l’apply in presenza di launcher lock o porte backend/frontend occupate su loopback IPv4 o IPv6.
+## Dry-run
 
-Un errore di verifica resta fail-closed.
-
-L’output JSON include:
+Il dry-run è la modalità ordinaria e non rimuove file:
 
 ```txt
-cache selezionate
-policy
-file scansionati
-candidati
-file saltati
-errori
-rimozioni
+python scripts/cleanup_runtime_cache.py --cache betfair --cache sofa --max-age-days 7
 ```
 
-L’apply è best-effort per singolo file. Un errore su un candidato non annulla le rimozioni già completate e non impedisce necessariamente di tentare i candidati successivi:
+La utility:
+
+1. valida cache e policy;
+2. scandisce soltanto le directory allow-list selezionate;
+3. costruisce l’elenco dei candidati;
+4. restituisce il report JSON;
+5. lascia `removed` vuoto.
+
+Prima di qualsiasi apply, eseguire e conservare il dry-run con le stesse cache e policy previste per la rimozione.
+
+## Apply offline
+
+L’apply richiede:
 
 ```txt
-exit code 1
-→ esecuzione con errori
-→ possono esistere rimozioni già effettuate
-→ leggere sempre removed, errors e recoveredBytes
+python scripts/cleanup_runtime_cache.py \
+  --cache betfair \
+  --cache sofa \
+  --max-age-days 7 \
+  --apply \
+  --offline-confirmed
 ```
 
-Il risultato non deve quindi essere ridotto al solo exit code. `blocked` indica invece che il controllo di sicurezza ha impedito l’apply prima delle rimozioni.
+Se `--apply` è presente senza `--offline-confirmed`, l’esecuzione viene bloccata prima della scansione, della selezione dei candidati e dei controlli di sessione.
 
-La policy riguarda la conservazione su disco delle cache rigenerabili. Non modifica i TTL applicativi.
+Dopo la scansione e prima di rimuovere file, la utility verifica automaticamente:
 
-## Invarianti
+- assenza di `launcher/.runtime/launcher.lock`;
+- porta `3000` non occupata su loopback IPv4 e, quando disponibile, IPv6;
+- porta `3001` non occupata su loopback IPv4 e, quando disponibile, IPv6.
 
-La retention non deve:
+Un errore nel controllo del lock o di una porta produce un motivo di blocco. La presenza di qualunque motivo imposta `blocked: true` e impedisce tutte le rimozioni.
 
-- cancellare history o timeline per liberare spazio;
-- cancellare commit journal o `.pending_commits/`;
-- cancellare, modificare o recuperare manualmente `.writer_authority/`;
+La utility non verifica direttamente lo stato semantico del tracking, l’esistenza di un incidente aperto o la coerenza di un backup. Prima dell’apply l’operatore deve quindi confermare separatamente:
+
+```txt
+tracking fermo
+nessun incidente che richieda le cache come prova
+dry-run riesaminato
+cache e policy corrette
+output conservabile in modo sicuro
+```
+
+## Semantica dell’apply
+
+Immediatamente prima di ogni rimozione, il candidato viene ricontrollato. Se non è più un file regolare non-symlink, non viene rimosso e compare in `skipped` con motivo `changed_before_removal`.
+
+Le rimozioni sono best-effort per singolo file:
+
+```txt
+errore su un candidato
+→ errore registrato
+→ candidati successivi ancora tentati
+→ rimozioni precedenti non annullate
+```
+
+Di conseguenza un apply può terminare con errori e avere comunque già rimosso alcuni file. Non esiste rollback transazionale della cancellazione.
+
+Per le sole cache rigenerabili, il recupero funzionale consiste nel lasciare che una richiesta successiva ricrei i file. Questa regola non si applica a dati canonici, journal, writer authority, conferme, dump o altri artefatti fuori allow-list.
+
+## Output JSON
+
+Il report contiene almeno:
+
+| Campo            | Significato                                      |
+| ---------------- | ------------------------------------------------ |
+| `mode`           | `dry-run` oppure `apply`                         |
+| `selectedCaches` | cache richieste dopo la deduplicazione           |
+| `policies`       | valori `maxAgeDays`, `maxFiles`, `maxTotalBytes` |
+| `blocked`        | indica che l’apply non può procedere             |
+| `blockReasons`   | motivi del blocco                                |
+| `scanned.files`  | numero di file eleggibili scanditi               |
+| `scanned.bytes`  | byte complessivi dei file eleggibili             |
+| `candidates`     | file selezionati con byte, `mtime` e motivazioni |
+| `removed`        | candidati effettivamente rimossi                 |
+| `skipped`        | percorsi non elaborati con motivo                |
+| `recoveredBytes` | somma dei byte dei file rimossi                  |
+| `errors`         | errori di uso, metadati o rimozione              |
+
+Leggere sempre insieme:
+
+```txt
+blocked
+blockReasons
+removed
+recoveredBytes
+skipped
+errors
+```
+
+Il solo numero di candidati non dimostra quante rimozioni siano avvenute.
+
+## Exit code
+
+| Codice | Significato                                                                            |
+| -----: | -------------------------------------------------------------------------------------- |
+| `0`    | esecuzione completata senza blocchi o errori                                           |
+| `1`    | esecuzione completata con errori; in apply possono esserci rimozioni già riuscite      |
+| `2`    | errore d’uso, compresi cache o policy mancanti e `--apply` senza `--offline-confirmed` |
+| `3`    | apply bloccato dai controlli di sessione dopo una richiesta valida                     |
+
+L’exit code deve essere interpretato insieme al report JSON. In particolare, il codice `1` non implica che nessun file sia stato rimosso.
+
+## Confini con recovery, repair e persistence
+
+La retention delle cache non deve essere usata per:
+
+- cancellare history o timeline;
+- rimuovere journal pending;
+- modificare `.writer_authority/`;
 - cancellare conferme Source Identity;
-- cancellare input o validation necessari a ricostruire e verificare Evidence;
-- trattare lo snapshot Evidence come un file canonico autonomo;
-- cancellare il profilo Chrome;
-- chiudere Chrome CDP;
+- risolvere stati `partial_persistence` o `recovery_failed`;
 - eseguire recovery o repair;
-- trasformare `partial_persistence` o `recovery_failed` in cleanup;
-- trasformare `active` o `unknown` in rimozione authority;
-- cancellare log necessari a un incidente aperto;
-- includere credenziali nei dump;
-- usare dump come fonte primaria per algoritmi;
-- interrompere tracking se il cleanup fallisce.
+- normalizzare o ricostruire dati canonici;
+- creare, persistere o cancellare artificialmente uno store Evidence;
+- estendere l’allow-list in base al solo nome di una directory.
 
-Un cleanup fallito su cache rigenerabili non modifica:
+Un problema della persistence deve essere gestito dall’owner della persistence e del recovery, non dalla utility di retention.
+
+## Dump diagnostici e log
+
+Dump e log non sono inclusi nella utility. La loro eventuale conservazione o rimozione richiede una policy separata che consideri almeno:
 
 ```txt
-marketState
-runner baseline
-history
-timeline
-Source Identity
-journal pending
-writer authority
-output Evidence derivato
+incidente ancora aperto
+contenuto sensibile
+redazione
+provenienza
+periodo di conservazione
+responsabile della rimozione
 ```
+
+La presenza di redazione non trasforma un dump in fonte canonica e non autorizza automaticamente la condivisione o la cancellazione.
 
 ## Backup
 
-Un backup utile include:
+La utility non crea backup.
+
+Un backup destinato a restore o audit deve distinguere almeno:
 
 ```txt
-codice sorgente
-documentazione
+codice e documentazione
 configurazioni non sensibili
 history e timeline necessarie
-commit journal necessari a recovery o audit locale
-conferme Source Identity quando necessarie
-validazioni storiche e export esplicitamente prodotti
+journal necessari a recovery o audit
+conferme applicabili
+validazioni o export esplicitamente prodotti
 ```
 
-Il backup non deve includere automaticamente:
+Non includere automaticamente:
 
 ```txt
 node_modules
 frontend/dist
-cache browser
 cache runtime
+cache browser
 dump diagnostici scaduti
 profilo Chrome
 cookie
@@ -361,110 +303,65 @@ password
 file temporanei
 ```
 
-Non esiste un file Match Evidence Snapshot canonico da copiare. Per riprodurre Evidence preservare gli input canonici e il codice della stessa baseline.
+La validità JSON dei singoli file non dimostra la coerenza dell’insieme. In assenza di una snapshot boundary project-owned verificata, una copia multi-file deve essere dichiarata best-effort e non snapshot coerente.
 
-Se il backup riguarda uno stato locale incompleto, preservare la coerenza fra:
+Non copiare un record di writer authority per attribuire ownership a un processo o a una working copy differente.
 
-```txt
-history
-timeline
-.pending_commits
-conferme applicabili
-validazioni collegate
-```
+## Checklist operativa
 
-La validità JSON dei singoli file non dimostra la coerenza dell’insieme. Un backup destinato a restore o audit richiede una snapshot boundary project-owned che impedisca scritture canoniche fra la copia dei diversi artefatti, oppure una prova equivalente e verificabile della stessa baseline. Questa authority non è ancora definita: fino ad allora il backup è una copia best-effort e non va dichiarato snapshot coerente.
+### Prima del dry-run
 
-La writer authority è effimera e process-owned. Non deve essere copiata fra working copy per attribuire ownership a un processo diverso.
+- selezionare soltanto `betfair`, `sofa` o entrambe;
+- definire almeno una policy;
+- verificare che i limiti siano intenzionali;
+- scegliere una destinazione sicura per il report JSON.
 
-Non copiare solo una parte degli artefatti canonici per poi usarla come base completa.
+### Prima dell’apply
 
-## Pulizia controllata
+- rieseguire il dry-run con gli stessi parametri;
+- controllare `candidates`, `skipped` ed `errors`;
+- fermare il tracking;
+- verificare che non servano cache per un incidente aperto;
+- verificare l’assenza del launcher lock;
+- verificare che le porte `3000` e `3001` siano libere;
+- aggiungere sia `--apply` sia `--offline-confirmed`.
 
-Per le sole cache runtime:
+### Dopo l’apply
 
-```txt
-python scripts/cleanup_runtime_cache.py --cache betfair --cache sofa --max-age-days 7
-```
+- leggere l’exit code;
+- controllare `blocked` e `blockReasons`;
+- controllare `removed`, `recoveredBytes`, `skipped` ed `errors`;
+- non assumere atomicità in presenza di errori;
+- conservare il report secondo la policy operativa applicabile;
+- lasciare che le cache mancanti vengano rigenerate dal normale fetch.
 
-Il dry-run è il comportamento ordinario.
+## Stato della validazione
 
-Non usare `--apply --offline-confirmed` finché non viene autorizzata una sessione offline dedicata.
-
-Prima di un apply verificare:
-
-```txt
-tracking fermo
-launcher lock assente
-porte backend/frontend libere
-percorso allow-list
-solo file .json regolari
-nessun journal coinvolto
-nessuna writer authority coinvolta
-nessun incidente aperto sulle cache
-```
-
-La utility non deve essere estesa a:
+Verificato nel CODE AUTHORITY mediante test unitari:
 
 ```txt
-backend/match_history
-backend/match_history/.pending_commits
-backend/match_history/.writer_authority
-backend/source_identity_confirmations.json
-backend/betfair_network_dump
-profili browser
-log di incidente aperto
+dry-run senza modifiche
+selezione max-age
+selezione max-files
+selezione max-total-bytes
+combinazione delle motivazioni
+blocco senza conferma offline
+blocco con sessione attiva simulata
+prosecuzione best-effort dopo errore di rimozione
+esclusione di directory, symlink e file non JSON
+rifiuto di directory arbitrarie
+controlli IPv4 e IPv6
+fail-closed sugli errori di verifica
 ```
 
-Non aggiungere un percorso Evidence inesistente.
-
-## Validazioni aperte
-
-Già verificato:
+Non dimostrato dai file di codice e test consultati:
 
 ```txt
-test unitari utility
-py_compile
-dry-run su cache runtime
-nessuna rimozione reale
+dry-run sulle cache reali della working copy
+primo apply controllato sulle cache reali
+snapshot coerente multi-file per backup o audit
+retention automatica di cache, dump o log
 ```
-
-Vincoli di regressione:
-
-```txt
-.pending_commits esclusa
-journal esclusi
-.writer_authority esclusa
-partial_persistence non risolto tramite cleanup
-recovery_failed non risolto tramite cleanup
-authority active/unknown non risolta tramite cleanup
-legacyWarning preservato
-Evidence trattata come output derivato, non come store
-```
-
-Resta da validare:
-
-```txt
-primo apply controllato
-→ sessione offline
-→ lock assente
-→ porte libere
-→ cache reali
-→ output JSON registrato
-```
-
-Decisioni aperte:
-
-```txt
-chi può eseguire l’utility
-retention manuale o pianificata futura
-soglie max-files o max-total-bytes
-rollback specifico dopo apply reale
-```
-
-Il rollback delle cache rigenerabili consiste nel lasciare che il fetch successivo ricrei i file.
-
-Non applicare questa regola a timeline, history, conferme, journal, authority, validazioni o dump di incidente.
 
 ## Documenti collegati
 
@@ -475,5 +372,4 @@ Non applicare questa regola a timeline, history, conferme, journal, authority, v
 - [Scraper Betfair](../modules/python/03-betfair-scraper.md)
 - [Diagnostica Betfair](./03-betfair-diagnostics.md)
 - [Validazione e rollback](./04-validation-and-rollback.md)
-- [Selezione del contesto per AI](../ai/01-context-selection.md)
 - [Mappa del repository](../reference/01-repository-map.md)

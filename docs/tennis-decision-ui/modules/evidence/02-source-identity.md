@@ -24,6 +24,8 @@ backend/src/sofa/matchEvidence/sourceIdentity.js
 backend/src/sofa/matchEvidence/sourceIdentity/
 backend/src/sofa/matchEvidence/sourceIdentityConfirmation.js
 backend/src/sofa/matchEvidence/sourceIdentityConfirmationStore.js
+backend/src/sofa/matchEvidence/latestMatchEvidence.js
+backend/src/sofa/matchEvidence/evidenceBuilder.js
 
 backend/src/routes/match/sourceIdentityStatusResponse.js
 ```
@@ -89,20 +91,18 @@ buffered
 persist-current
 bootstrapped
 blocked
-gate_unavailable
 ```
 
-| Azione            | Significato                                                          |
-| ----------------- | -------------------------------------------------------------------- |
-| `buffered`        | Il campione resta in memoria; nessuna persistenza canonica           |
-| `persist-current` | Il campione può essere persistito dal tracker                        |
-| `bootstrapped`    | Il callback di apertura ha già persistito il primo contesto canonico |
-| `blocked`         | Il gate è in mismatch o terminale; nessuna persistenza               |
-| `gate_unavailable`| Non esiste una sessione gate valida; il campione viene bloccato      |
+| Azione            | Significato                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------------- |
+| `buffered`        | Il campione resta in memoria; nessuna persistenza canonica                                          |
+| `persist-current` | Il campione può essere persistito dal tracker                                                       |
+| `bootstrapped`    | Il callback di apertura ha già persistito il primo contesto canonico                                |
+| `blocked`         | Il campione non può essere persistito: gate mismatch/terminale oppure osservazione rifiutata fail-closed |
 
 `bootstrapped` evita la doppia persistenza del campione che apre `recording`.
 
-Nel tracking canonico l'assenza imprevista del gate è fail-closed e produce `blocked` con reason `gate_unavailable`. Sofa-only usa esplicitamente `not-applicable` e può persistere senza dipendere dal gate Betfair.
+Nel tracking canonico l'assenza imprevista del gate è fail-closed e produce `action: blocked` con reason `gate_unavailable`; una callback di una tracking session precedente produce `action: blocked` con reason `stale_tracking_session`. Sofa-only usa esplicitamente `not-applicable` e può persistere senza dipendere dal gate Betfair.
 
 Nel bootstrap il tracker mantiene l’ordine:
 
@@ -266,7 +266,7 @@ Non esiste rollback cross-source automatico. Il gate non ritenta automaticamente
 
 ### POST senza gate live
 
-Se non esiste un gate live, il POST di conferma viene rifiutato con `409 confirmation_session_changed`. Una confirmation persistita resta disponibile per lettura o revoca diagnostica, ma non può autorizzare il bootstrap né portare una nuova sessione in `recording`.
+Se non esiste un gate live, il POST di conferma viene rifiutato con `409 confirmation_session_changed`. Una confirmation già persistita resta disponibile al percorso di Source Identity effective nello snapshot Evidence e alla revoca, ma in assenza di gate live non può autorizzare il bootstrap né portare una nuova sessione in `recording`.
 
 Gli errori di input/contesto usano status `400`, `409` o `422`. Failure di store, bootstrap e persistenza sono mappate su `500` con code bounded come `confirmation_persistence_failed` e `confirmation_bootstrap_failed`, senza error message raw.
 
@@ -295,6 +295,42 @@ Il mismatch non deve:
 La terminazione preserva anche il ruolo `betfair_login`; Chrome e CDP non sono owned dal cleanup del tracking.
 
 Stop manuale, untrack e nuovo start puliscono i gate nel proprio scope. Il gate mismatch viene preservato soltanto nel percorso di mismatch per permettere la lettura dello status terminale.
+
+## Source Identity effective nello snapshot Evidence
+
+La Source Identity effective è costruita sulle timeline già persistite e non deriva dalla `phase` del gate live. Il percorso Evidence ricostruisce quindi l’identità del contesto persistito indipendentemente dal lifecycle runtime del tracking.
+
+Il flusso è:
+
+```txt
+timeline SofaScore persistita
++ timeline Betfair persistita
+→ selezione dei campioni utilizzabili
+→ selezione dell'epoch Betfair attivo
+→ Source Identity automatica
+
+Source Identity automatica pending
+→ ricerca della confirmation persistita applicabile
+→ verifica del fingerprint del contesto
+→ eventuale applicazione della confirmation
+→ Source Identity effective
+```
+
+La confirmation persistita viene cercata soltanto quando l’identità automatica è `pending`. Se la confirmation non è applicabile, è stale oppure il relativo store non è disponibile, non viene usata per forzare l’allineamento.
+
+L’applicazione della confirmation nello snapshot Evidence non modifica timeline, history o stato del gate live e non esegue bootstrap. Può rendere `aligned` l’identità effective del contesto persistito soltanto quando il fingerprint della confirmation coincide con il contesto ricostruito dalle timeline.
+
+L’uso cross-source richiede:
+
+```txt
+Source Identity effective aligned
++ nessun conflitto di persistence integrity
+→ osservazioni cross-source ammesse
+```
+
+Se la Source Identity effective è `pending` o `mismatch`, i dati Betfair non vengono usati nei calcoli cross-source che richiedono identità allineata e le Market Reactions risultano non disponibili con una ragione esplicita. Un conflitto di persistence integrity (`partial_persistence` o `recovery_failed`) blocca lo stesso uso cross-source anche quando l’identità effective è `aligned`.
+
+La Source Identity effective e la persistence integrity sono quindi due condizioni indipendenti: la prima stabilisce se le fonti appartengono allo stesso contesto identificato, la seconda se i dati persistiti possono essere usati come evidenza canonica cross-source.
 
 ## Status endpoint
 
@@ -344,7 +380,7 @@ Il frontend consuma lo status backend ma non deve ricostruire logica identitaria
 
 Non deve:
 
-* dedurre Source Identity dallo snapshot Evidence;
+* dedurre lo stato del gate live dalla Source Identity effective dello snapshot Evidence;
 * dedurre mismatch dai link;
 * dedurre mapping dai nomi;
 * ricostruire epoch o contesto mercato;
@@ -374,6 +410,10 @@ node --check sofa/matchEvidence/sourceIdentity/surnameMatching.js
 node --check sofa/matchEvidence/sourceIdentity/apostropheMatching.js
 node --check sofa/matchEvidence/sourceIdentity/givenNameMatching.js
 node --check sofa/matchEvidence/sourceIdentity/runnerNameMatching.js
+node --check sofa/matchEvidence/sourceIdentityConfirmation.js
+node --check sofa/matchEvidence/sourceIdentityConfirmationStore.js
+node --check sofa/matchEvidence/latestMatchEvidence.js
+node --check sofa/matchEvidence/evidenceBuilder.js
 node --check sofa/sourceIdentityGate.js
 node --check sofa/sourceIdentityGate/sampleValidation.js
 node --check sofa/sourceIdentityGate/sessionFactory.js
@@ -390,6 +430,7 @@ node sofa/sourceIdentityGate/lifecycle.test.mjs
 node sofa/sourceIdentityGate/epochRecovery.test.mjs
 node sofa/sourceIdentityGate/bootstrapFailures.test.mjs
 node sofa/sourceIdentityGate/mismatchAndIsolation.test.mjs
+node sofa/sourceIdentityGate/sessionAuthority.test.mjs
 node routes/match/sourceIdentityStatusResponse.test.mjs
 
 node sofa/matchEvidence/latestMatchEvidence/manualConfirmation.test.mjs
@@ -424,9 +465,21 @@ status route
 
 input
 → immutabili
+
+confirmation persistita applicabile nello snapshot Evidence
+→ pending automatico
+→ aligned effective
+→ timeline input immutate
+
+confirmation stale o store non disponibile
+→ nessun allineamento effective forzato
+
+Source Identity effective non aligned
+oppure persistence integrity in conflitto
+→ osservazioni cross-source non disponibili
 ```
 
-La matrice automatica copre stesso `eventId` con tracking session diversa, callback SofaScore e Betfair stale, gate assente fail-closed, Sofa-only not-applicable, conferma stale o senza gate, failure di store e bootstrap e recovery dopo cambio contesto. I risultati live storici appartengono alla validation collegata e non costituiscono automaticamente un PASS del checkpoint corrente.
+La matrice automatica copre stesso `eventId` con tracking session diversa, callback SofaScore e Betfair stale, gate assente fail-closed, Sofa-only not-applicable, conferma stale o senza gate, failure di store e bootstrap, recovery dopo cambio contesto, applicazione della confirmation persistita nello snapshot Evidence e blocco cross-source indipendente per Source Identity o persistence integrity. I risultati live storici appartengono alla validation collegata e non costituiscono automaticamente un PASS del checkpoint corrente.
 
 ## Documenti collegati
 

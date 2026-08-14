@@ -2,49 +2,40 @@
 
 ## Scopo
 
-Questa Todo è la vista operativa unica della revisione di **Tennis Decision UI**.
+Questa Todo è la vista operativa unica e sintetica della revisione di **Tennis Decision UI**.
 
 Serve a:
 
-- mostrare lo stato corrente del progetto;
-- conservare gli inventari e le checklist dell’audit;
-- distinguere lavoro completato, finding confermati, implementazioni approvate e attività mancanti;
-- collegare ogni ID alla relativa scheda owner;
-- indicare priorità, collaudi residui e prossimo passo;
-- fornire la base per preparare task esecutive separate.
+- mostrare lo stato corrente verificabile senza duplicare le schede owner;
+- conservare inventari e checkpoint storici dell’audit quando restano utili;
+- distinguere comportamento presente, mitigazioni parziali, lavoro approvato ma non completato, futuro e verifiche mancanti;
+- collegare gli ID sintetici alle relative schede owner;
+- mantenere separati stato tecnico corrente, provenance storica e risultati di validation;
+- fornire una base per preparare task esecutive separate senza selezionare automaticamente la prossima task.
 
-Le motivazioni e le evidenze complete vivono nei moduli sotto `implementazioni/`. La documentazione tecnica corrente vive sotto `docs/tennis-decision-ui/`.
+Le motivazioni, le decisioni e le evidenze analitiche complete vivono nei moduli sotto `implementazioni/`. La documentazione tecnica corrente vive sotto `docs/tennis-decision-ui/`. Questa Todo non sostituisce nessuno dei due livelli.
 
-## Baseline verificata
+
+### Provenance storica del recupero documentale
 
 ```txt
-Repository: Pixelpro-agency/tennis-decision-ui-refactor
-Branch canonico: main
-SHA codice verificato: aefc0ba5894d8fca60e5811088fede3ebbfde98a
 SHA base del recupero documentale: 8f936d1a3686b775e967e375576f52f19da461a5
 Commit di applicazione del recupero: 2ebe7e8ad0935bf0195679452d2e54e1de4d63dc
 Data del recupero documentale: 2026-08-06
 ```
 
-- [x] Il recupero documentale è stato pubblicato nel commit `2ebe7e8`
-- [x] La base 8f936d1 e il commit di applicazione 2ebe7e8 riguardano soltanto documentazione e registri; la baseline del codice resta aefc0ba
-- [x] Documentazione e registri verificati dopo la modularizzazione
-- [x] Working tree pulita al momento della pubblicazione del recupero
-
-### Autorità temporale corrente
-
-La baseline sopra è il checkpoint pubblicato del recupero, non la descrizione automatica della working tree locale successiva. Al 10 agosto 2026 la documentazione è in revisione locale non ancora pubblicata: gli SHA storici restano invariati e le correzioni non committate non ricevono uno SHA inventato. Per lo stato corrente prevalgono checkbox, stato testuale e schede owner; gli artifact live valgono soltanto per la run identificata.
+Questi riferimenti restano esclusivamente provenance storica del recupero documentale.
 
 ## Legenda
 
 ```txt
-[x] finding classificato, decisione approvata o attività completata
+[x] classificazione/decisione/attività completata oppure condizione verificata indicata dal testo
 [ ] lavoro, implementazione, verifica o copertura ancora aperta
-[-] parziale o limitato
+[-] parziale, mitigato, coperto solo in parte o con limite residuo
 [~] futuro o rinviato
 ```
 
-Lo stato testuale in grassetto è l’autorità sintetica. Una checkbox `[x]` non equivale automaticamente a codice implementato.
+Lo stato testuale in **grassetto** è l’autorità sintetica della riga. Una checkbox `[x]` non equivale automaticamente a “codice implementato”.
 
 ---
 
@@ -57,52 +48,50 @@ Lo stato testuale in grassetto è l’autorità sintetica. Una checkbox `[x]` no
 - [x] [Metodo e stati](./implementazioni/00-metodo-e-stati.md)
 - [x] [Decisioni dell’utente](./implementazioni/99-decisioni-utente.md)
 - [x] [Documentazione canonica](./docs/tennis-decision-ui/index.md)
-- [x] [Validazioni correnti](./docs/validations/)
-- [x] `docs/archive/` — materiali non canonici conservati intenzionalmente per uso successivo
+- [x] [Validazioni](./docs/validations/)
+- [x] `docs/archive/` — **PRESENTE; materiale non canonico, da non usare come prova di implementazione**
 
 ## A2 — Inventario tecnico e copertura
 
-- [x] A1 — Repository, branch e SHA
-- [x] A2 — Entry point pubblico `avvio.py`
-- [x] A3 — Orchestrazione reale in `launcher/app.py`
-- [x] A4 — Router backend montati
-- [x] A5 — Recovery prima di `listen`
-- [x] A6 — Registry processi Python individuato
-- [x] A7 — Composizione frontend iniziale individuata
-- [ ] A8 — Inventario completo root
-- [ ] A9 — Inventario completo directory backend
-- [ ] A10 — Inventario completo directory frontend
-- [ ] A11 — Inventario completo package Python
-- [ ] A12 — Inventario script operativi
-- [ ] A13 — Inventario test
-- [x] A14 — Inventario documenti canonici — 40 documenti indicizzati verificati sullo SHA base del recupero documentale
-- [-] A15 — Inventario legacy e file generati — materiali locali classificati; riferimenti canonici `chapters/` e `sections/` verificati assenti
-- [-] A16 — Matrice codice ↔ documentazione — owner matrix Batch 0 creata; completamento progressivo per i batch comportamentali
+- [x] A1 — Repository e branch canonico identificati
+- [x] A2 — Entry point pubblico `avvio.py` già inventariato nel checkpoint
+- [x] A3 — Orchestrazione `launcher/app.py` già inventariata nel checkpoint
+- [x] A4 — Router backend correnti verificati nel bootstrap: Match, Betfair, Test/Preflight, Evidence
+- [x] A5 — Bootstrap corrente: writer authority acquisita prima della recovery; recovery prima del listener
+- [x] A6 — Registry processi Python già individuato
+- [x] A7 — Composizione frontend e hook live individuati
+- [ ] A8 — Inventario completo root — **NON COMPLETO**
+- [ ] A9 — Inventario completo directory backend — **NON RICOSTRUITO**
+- [ ] A10 — Inventario completo directory frontend — **NON RICOSTRUITO**
+- [ ] A11 — Inventario completo package Python — **NON RICOSTRUITO**
+- [ ] A12 — Inventario completo script operativi — **NON RICOSTRUITO**
+- [-] A13 — Inventario test — **MANIFEST CANONICO PRESENTE, MA LA MATRICE COMPLETA TEST ↔ OWNER ↔ DOCUMENTO RESTA APERTA**
+- [-] A14 — Inventario documenti canonici — **INDICE E STRUTTURA CORRENTI PRESENTI; IL VECCHIO CONTEGGIO “40” NON VIENE RIUTILIZZATO COME DATO CORRENTE**
+- [-] A15 — Legacy e file generati — **SEPARAZIONE CORRENTE FRA `docs/tennis-decision-ui/`, `docs/validations/` E `docs/archive/` VERIFICATA**
+- [-] A16 — Matrice codice ↔ documentazione — **PARZIALE; NON COMPLETA**
 
 ## A3 — Struttura dei registri
 
 - [x] Audit documentazione suddiviso in 4 moduli
 - [x] Audit codice suddiviso in 7 moduli
 - [x] Implementazioni proposte suddivise in 7 moduli
-- [x] Percorsi root `02`, `03` e `06` mantenuti come indici stabili
-- [x] Registry checker aggiornato a `implementazioni/**/*.md`
-- [x] Test dedicato alla discovery annidata presente
-- [x] Nessun secondo monolite canonico mantenuto
+- [x] ID globali mantenuti nei registri
+- [x] `scripts/check_registry_consistency.py` continua a usare i Blocchi E/F come righe sintetiche canoniche
+- [x] La Todo resta un singolo documento operativo
+- [x] Nessuno split aggiuntivo introdotto per sola dimensione
 
 ## A4 — Regole documentali correnti
 
-- [x] Documenti tecnici in Markdown ordinario
-- [x] Nessun nuovo documento `.mdx`
-- [x] Nessun frontmatter obbligatorio
-- [x] Documentazione canonica limitata al comportamento reale
-- [x] Futuro, decisioni e implementazioni mancanti mantenuti nei registri
-- [x] Cronologia delle revisioni affidata ai commit Git
-- [x] Materiali storici o futuri non canonici dichiarati utili conservati in `docs/archive/`
-- [x] Contenuti archive esclusi dagli owner tecnici e dalla prova di implementazione
-- [x] Duplicati canonici e fonti assorbite rimossi soltanto quando non conservati intenzionalmente
+- [x] Documentazione tecnica canonica in Markdown ordinario
+- [x] Nessun nuovo documento `.mdx` richiesto dalla struttura corrente
+- [x] Stato corrente, storico, futuro e validation devono restare distinti
+- [x] La documentazione canonica deve descrivere soltanto comportamento supportato dal codice corrente
+- [x] Decisioni approvate ma non implementate restano nei registri
+- [x] Le validations sono evidenze datate e non sostituiscono l’autorità del codice
+- [x] `docs/archive/` è non canonico e non costituisce prova di implementazione
+- [x] Cronologia e provenance restano affidate a Git e alle validation datate, non a stati inventati nella Todo
 
 ---
-
 # BLOCCO B0 — Regole documentali permanenti
 
 - [x] Nuovi documenti tecnici soltanto in formato `.md`
@@ -126,9 +115,10 @@ Lo stato testuale in grassetto è l’autorità sintetica. Una checkbox `[x]` no
 
 ---
 
+
 # BLOCCO B — Audit documentazione e lavoro completato
 
-> Le checklist B1–B6 descrivono il checkpoint dell’audit documentale. Gli stati owner correnti restano nei Blocchi E/F e nei registri analitici.
+> Le checklist B1–B6 sono un **checkpoint storico dell’audit documentale**. Per lo stato attuale fanno fede le sintesi correnti dei Blocchi D/E/F e le rispettive schede owner.
 
 ## B1 — Ingresso e orientamento
 
@@ -232,9 +222,10 @@ Lo stato testuale in grassetto è l’autorità sintetica. Una checkbox `[x]` no
 
 ---
 
+
 # BLOCCO C — Audit codice per settori
 
-> Le checklist C1–C13 conservano gli stati osservati durante l’audit. Le voci aperte o parziali non vengono promosse senza una nuova verifica.
+> Le checklist C1–C13 sono un **checkpoint storico dell’audit del codice**. Conservano ciò che fu osservato in quel ciclo e non vengono promosse automaticamente a stato corrente.
 
 ## C1 — Root e launcher
 
@@ -416,72 +407,72 @@ Lo stato testuale in grassetto è l’autorità sintetica. Una checkbox `[x]` no
 
 ---
 
+
 # BLOCCO D — Ricontrollo task completate e priorità
 
-## Ricontrollo D1–D18
+> Le righe D1–D18 sintetizzano lo stato corrente delle task storiche senza trasferire automaticamente gli stati del checkpoint precedente.
 
-- [x] D1 — Source Identity Task 1A — **CONFERMATA CON LIMITI**
-- [x] D2 — Source Identity frontend Task 1B — **CONFERMATA CON LIMITI**
+## D1 — Ricontrollo D1–D18 sul codice corrente
+
+- [x] D1 — Source Identity Task 1A — **CONFERMATA CON LIMITI; CORE PRESENTE, NUOVA SESSION AUTHORITY NON COMPLETA**
+- [x] D2 — Source Identity frontend Task 1B — **CONFERMATA CON LIMITI; POLLING/GATE MIGLIORATI, CONTEXT AUTHORITY COMPLETA ANCORA APERTA**
 - [x] D3 — Money Flow 2A — **CONFERMATA**
 - [x] D4 — Money Flow 2B — **CONFERMATA**
-- [x] D5 — Money Flow 2C — **CONFERMATA**
+- [x] D5 — Money Flow 2C — **CONFERMATA; IDENTITÀ RUNNER CANONICA NEL MONEY FLOW**
 - [x] D6 — Money Flow 2D — **CONFERMATA**
 - [x] D7 — Money Flow 2E — **CONFERMATA**
-- [x] D8 — Validazione live Betfair 2F — **CONFERMATA CON LIMITI** (`TEST-001`, `IMPL-004`)
-- [x] D9 — Runtime launcher Task 2 — **CONFERMATA CON LIMITI; NON RIAPRIRE SENZA DISCREPANZA** (`RUNTIME-001`)
-- [x] D10 — Stop globale Task 3a — **CONFERMATA**
+- [-] D8 — Validazione live Betfair 2F — **VALIDAZIONE STORICA; RESTA DISTINTA DAI COLLAUDI LIVE CORRENTI**
+- [x] D9 — Runtime launcher Task 2 — **CONFERMATA CON LIMITI; WRITER AUTHORITY RAFFORZATA**
+- [-] D10 — Stop globale Task 3a — **BACKEND PRESENTE; I CONSUMER LIVE FRONTEND VENGONO DISABILITATI VIA `sessionActive`, MA LA MODALITÀ `stopped_static` / SNAPSHOT FROZEN NON È COMPLETA**
 - [x] D11 — Timeline store Task 4 — **CONFERMATA**
-- [x] D12 — Commit journal Task 6 — **CONFERMATA**
-- [x] D13 — Recovery — **CONFERMATA CON LIMITI** (`IMPL-008`)
-- [-] D14 — Persistence integrity — **DA RIAPRIRE SOLO FRONTEND/CROSS-LAYER** (`FRONTEND-002`, `DOC-018`, `DOC-022`, `IMPL-009`)
-- [x] D15 — Evidence degradation — **CONFERMATA**
-- [x] D16 — Context locale V1 — **CONFERMATA CON LIMITI** (`SOFA-001`)
-- [-] D17 — Diagnostica Betfair — **DA RIAPRIRE SOLO HARDENING PUBBLICO/CAPTURE** (`SECURITY-001…003`, `PYTHON-001`, `IMPL-007`)
-- [x] D18 — Retention cache runtime — **CONFERMATA CON LIMITI** (`CLEANUP-002`)
+- [x] D12 — Commit journal Task 6 — **CONFERMATA CON LIMITI; JOURNAL PRESENTE MA ANCORA SOURCE-SCOPED**
+- [x] D13 — Recovery — **CONFERMATA CON LIMITI; VERIFICA TARGET RAFFORZATA, CONTROL PLANE COMPLETO ASSENTE**
+- [-] D14 — Persistence integrity — **BACKEND PRESENTE; FRONTEND/CROSS-LAYER ANCORA DA CHIUDERE**
+- [x] D15 — Evidence degradation — **CONFERMATA CON LIMITI; PROVENANCE/ELIGIBILITY TEMPORALE APPROVATE NON SONO COMPLETE**
+- [x] D16 — Context locale V1 — **CONFERMATA CON LIMITE LIVE RESIDUO SUL PBP**
+- [-] D17 — Diagnostica Betfair — **HARDENING PUBBLICO MIGLIORATO; CAPTURE/CACHE E BOUNDARY COMPLETO RESTANO DA CHIUDERE**
+- [x] D18 — Retention cache runtime — **CONFERMATA CON LIMITI; MAINTENANCE AUTHORITY E RETENTION DISTINTA RESTANO APERTE**
 
-```txt
-CONFERMATA: 9
-CONFERMATA CON LIMITI: 7
-DA RIAPRIRE: 2
-```
+Regola: una regressione o un limite riapre soltanto il sotto-perimetro interessato; non annulla le parti già presenti.
 
-Regola: riaprire soltanto il sotto-perimetro difettoso, senza annullare le parti già corrette.
+## D2 — Priorità correnti non completate
 
-## Priorità critica
+### Priorità critica
 
-- [ ] Session authority end-to-end (`IMPL-006`)
-- [ ] Betfair runtime command authority (`IMPL-016`)
-- [ ] Local control-plane boundary (`IMPL-017`)
-- [ ] Event persistence authority (`IMPL-019`)
-- [ ] Canonical document contract e verified recovery (`IMPL-020`)
-- [ ] Evidence temporal provenance e alignment (`IMPL-022`)
-- [ ] Market Reaction eligibility e branch state (`IMPL-023`)
-- [ ] Frontend live-session controller (`IMPL-025`)
-- [ ] Polling runtime session-scoped (`IMPL-026`)
-- [ ] Frontend interaction test harness (`IMPL-030`)
+- [ ] Session authority end-to-end (`IMPL-006`) — **PARZIALMENTE PRESENTE**
+- [ ] Betfair runtime command authority (`IMPL-016`) — **NON COMPLETA**
+- [-] Local control-plane boundary (`IMPL-017`) — **BIND/Host/Origin LOOPBACK PRESENTI; CONTRATTO COMPLETO NON CHIUSO**
+- [ ] Event persistence authority (`IMPL-019`) — **NON COMPLETA**
+- [-] Canonical document contract e verified recovery (`IMPL-020`) — **PRIMITIVE DI VERIFICA PRESENTI; CONTRATTO COMPLETO ASSENTE**
+- [ ] Evidence temporal provenance e alignment (`IMPL-022`) — **NON COMPLETA**
+- [-] Market Reaction eligibility e branch state (`IMPL-023`) — **PRIMITIVE QUALITÀ PRESENTI; CONTRATTO UNIFORME NON COMPLETO**
+- [-] Frontend live-session controller (`IMPL-025`) — **TRACKING SESSION ID PRESENTE; OWNER/STATE MACHINE UNICI ASSENTI**
+- [-] Polling runtime session-scoped (`IMPL-026`) — **ABORT/GENERATION GUARD PRESENTI; CONTRATTO COMUNE SESSIONKEY NON COMPLETO**
+- [-] Frontend interaction test harness (`IMPL-030`) — **TEST DI LIFECYCLE PRESENTI; HARNESS APPROVATO NON COMPLETO**
 
-## Priorità alta
+### Priorità alta
 
 - [ ] Betfair acquisition envelope e provenance (`IMPL-018`)
 - [ ] Recovery control plane (`IMPL-021`)
-- [ ] Runner temporal identity e price comparability (`IMPL-024`)
-- [ ] Market Reactions frontend view model (`IMPL-027`)
-- [ ] Fixture catalog e sandbox condivisa (`IMPL-029`)
-- [ ] Validation result ledger (`IMPL-031`)
-- [ ] Hardening diagnostico e network capture
-- [ ] Retention e cleanup offline
+- [ ] Runner temporal identity e price comparability (`IMPL-024`) — **FALLBACK NOME ANCORA PRESENTE IN EVIDENCE**
+- [-] Market Reactions frontend view model (`IMPL-027`) — **VIEW MODEL MINIMO PRESENTE; CONTRATTO COMPLETO NON CHIUSO**
+- [-] Fixture catalog e sandbox condivisa (`IMPL-029`) — **FIXTURE/TEMP LOCALI PRESENTI, CATALOGO CONDIVISO NON COMPLETO**
+- [-] Validation result ledger (`IMPL-031`) — **ARTEFATTI JSON DEL RUNNER PRESENTI; LEDGER COMPLETO NON CHIUSO**
+- [ ] Hardening diagnostico/network capture residuo
+- [ ] Retention e cleanup offline residui
 
-## Futuro o condizionato
+### Futuro o condizionato
 
 - [~] Toolkit strategie offline (`IMPL-010`)
 - [~] Ottimizzazione Betfair misurata (`IMPL-014`)
 
-Nessuna di queste voci è stata selezionata automaticamente come prossima task.
+Nessuna voce viene selezionata automaticamente come prossima task.
 
 ---
 
 # BLOCCO E — Rilievi registrati
 
+> Il Blocco E è la sintesi corrente delle schede owner. `RISOLTO` indica che il rilievo non è più presente nello stato corrente; `PARZIALE` non chiude la scheda owner.
 ## Documentazione e struttura
 
 - [x] `DOC-001` — Roadmap troppo storica — **CONFERMATO**
@@ -529,13 +520,13 @@ Nessuna di queste voci è stata selezionata automaticamente come prossima task.
 
 ## Codice, runtime, sicurezza, dati, frontend e cleanup
 
-- [x] `CODE-001` — Strategy legacy attiva — **RIMOZIONE APPROVATA; MARKET REACTIONS PRESERVATE**
-- [ ] `CODE-002` — Validatore Betfair non condiviso tra Preflight/Start/Login — **CONFERMATO; VALIDATORE UNICO APPROVATO**
+- [x] `CODE-001` — Strategy legacy attiva — **RISOLTO; ROUTE STRATEGY NON MONTATA E SURFACE LEGACY RIMOSSA, MARKET REACTIONS PRESERVATE**
+- [-] `CODE-002` — Validatore Betfair non condiviso tra Preflight/Start/Login — **PARZIALMENTE RISOLTO; `classifyBetfairUrl` È CONDIVISO DA ROUTE BETFAIR, PARITÀ COMPLETA DA VERIFICARE**
 - [x] `CODE-003` — Match `debug-last` sempre vuoto — **RIMOZIONE APPROVATA**
-- [x] `CODE-004` — Strategy usa `localhost:3001` hardcoded — **ASSORBITO DALLA RIMOZIONE CODE-001**
+- [x] `CODE-004` — Strategy usa `localhost:3001` hardcoded — **ASSORBITO DALLA RIMOZIONE DELLA SURFACE STRATEGY**
 - [ ] `CODE-005` — Script lint frontend pubblicato ma non eseguibile — **CONFERMATO; CORREZIONE GRADUALE APPROVATA**
 - [ ] `CODE-006` — Preflight Graph divergente dal runtime — **CONFERMATO; PARITÀ APPROVATA**
-- [ ] `CODE-007` — Probe CDP di `/latest` guidato dalla query — **CONFERMATO; SESSION-OWNED APPROVATO**
+- [ ] `CODE-007` — Probe CDP di `/latest` guidato dalla query — **ANCORA PRESENTE NEL CONTRATTO `/latest`; SESSION-OWNED NON COMPLETO**
 - [ ] `RUNTIME-002` — Nuovo Start non invalida la sessione precedente — **CONFERMATO; PRIORITÀ CRITICA**
 - [x] `RUNTIME-003` — Avvii manuali aggiravano l’autorità sulla persistenza — **COMPLETATO**
 - [ ] `RUNTIME-004` — Riavvio dello stesso eventId contamina il gate nuovo — **CONFERMATO; PRIORITÀ CRITICA**
@@ -545,43 +536,43 @@ Nessuna di queste voci è stata selezionata automaticamente come prossima task.
 - [ ] `RUNTIME-008` — Mismatch non termina fisicamente SofaScore — **CONFERMATO; PRIORITÀ ALTA**
 - [ ] `RUNTIME-009` — Stop pubblico nasconde cleanup parziale — **CONFERMATO; PRIORITÀ ALTA**
 - [ ] `RUNTIME-010` — Conferma Source Identity stale sul gate nuovo — **CONFERMATO; PRIORITÀ ALTA**
-- [x] `RUNTIME-011` — `/api/betfair/odds` è un secondo ingresso mutante — **RIMOZIONE APPROVATA; PRIORITÀ CRITICA**
+- [x] `RUNTIME-011` — `/api/betfair/odds` è un secondo ingresso mutante — **RISOLTO; ENDPOINT NON PRESENTE NEL ROUTER BETFAIR**
 - [ ] `RUNTIME-012` — Manca autorità globale dei comandi Betfair — **CONFERMATO; PRIORITÀ CRITICA**
 - [ ] `SECURITY-001` — Payload network capture oltrepassa il boundary pubblico — **CONFERMATO; PRIORITÀ ALTA**
 - [ ] `SECURITY-002` — Cache URL-derived e priva di runtime/Graph identity — **CONFERMATO; PRIORITÀ ALTA**
-- [ ] `SECURITY-003` — Dettagli raw degli errori HTTP — **CONFERMATO**
-- [ ] `SECURITY-004` — Manca local control-plane boundary — **CONFERMATO; PRIORITÀ CRITICA**
+- [-] `SECURITY-003` — Dettagli raw degli errori HTTP — **HARDENING PARZIALE PRESENTE; ERRORI BETFAIR BOUNDED, SERIALIZER PUBBLICO UNICO ANCORA ASSENTE**
+- [-] `SECURITY-004` — Manca local control-plane boundary — **PARZIALMENTE RISOLTO; BIND LOOPBACK E MIDDLEWARE Host/Origin LOCALI PRESENTI, CONTRATTO COMPLETO IMPL-017 APERTO**
 - [x] `SECURITY-005` — Flag Chromium indebolenti nel default — **RIMOZIONE APPROVATA SALVO NECESSITÀ DIMOSTRATA**
-- [ ] `DATA-001` — Volume runner sintetico `marketTotal/runnerCount` — **RIMOZIONE APPROVATA; PRIORITÀ CRITICA**
+- [x] `DATA-001` — Volume runner sintetico `marketTotal/runnerCount` — **RISOLTO; NESSUN FALLBACK SINTETICO NEL CALCOLO MONEY FLOW**
 - [ ] `DATA-002` — API/Graph senza acquisition timestamp e skew — **CONFERMATO; PRIORITÀ ALTA**
-- [ ] `FRONTEND-001` — Response Sofa/Betfair tardive o fuori ordine attraversano la sessione — **CONFERMATO; PRIORITÀ CRITICA**
-- [ ] `FRONTEND-002` — Integrity raccolta ma scartata prima della UI — **CONFERMATO; PRIORITÀ CRITICA**
-- [ ] `FRONTEND-003` — Start fallito lascia sessione e polling nascosti — **CONFERMATO; PRIORITÀ CRITICA**
+- [-] `FRONTEND-001` — Response Sofa/Betfair tardive o fuori ordine attraversano la sessione — **MITIGATO NEI POLLER CON GENERATION/ABORT/REQUEST GUARD; SESSION AUTHORITY END-TO-END RESTA APERTA**
+- [-] `FRONTEND-002` — Persistence integrity frontend — **PARZIALMENTE RISOLTO; `buildPersistenceViewState` PROPAGA GLI STATI ALLA WORKSPACE E ALLA CARD BETFAIR, MA SIDEBAR/MODALE E STATO COMPLETO PER SETTORE RESTANO ASSENTI**
+- [-] `FRONTEND-003` — Start fallito lascia sessione e polling nascosti — **MITIGATO: SESSIONE CONFERMATA E SHELL VENGONO PULITE; CLEANUP COMPENSATIVO/CONTROLLER UNICO NON COMPLETI**
 - [ ] `FRONTEND-004` — Copy mojibake visibile — **CONFERMATO; TASK SEPARATA**
-- [ ] `FRONTEND-005` — Loop di polling orfani dopo cambio sessione/cleanup — **CONFERMATO; PRIORITÀ CRITICA**
+- [-] `FRONTEND-005` — Loop di polling orfani dopo cambio sessione/cleanup — **MITIGATO CON ABORT E GENERATION GUARD; COORDINAMENTO SESSION-SCOPED COMUNE NON COMPLETO**
 - [ ] `FRONTEND-006` — Start/Stop concorrenti non serializzati — **CONFERMATO; PRIORITÀ ALTA**
-- [ ] `FRONTEND-007` — Stop Live lascia attivi Betfair/Evidence/Source Identity/audio — **CONFERMATO; PRIORITÀ CRITICA**
+- [-] `FRONTEND-007` — Stop Live e modalità statica dopo Stop — **I CONSUMER LIVE SOFA/BETFAIR/EVIDENCE/SOURCE IDENTITY VENGONO DISABILITATI VIA `sessionActive`; RESTA INCOMPLETA LA MODALITÀ STATICA/FROZEN DOPO STOP**
 - [ ] `FRONTEND-008` — Indicatori live derivati dalla presenza del dato — **CONFERMATO; STATE MACHINE APPROVATA**
-- [ ] `FRONTEND-009` — Market Reactions UI promuove unavailable e usa schema errato — **CONFERMATO; IMPL-027 APPROVATA**
-- [ ] `FRONTEND-010` — Pending modal non legata a session/context identity — **CONFERMATO; CONTEXT ID OPACO APPROVATO**
+- [-] `FRONTEND-009` — Market Reactions UI/view model — **PARZIALMENTE RISOLTO; `available` È VALUTATO SOLO CON `=== true` E IL SOURCE MARKET È MAPPATO ESPLICITAMENTE, MA IL CONTRATTO COMPLETO PROVISIONAL/FINAL/WINDOW STATE NON È PRESENTE**
+- [-] `FRONTEND-010` — Pending modal e session/context identity — **PARZIALMENTE RISOLTO; LA CONFERMA INVIA `trackingSessionId` E VERIFICA IL REFRESH SULLA STESSA SESSIONE, MA `sourceIdentityContextId` / REVISION OPACHI NON SONO PRESENTI**
 - [ ] `FRONTEND-011` — Preflight results non legati agli input verificati — **CONFERMATO; FINGERPRINT APPROVATO**
 - [ ] `FRONTEND-012` — Responsive strutturalmente assente — **LIMITE CONFERMATO; TASK SEPARATA**
 - [ ] `PYTHON-001` — Task network capture non tracked/drained/cancelled — **CONFERMATO**
-- [x] `CLEANUP-001` — Authority Source Identity legacy frontend — **RIMOZIONE APPROVATA; AUTHORITY GLOBALE UNICA**
+- [-] `CLEANUP-001` — Authority Source Identity legacy frontend — **CLEANUP PARZIALE; SURFACE STRATEGY RIMOSSA, VERIFICA FINALE SOURCE IDENTITY LEGACY ANCORA NECESSARIA**
 - [ ] `CLEANUP-002` — Apply offline privo di maintenance authority e porte effettive — **CONFERMATO**
 - [ ] `CLEANUP-003` — Log e network dump senza retention distinta — **CONFERMATO; PRIORITÀ MEDIO-ALTA**
 
 ## Storage, journal e recovery
 
 - [ ] `STORAGE-001` — Journal source-scoped su shared history event-scoped — **CONFERMATO; IMPL-019 APPROVATA; PRIORITÀ CRITICA**
-- [ ] `STORAGE-002` — Target marked complete non verificato nei record parziali — **CONFERMATO; CORREZIONE APPROVATA; PRIORITÀ CRITICA**
-- [ ] `STORAGE-003` — Target verification limitata a JSON.parse — **CONFERMATO; IMPL-020 APPROVATA; PRIORITÀ CRITICA**
+- [x] `STORAGE-002` — Target marked complete non verificato nei record parziali — **RISOLTO: TARGET COMPLETED VIENE VERIFICATO E RIAPERTO SE NON VALIDO**
+- [-] `STORAGE-003` — Target verification limitata a JSON.parse — **PARZIALMENTE RISOLTO; SHAPE/IDENTITY/CONTENUTO ATTESO VERIFICATI, CONTRATTO SCHEMA/REVISION/DIGEST DI IMPL-020 NON COMPLETO**
 - [ ] `STORAGE-004` — Journal invalido non attribuibile nascosto dall’integrity — **CONFERMATO; READ-ONLY INTEGRITY_UNKNOWN APPROVATO**
-- [ ] `SECURITY-006` — EventId e target non confinati dallo Storage — **CONFERMATO; VALIDAZIONE E ROOT CONFINEMENT APPROVATI**
+- [-] `SECURITY-006` — EventId e target non confinati dallo Storage — **MITIGAZIONE PARZIALE; TARGET ESPLICITO DEVE COINCIDERE COL TARGET RISOLTO, VALIDAZIONE BOUNDED/ROOT CONFINEMENT COMPLETI NON DIMOSTRATI**
 - [ ] `STORAGE-005` — Shared history espone soltanto integrity SofaScore — **CONFERMATO; INTEGRITY AGGREGATA APPROVATA**
 - [ ] `STORAGE-006` — Stato cross-source pubblicato prima del commit — **CONFERMATO; COMMITTED-ONLY APPROVATO**
-- [ ] `STORAGE-007` — Missing, corruzione e I/O failure collassano in `null` — **CONFERMATO; READ CONTRACT STRUTTURATO APPROVATO**
-- [ ] `STORAGE-008` — Duplicati evento risolti con `sort()[0]` — **CONFERMATO; AMBIGUITY BLOCCANTE APPROVATA**
+- [x] `STORAGE-007` — Missing, corruzione e I/O failure collassano in `null` — **RISOLTO PER IL READ CONTRACT HISTORY: FOUND/MISSING/FAILED CON REASON DISTINTE; WRAPPER LEGACY `loadHistory` RESTA COMPATIBILE**
+- [x] `STORAGE-008` — Duplicati evento risolti con `sort()[0]` — **RISOLTO: TARGET MULTIPLI PRODUCONO `ambiguous_storage_target` E FAIL-CLOSED**
 - [ ] `STORAGE-009` — Nessuna policy persistita dei tentativi recovery — **CONFERMATO; IMPL-021 APPROVATA**
 - [ ] `STORAGE-010` — Amplificazione full-document per ogni tick — **LIMITE CONFERMATO; MISURARE CON IMPL-013**
 - [ ] `STORAGE-011` — Atomicità process-level non equivale a durabilità power-loss — **LIMITE CONFERMATO; DA MISURARE**
@@ -593,8 +584,8 @@ Nessuna di queste voci è stata selezionata automaticamente come prossima task.
 - [ ] `EVIDENCE-002` — Tick degradati/status-only possono diventare nuovi eventi Market Reactions — **CONFERMATO; IMPL-023 APPROVATA; PRIORITÀ CRITICA**
 - [ ] `EVIDENCE-003` — Attività matched generale classificata come market response — **CONFERMATO; SEMANTICA DA SEPARARE**
 - [ ] `EVIDENCE-004` — Marker persistente confuso con nuova comparsa successiva — **CONFERMATO; TRANSITION GATE APPROVATO**
-- [ ] `EVIDENCE-005` — `maxTickGapSec` non misura il source skew e timestamp futuri risultano freschi — **CONFERMATO; IMPL-022 APPROVATA**
-- [ ] `EVIDENCE-006` — Confronti prezzo con source diverse e baseline non bounded — **CONFERMATO; IMPL-024 APPROVATA**
+- [ ] `EVIDENCE-005` — `maxTickGapSec` non misura il source skew e timestamp futuri risultano freschi — **CONFERMATO; TEMPORAL ALIGNMENT CORRENTE NON IMPLEMENTA IL CONTRATTO ACQUIRED/RECORDED/SOURCE-SKEW DI IMPL-022**
+- [ ] `EVIDENCE-006` — Confronti prezzo con source diverse e baseline non bounded — **CONFERMATO; SOURCE DIVERSE SONO ANCORA COMBINATE IN UNA LABEL E NON DEGRADATE DAL CONTRATTO IMPL-024**
 - [ ] `EVIDENCE-007` — Qualità globale positiva con un solo runner affidabile — **CONFERMATO; COVERAGE ESPLICITA APPROVATA**
 - [ ] `EVIDENCE-008` — Baseline Significant Flow/cluster e threshold non sufficientemente definiti — **LIMITE CONFERMATO; POLICY APPROVATA**
 - [ ] `EVIDENCE-009` — `available` e stato delle finestre hanno semantiche non uniformi — **CONFERMATO; BRANCH STATE APPROVATO**
@@ -602,6 +593,7 @@ Nessuna di queste voci è stata selezionata automaticamente come prossima task.
 
 ## Test e coperture richieste
 
+> Le diciture storiche “PASSATO/COMPLETATO” restano riferite ai cicli registrati. La presenza di un file test non equivale da sola a un PASS.
 - [ ] `TEST-001` — Test dedicato tick Betfair `status-only` — **MANCANTE**
 - [ ] `TEST-002` — Test lifecycle cambio sessione/Start fallito — **MANCANTE**
 - [x] `TEST-003` — Inventario, manifest e comando test canonico — **RUNNER IMPLEMENTATO; MATRICE COMPLETA ANCORA APERTA**
@@ -614,7 +606,7 @@ Nessuna di queste voci è stata selezionata automaticamente come prossima task.
 - [ ] `TEST-010` — Validatore Betfair condiviso — **MANCANTE**
 - [ ] `TEST-011` — Parità Graph Preflight/runtime — **MANCANTE**
 - [ ] `TEST-012` — Un solo comando Betfair globale — **MANCANTE**
-- [ ] `TEST-013` — Endpoint `/odds` rimosso, letture preservate — **MANCANTE**
+- [-] `TEST-013` — Endpoint `/odds` rimosso, letture preservate — **CONDIZIONE DI CODICE VERIFICATA; TEST-ID DEDICATO NON RICONCILIATO**
 - [ ] `TEST-014` — Probe CDP session-owned — **MANCANTE**
 - [ ] `TEST-015` — Network capture bounded e drained — **MANCANTE**
 - [ ] `TEST-016` — Nessun volume runner sintetico — **MANCANTE**
@@ -627,8 +619,8 @@ Nessuna di queste voci è stata selezionata automaticamente come prossima task.
 - [ ] `TEST-023` — Journal invalido → read-only `integrity_unknown` — **MANCANTE**
 - [ ] `TEST-024` — Aggregate integrity shared history — **MANCANTE**
 - [ ] `TEST-025` — Stato cross-source soltanto committed — **MANCANTE**
-- [ ] `TEST-026` — Read status Storage distinti — **MANCANTE**
-- [ ] `TEST-027` — Duplicate event documents bloccanti — **MANCANTE**
+- [-] `TEST-026` — Read status Storage distinti — **COPERTURA MIRATA PRESENTE IN `storage/discoveryAndRead.test.mjs`; MAPPATURA TEST-ID CANONICA DA RICONCILIARE**
+- [-] `TEST-027` — Duplicate event documents bloccanti — **COPERTURA MIRATA PRESENTE IN `storage/discoveryAndRead.test.mjs`; MAPPATURA TEST-ID CANONICA DA RICONCILIARE**
 - [ ] `TEST-028` — EventId e target confinement — **MANCANTE**
 - [ ] `TEST-029` — Nessun consumer runtime dei writer raw — **MANCANTE**
 - [ ] `TEST-030` — Retry, escalation e rearm recovery — **MANCANTE**
@@ -647,19 +639,19 @@ Nessuna di queste voci è stata selezionata automaticamente come prossima task.
 - [ ] `TEST-043` — Finestre open/closed e provisional/final — **MANCANTE**
 - [ ] `TEST-044` — Start A/B concorrenti e risposta tardiva — **MANCANTE**
 - [ ] `TEST-045` — Start fallito/ambiguo e cleanup compensativo — **MANCANTE**
-- [ ] `TEST-046` — Response Sofa/Betfair vecchie o fuori ordine — **MANCANTE**
-- [ ] `TEST-047` — Cleanup durante fetch senza timeout ricreato — **MANCANTE**
+- [-] `TEST-046` — Response Sofa/Betfair vecchie o fuori ordine — **COPERTURA DI LIFECYCLE PRESENTE IN `pollingLifecycle.test.mjs`; CONTRATTO SESSIONE COMPLETO NON CHIUSO**
+- [-] `TEST-047` — Cleanup durante fetch senza timeout ricreato — **COPERTURA PARZIALE PRESENTE NEL LIFECYCLE DEI POLLER; REQUIREMENT COMPLETO DA RICONCILIARE**
 - [ ] `TEST-048` — Stop completo: tutti i poller sospesi e snapshot frozen — **MANCANTE**
 - [ ] `TEST-049` — Stop parziale visibile in UI — **MANCANTE**
-- [ ] `TEST-050` — Persistence UI locale/globale e snapshot degraded — **MANCANTE**
-- [ ] `TEST-051` — EventId/trackingSessionId dalla risposta Start — **MANCANTE**
+- [-] `TEST-050` — Persistence UI locale/globale e snapshot degraded — **COPERTURA PARZIALE PRESENTE IN `persistenceViewState.test.mjs`; IL REQUIREMENT UI COMPLETO NON È CHIUSO**
+- [-] `TEST-051` — EventId/trackingSessionId dalla risposta Start — **COPERTURA PARZIALE: `useLiveTrackingActions.test.mjs` VERIFICA `trackingSessionId`; EVENT ID E RISPOSTA START END-TO-END NON SONO COPERTI**
 - [ ] `TEST-052` — Nuovo Source Identity context con stessi nomi — **MANCANTE**
 - [ ] `TEST-053` — Preflight input-bound e response stale — **MANCANTE**
-- [ ] `TEST-054` — Market Reactions branch `available:false` — **MANCANTE**
-- [ ] `TEST-055` — Mapping schema Market Reactions reale — **MANCANTE**
+- [-] `TEST-054` — Market Reactions branch `available:false` — **TEST MIRATO PRESENTE IN `marketReactionViewModel.test.mjs`; REQUIREMENT COMPLETO NON CHIUSO**
+- [-] `TEST-055` — Mapping schema Market Reactions reale — **TEST MIRATO PRESENTE IN `marketReactionViewModel.test.mjs`; IL CONTRATTO COMPLETO IMPL-027 RESTA APERTO**
 - [ ] `TEST-056` — Nessun falso stato live/connected/polling active — **MANCANTE**
 - [ ] `TEST-057` — Sessione Sofa-only senza polling Betfair — **MANCANTE**
-- [ ] `TEST-058` — StrictMode con una sola catena polling — **MANCANTE**
+- [-] `TEST-058` — StrictMode con una sola catena polling — **COPERTURA PARZIALE PRESENTE CON `React.StrictMode`; HARNESS CANONICO IMPL-030 NON COMPLETO**
 - [ ] `TEST-059` — Smoke responsive desktop/tablet/mobile — **MANCANTE**
 - [x] `TEST-060` — Manifest enumera ogni comando una sola volta — **IMPLEMENTATO E PASSATO**
 - [x] `TEST-061` — Path mancante nel manifest fallisce prima della suite — **IMPLEMENTATO E PASSATO**
@@ -672,7 +664,7 @@ Nessuna di queste voci è stata selezionata automaticamente come prossima task.
 - [x] `TEST-068` — TEST-ID dei registri coerenti con il manifest — **IMPLEMENTATO E PASSATO**
 - [ ] `TEST-069` — Result JSON contiene SHA, profilo, conteggi e limiti — **COPERTURA PARZIALE; REQUIREMENT NON CHIUSO**
 - [ ] `TEST-070` — Result JSON non contiene segreti, URL o path vietati — **COPERTURA PARZIALE; REQUIREMENT NON CHIUSO**
-- [ ] `TEST-071` — Frontend harness monta hook in StrictMode con fake timer — **MANCANTE**
+- [-] `TEST-071` — Frontend harness monta hook in StrictMode con fake timer — **STRICTMODE/LIFECYCLE PRESENTI CON `react-test-renderer`; STACK APPROVATO VITEST/JSDOM/RTL E FAKE TIMER NON COMPLETO**
 - [ ] `TEST-072` — Route harness verifica HTTP reale su porta dinamica — **MANCANTE**
 - [x] `TEST-073` — Profilo `fast` non avvia browser, rete esterna o tracking — **IMPLEMENTATO E PASSATO**
 - [ ] `TEST-074` — Benchmark registra mediana/p95 senza dati live — **MANCANTE**
@@ -684,40 +676,43 @@ Nessuna di queste voci è stata selezionata automaticamente come prossima task.
 
 ---
 
+
 # BLOCCO F — Implementazioni utili
 
+> Stato sintetico corrente. Una IMPL può avere primitive già presenti senza essere completa nel contratto approvato.
+
 - [x] `IMPL-001` — Link checker Markdown/MDX — **IMPLEMENTATA**
-- [x] `IMPL-002` — Inventario endpoint — **CONSIGLIATA**
-- [x] `IMPL-003` — Matrice test ↔ modulo ↔ documento — **NECESSARIA**
-- [x] `IMPL-004` — Archivio collaudi storici — **COMPLETATA; EVIDENZE CORRENTI IN `docs/validations/`**
-- [x] `IMPL-005` — Coerenza Todo ↔ registri — **IMPLEMENTATA E VERIFICATA**
-- [x] `IMPL-006` — Session authority end-to-end — **APPROVATA; PRIORITÀ CRITICA**
-- [x] `IMPL-007` — Serializer pubblico diagnostica/errori — **NECESSARIA**
-- [x] `IMPL-008` — Harness offline persistence/recovery — **CONSIGLIATA**
-- [x] `IMPL-009` — Adapter persistence + stati locali + pannello sidebar — **NECESSARIA**
+- [x] `IMPL-002` — Inventario endpoint — **CONSIGLIATA; NON PROMOSSA A COMPLETATA**
+- [x] `IMPL-003` — Matrice test ↔ modulo ↔ documento — **NECESSARIA; PARZIALE**
+- [x] `IMPL-004` — Archivio collaudi storici — **COMPLETATA; VALIDATIONS SEPARATE PRESENTI**
+- [x] `IMPL-005` — Coerenza Todo ↔ registri — **IMPLEMENTATA; CHECKER READ-ONLY PRESENTE**
+- [-] `IMPL-006` — Session authority end-to-end — **PARZIALMENTE PRESENTE; NON COMPLETA**
+- [-] `IMPL-007` — Serializer pubblico diagnostica/errori — **HARDENING PARZIALE; SERIALIZER UNICO ASSENTE**
+- [x] `IMPL-008` — Harness offline persistence/recovery — **CONSIGLIATA; PROCEDURA UNICA NON COMPLETA**
+- [-] `IMPL-009` — Adapter persistence + stati locali + pannello sidebar — **PARZIALMENTE IMPLEMENTATA; ADAPTER CENTRALE, BANNER GLOBALE E STATO LOCALE BETFAIR SONO PRESENTI, SIDEBAR/MODALE E COPERTURA COMPLETA PER SETTORE NO**
 - [~] `IMPL-010` — Toolkit autonomo studio strategie offline — **FUTURO**
-- [x] `IMPL-011` — Authority di manutenzione cleanup offline — **NECESSARIA**
-- [x] `IMPL-012` — Fixture versionate e replay offline — **NECESSARIA PRIMA DEL BACKTESTING**
-- [x] `IMPL-013` — Baseline end-to-end e freshness — **NECESSARIA PRIMA DI OTTIMIZZARE**
+- [x] `IMPL-011` — Authority di manutenzione cleanup offline — **NECESSARIA; APERTA**
+- [-] `IMPL-012` — Fixture versionate e replay offline — **NECESSARIA; FIXTURE MIRATE PRESENTI, CATALOGO/REPLAY COMPLETI ASSENTI**
+- [x] `IMPL-013` — Baseline end-to-end e freshness — **NECESSARIA PRIMA DI OTTIMIZZARE; APERTA**
 - [~] `IMPL-014` — Ottimizzazione Betfair misurata e reversibile — **FUTURO**
 - [x] `IMPL-015` — Writer authority esclusiva `match_history` — **COMPLETATA**
-- [x] `IMPL-016` — Betfair runtime command authority — **APPROVATA; PRIORITÀ CRITICA**
-- [x] `IMPL-017` — Local control-plane boundary — **APPROVATA; PRIORITÀ CRITICA**
-- [x] `IMPL-018` — Betfair acquisition envelope e provenance — **APPROVATA; PRIORITÀ ALTA**
-- [x] `IMPL-019` — Event persistence authority — **APPROVATA; PRIORITÀ CRITICA**
-- [x] `IMPL-020` — Canonical document contract e verified recovery — **APPROVATA; PRIORITÀ CRITICA**
-- [x] `IMPL-021` — Recovery control plane — **APPROVATA; PRIORITÀ ALTA**
-- [x] `IMPL-022` — Evidence temporal provenance and alignment policy — **APPROVATA; PRIORITÀ CRITICA**
-- [x] `IMPL-023` — Market Reaction eligibility e branch state — **APPROVATA; PRIORITÀ CRITICA**
-- [x] `IMPL-024` — Runner temporal identity e price comparability — **APPROVATA; PRIORITÀ ALTA**
-- [x] `IMPL-025` — Frontend live-session controller — **APPROVATA; PRIORITÀ CRITICA**
-- [x] `IMPL-026` — Polling runtime session-scoped — **APPROVATA; PRIORITÀ CRITICA**
-- [x] `IMPL-027` — Market Reactions frontend view model — **APPROVATA; PRIORITÀ ALTA**
-- [x] `IMPL-028` — Manifest e runner canonico di validazione — **IMPLEMENTATA E VALIDATA**
-- [x] `IMPL-029` — Fixture catalog e sandbox condivisa — **APPROVATA; PRIORITÀ ALTA**
-- [x] `IMPL-030` — Frontend interaction test harness — **APPROVATA; PRIORITÀ CRITICA**
-- [x] `IMPL-031` — Validation result ledger e artefatti JSON — **APPROVATA; PRIORITÀ ALTA**
-- [x] `IMPL-032` — Pipeline di migrazione documentale per batch — **COMPLETATA**
+- [x] `IMPL-016` — Betfair runtime command authority — **APPROVATA; NON COMPLETA**
+- [-] `IMPL-017` — Local control-plane boundary — **PARZIALMENTE IMPLEMENTATA; LOOPBACK + Host/Origin PRESENTI**
+- [x] `IMPL-018` — Betfair acquisition envelope e provenance — **APPROVATA; NON ASSUNTA COMPLETA**
+- [x] `IMPL-019` — Event persistence authority — **APPROVATA; NON COMPLETA, JOURNAL ANCORA SOURCE-SCOPED**
+- [-] `IMPL-020` — Canonical document contract e verified recovery — **PARZIALMENTE PRESENTE; VERIFICA TARGET/READ CONTRACT RAFFORZATI, SCHEMA/REVISION/DIGEST COMPLETI ASSENTI**
+- [x] `IMPL-021` — Recovery control plane — **APPROVATA; NON COMPLETA**
+- [x] `IMPL-022` — Evidence temporal provenance and alignment policy — **APPROVATA; NON COMPLETA**
+- [-] `IMPL-023` — Market Reaction eligibility e branch state — **PRIMITIVE QUALITÀ PRESENTI; CONTRATTO UNIFORME NON COMPLETO**
+- [x] `IMPL-024` — Runner temporal identity e price comparability — **APPROVATA; NON COMPLETA, FALLBACK NOME ANCORA PRESENTE**
+- [-] `IMPL-025` — Frontend live-session controller — **PARZIALMENTE PRESENTE; `trackingSessionId` USATO MA NESSUNA STATE MACHINE OWNER UNICA**
+- [-] `IMPL-026` — Polling runtime session-scoped — **PARZIALMENTE PRESENTE; GENERATION/ABORT GUARD IMPLEMENTATE PER HOOK, PRIMITIVE COMUNE/SESSIONKEY NON COMPLETE**
+- [-] `IMPL-027` — Market Reactions frontend view model — **PARZIALMENTE IMPLEMENTATA; STRICT AVAILABILITY E MAPPING MARKET SOURCE PRESENTI, PAGE/BRANCH STATE COMPLETO NON CHIUSO**
+- [x] `IMPL-028` — Manifest e runner canonico di validazione — **IMPLEMENTATA; RUNNER, MANIFEST E SELF-TEST PRESENTI**
+- [-] `IMPL-029` — Fixture catalog e sandbox condivisa — **PARZIALMENTE PRESENTE; TEMP/FIXTURE LOCALI, CATALOGO CONDIVISO NON COMPLETO**
+- [-] `IMPL-030` — Frontend interaction test harness — **PARZIALMENTE PRESENTE; TEST LIFECYCLE/STRICTMODE ESISTONO, STACK APPROVATO NON COMPLETO**
+- [-] `IMPL-031` — Validation result ledger e artefatti JSON — **PARZIALMENTE PRESENTE; RESULT JSON DEL RUNNER ESISTE, LEDGER COMPLETO NON CHIUSO**
+- [x] `IMPL-032` — Pipeline di migrazione documentale per batch — **COMPLETATA NEL CICLO DOCUMENTALE**
 
 ---
 
@@ -734,19 +729,20 @@ Nessuna di queste voci è stata selezionata automaticamente come prossima task.
 
 ---
 
+
 # BLOCCO H — Modularizzazione e pulizia
 
 - [x] Audit documentazione suddiviso in 4 moduli
 - [x] Audit codice suddiviso in 7 moduli
 - [x] Implementazioni proposte suddivise in 7 moduli
 - [x] ID globali mantenuti
-- [x] Link relativi verificati
-- [x] Registry checker ricorsivo verificato
-- [x] Nessuna seconda copia canonica monolitica
-- [x] Soglia di modularizzazione raggiunta
-- [x] Soglie guida conservate: oltre 1.500–2.000 righe, oltre 100 rilievi o rilettura troppo costosa
-- [x] Dopo una migrazione restano file correnti, strumenti di controllo riutilizzabili e materiali archive preservati intenzionalmente
-- [x] Le pulizie automatiche o generiche non cancellano `docs/archive/`
+- [x] Registry checker ricorsivo presente
+- [x] I Blocchi E/F restano la superficie sintetica consumata dal checker
+- [x] La Todo resta una vista unica: **nessuna modularizzazione aggiuntiva necessaria per questo documento**
+- [x] Nessuno split della Todo introdotto per sola dimensione
+- [x] `docs/archive/` resta separato dalla documentazione canonica
+- [x] `docs/validations/` resta separato dai runbook e dagli owner tecnici
+- [x] Pulizie o consolidamenti non devono cancellare automaticamente materiali dichiarati archive né promuoverli a stato corrente
 
 ---
 
@@ -772,37 +768,32 @@ Per ogni task selezionata devono essere definiti:
 
 ---
 
+
 # BLOCCO J — Stato di chiusura
 
-- [x] Audit documentazione completato
-- [x] Audit codice completato
-- [x] Ricontrollo D1–D18 completato
-- [x] Finding classificati
-- [x] Decisioni utente registrate
-- [x] Documentazione canonica aggiornata
-- [x] Registri modularizzati
-- [x] Checker e link verificati
-- [x] Recupero documentale verificato e pubblicato nel commit `2ebe7e8`
-- [ ] Prima serie di nuove task esecutive completata
-- [ ] Test mancanti implementati
-- [ ] Collaudi live residui conclusi
-- [ ] Stato finale del prodotto dopo le prossime correzioni tecniche
+- [x] Audit documentazione storico completato
+- [x] Audit codice storico completato
+- [x] Struttura B/C conservata come checkpoint storico
+- [x] Stato corrente e checkpoint storici mantenuti distinti
+- [x] Provenance del recupero documentale mantenuta distinta dallo stato tecnico corrente
+- [x] Registri modulari e checker read-only individuati
+- [-] Documentazione canonica corrente presente — **LA VALIDITÀ RESTA DISTRIBUITA TRA I RISPETTIVI OWNER**
+- [-] Prima serie di correzioni tecniche successive all’audit — **ALCUNE PRIMITIVE SONO PRESENTI, LE MACRO-IMPL CRITICHE RESTANO IN PARTE APERTE**
+- [ ] Copertura TEST-ID mancante/partial da completare e riallineare al manifest
+- [ ] Collaudi live residui da eseguire quando richiesti dalle task owner
+- [ ] Chiusura delle macro-implementazioni critiche ancora aperte
+- [ ] Stato finale del prodotto dopo le correzioni tecniche residue
 
-## Verifiche del recupero pubblicato
+## Provenance storica del recupero pubblicato
 
 ```txt
 base del recupero documentale: 8f936d1
 commit di applicazione del recupero: 2ebe7e8
-registry checker tests: 18 PASS
-nested registry tests: 2 PASS
-registry consistency: 240 owner ID, 214 righe Todo, 0 errori, 0 warning
-documentation links: 72 file, 428 link, 0 errori, 0 warning
-validation fast: 6 PASS, 0 failure, 0 timeout
-git diff --check: PASS
+data: 2026-08-06
 ```
 
-Le decisioni più recenti sintetizzate sono `DEC-025` e `DEC-026`.
+Gli eventuali conteggi PASS associati a quel ciclo restano **snapshot storici** e non costituiscono validation corrente.
 
 ## Prossimo passo
 
-Prossimo passo: DA SELEZIONARE.
+Prossimo passo: **DA SELEZIONARE**.

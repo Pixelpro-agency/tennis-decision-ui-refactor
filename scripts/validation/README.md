@@ -10,13 +10,16 @@ Il runner:
 legge test-manifest.json
 → valida schema, ID, profili, path e comandi
 → seleziona un profilo
+→ risolve cwd, path e comando di ogni entry selezionata
 → esegue ogni entry in un child process separato
 → applica timeout espliciti
 → limita e redige stdout/stderr
-→ produce un artefatto JSON sotto test-results/
+→ produce, salvo --no-write, un artefatto JSON sotto test-results/
 ```
 
-La prima versione è intenzionalmente seriale. Non modifica codice, registri o documentazione e non avvia implicitamente browser, login o tracking.
+La versione corrente è intenzionalmente seriale. Il runner non modifica direttamente codice sorgente, registri o documentazione come parte dell'orchestrazione e non avvia implicitamente browser, login o tracking.
+
+Le singole entry possono però essere dichiarate con `mutatesFilesystem: true` e produrre effetti locali propri del test, della build o del compile check. Il runner registra questo metadata ma non lo usa come sandbox. In particolare, `--no-write` disabilita soltanto la scrittura dell'artefatto del runner: non impedisce eventuali scritture effettuate dalle entry selezionate.
 
 ## Comandi
 
@@ -30,13 +33,15 @@ node scripts/validation/run.mjs python
 node scripts/validation/run.mjs full-offline
 ```
 
-Elenco senza esecuzione:
+Elenco di profili ed entry senza esecuzione:
 
 ```bash
 node scripts/validation/run.mjs --list
 ```
 
-Esecuzione senza artefatto:
+`--list` valida comunque il manifest e i path dichiarati; un errore di configurazione restituisce exit code `2`.
+
+Esecuzione senza artefatto del runner:
 
 ```bash
 node scripts/validation/run.mjs fast --no-write
@@ -48,32 +53,77 @@ Output JSON completo anche sul terminale:
 node scripts/validation/run.mjs fast --json
 ```
 
+### Opzioni
+
+| Opzione                  | Comportamento                                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `--manifest <path>`      | usa un manifest repository-relative diverso da `scripts/validation/test-manifest.json`                             |
+| `--repo-root <path>`     | usa una root repository esplicita; è prevista soprattutto per esecuzioni isolate e self-test                       |
+| `--output <path>`        | sceglie il path dell'artefatto, che deve restare sotto `test-results/`                                             |
+| `--no-write`             | non scrive l'artefatto JSON del runner                                                                             |
+| `--json`                 | stampa su stdout il risultato JSON completo oltre al riepilogo normale                                             |
+| `--allow-live`           | consenso richiesto prima dell'esecuzione di un profilo live abilitato; non abilita da solo un profilo disabilitato |
+| `--max-output-bytes <n>` | imposta il limite per ciascuno stream e comando; valore intero tra `1024` e `1048576`, default `65536`             |
+| `--list`                 | elenca profili ed entry senza eseguirli                                                                            |
+| `--help`                 | mostra l'help del runner                                                                                           |
+
 ## Profili
 
-| Profilo | Stato | Contenuto |
-| --- | --- | --- |
-| `fast` | implementato | checker documentali, test del runner e controlli puri selezionati |
-| `backend` | implementato | test backend offline registrati nel manifest |
-| `frontend` | implementato | test Node frontend registrati e build Vite |
-| `python` | implementato | compileall e moduli unittest enumerati esplicitamente |
-| `full-offline` | implementato | tutte le entry offline abilitate |
-| `persistence` | pianificato | dipende dal sandbox/harness IMPL-008 |
-| `benchmark` | pianificato | dipende dalle baseline IMPL-013 |
-| `live` | pianificato | non viene mai incluso per default e richiederà consenso esplicito |
+| Profilo        | Stato        | Contenuto                                                                               |
+| -------------- | ------------ | --------------------------------------------------------------------------------------- |
+| `fast`         | implementato | controlli puri e rapidi selezionati, inclusi checker documentali e self-test del runner |
+| `backend`      | implementato | test backend offline registrati nel manifest                                            |
+| `frontend`     | implementato | test Node frontend registrati e build Vite                                              |
+| `python`       | implementato | compile check e moduli `unittest` Python enumerati esplicitamente                       |
+| `full-offline` | implementato | tutte le entry offline abilitate registrate nel manifest                                |
+| `persistence`  | pianificato  | dipende dalla sandbox/harness di persistence dedicata                                   |
+| `benchmark`    | pianificato  | dipende da baseline ripetibili su fixture controllate                                   |
+| `live`         | pianificato  | disabilitato e non incluso nei profili predefiniti                                      |
 
-Un profilo pianificato restituisce exit code `2`; non viene contato come `skipped` o `passed`.
+Un profilo disabilitato o pianificato restituisce exit code `2`; non viene contato come `skipped` o `passed` e non produce un normale risultato di suite.
+
+### Confine live/offline corrente
+
+Il manifest usa due metadata distinti:
+
+- `liveRequired`, booleano che identifica un'entry come live;
+- `requires`, array dichiarativo di capacità richieste.
+
+Un'entry con `liveRequired: true` deve appartenere al profilo `live`.
+
+Quando viene selezionato `fast`, la validazione rifiuta:
+
+- entry `liveRequired`;
+- entry che dichiarano in `requires` una delle capacità `browser`, `credentials`, `external-network` o `tracking`.
+
+Quando viene selezionato `full-offline`, la validazione rifiuta entry `liveRequired`.
+
+`requires` non è un sandbox di sicurezza generale. La verifica delle capacità vietate sopra elencate è applicata specificamente al profilo `fast`; i child process ereditano l'environment del processo padre, con l'aggiunta dei marker del validation runner. Il profilo `live` è attualmente disabilitato: `--allow-live` costituisce soltanto il consenso previsto per un profilo live già abilitato e non ne modifica lo stato.
 
 ## Exit code
 
-| Codice | Significato |
-| ---: | --- |
-| `0` | tutte le entry selezionate sono passate |
-| `1` | almeno una entry è fallita o ha superato il timeout |
-| `2` | errore d'uso, manifest non valido, path mancante o profilo bloccato |
+| Codice | Significato                                                                                                                                                                                             |
+| -----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0`    | tutte le entry selezionate sono passate                                                                                                                                                                 |
+| `1`    | almeno una entry è fallita o ha superato il timeout                                                                                                                                                     |
+| `2`    | errore d'uso oppure errore intercettato dal runner fuori dall'esito normalizzato delle entry, inclusi manifest/path non validi, profilo sconosciuto/disabilitato o errore nella gestione dell'artefatto |
 
-Un path mancante è un errore di configurazione e viene rilevato prima di avviare qualunque child process.
+I path dichiarati vengono verificati prima di avviare i child process. Un path mancante o che esce dalla root del repository è un errore di configurazione.
 
 ## Manifest
+
+Il manifest predefinito è:
+
+```txt
+scripts/validation/test-manifest.json
+```
+
+La versione corrente usa `schemaVersion: "1.0.0"` e contiene due blocchi principali:
+
+```txt
+profiles
+entries
+```
 
 Ogni entry dichiara almeno:
 
@@ -95,7 +145,19 @@ liveRequired
 enabled
 ```
 
-`command` è un array di argomenti e viene eseguito con `shell:false`. Sono ammessi soltanto gli eseguibili espliciti del runner. Placeholder portabili:
+Possono inoltre essere presenti:
+
+```txt
+pathChecks
+requires
+disabledReason
+```
+
+`disabledReason` è richiesto per le entry disabilitate.
+
+Gli ID delle entry devono essere univoci. Anche la combinazione `cwd` + `command` deve essere univoca. I `requirementIds`, quando presenti, usano il formato `TEST-NNN` e non possono essere assegnati a più entry.
+
+`command` è un array di argomenti. Il primo elemento deve appartenere all'allow-list degli eseguibili supportati dal runner. I placeholder portabili sono:
 
 ```txt
 ${NODE}
@@ -103,13 +165,66 @@ ${PYTHON}
 ${NPM}
 ```
 
-`pathChecks` elenca file o directory che devono esistere prima della suite. `requires` dichiara capacità vietate nel profilo `fast`, fra cui browser, credenziali, rete esterna e tracking.
+L'esecuzione usa `shell:false`. Su Windows, quando il comando risolto è un wrapper `.cmd` o `.bat`, il runner lo avvia tramite `ComSpec` con gli argomenti necessari, mantenendo `shell:false` nello `spawn`.
 
-`requires` è metadata dichiarativo validato dal runner, non un sandbox di sicurezza. I child ereditano ancora l'environment del processo padre; la minimizzazione dell'environment resta un hardening aperto.
+`cwd`, `pathChecks` e `fixtures` devono restare all'interno della root del repository. I path soggetti a preflight devono esistere prima dell'esecuzione.
+
+`serialGroup` viene registrato come metadata dell'entry e dell'artefatto. La versione corrente esegue comunque tutte le entry serialmente, quindi non applica scheduling concorrente per gruppo.
 
 ### Inventario corrente della persistenza
 
-I vecchi file monolitici `commitJournal.test.mjs` e `recovery.test.mjs` non esistono. La copertura corrente è suddivisa in suite modulari sotto `backend/src/sofa/matchHistory/commitJournal/` e `backend/src/sofa/matchHistory/recovery/`. Il manifest non le registra ancora tutte: l'espansione richiede inventario `IMPL-003` e sandbox controllata `IMPL-008`, senza dedurre path inesistenti dai nomi storici.
+I vecchi file monolitici:
+
+```txt
+backend/src/sofa/matchHistory/commitJournal.test.mjs
+backend/src/sofa/matchHistory/recovery.test.mjs
+```
+
+non esistono nel CODE AUTHORITY corrente.
+
+La copertura è suddivisa in suite modulari sotto:
+
+```txt
+backend/src/sofa/matchHistory/commitJournal/
+backend/src/sofa/matchHistory/recovery/
+```
+
+Fra le suite presenti risultano, ad esempio:
+
+```txt
+backend/src/sofa/matchHistory/commitJournal/filesystem.integration.test.mjs
+backend/src/sofa/matchHistory/commitJournal/integrityStatus.test.mjs
+backend/src/sofa/matchHistory/commitJournal/lifecycle.test.mjs
+backend/src/sofa/matchHistory/commitJournal/payloadSafety.test.mjs
+
+backend/src/sofa/matchHistory/recovery/basicRecovery.integration.test.mjs
+backend/src/sofa/matchHistory/recovery/completedTargetVerification.integration.test.mjs
+backend/src/sofa/matchHistory/recovery/invalidJournal.integration.test.mjs
+backend/src/sofa/matchHistory/recovery/retryAndFailure.integration.test.mjs
+```
+
+Il manifest corrente non registra queste suite modulari di journal/recovery.
+
+È presente anche l'entry `backend-commit-id`, ma è disabilitata e quindi non viene selezionata dai profili cui è associata. Il motivo di disabilitazione è registrato nel manifest.
+
+Non vanno dedotti path di test dai nomi storici dei moduli.
+
+## Esecuzione dei child process
+
+Ogni entry selezionata viene eseguita in un child process separato con:
+
+- `cwd` risolta dentro la repository;
+- stdin ignorato;
+- stdout e stderr catturati separatamente;
+- timeout derivato da `timeoutSec`;
+- `shell:false`;
+- environment del processo padre ereditato;
+- `CI` mantiene il valore ereditato quando è valorizzato; altrimenti viene impostato a `1`;
+- `NO_COLOR=1`;
+- `TDUI_VALIDATION_RUNNER=1`;
+- `TDUI_VALIDATION_PROFILE` impostato al profilo selezionato.
+
+Allo scadere del timeout il runner tenta prima una terminazione normale e, dopo un intervallo bounded, applica una terminazione forzata se il child è ancora attivo. Il risultato dell'entry viene normalizzato come `passed`, `failed` o `timeout`.
 
 ## Artefatti
 
@@ -119,20 +234,115 @@ Il risultato predefinito viene scritto in:
 test-results/<timestamp>-<sha>-<profile>.json
 ```
 
-`test-results/` è ignorata da Git. Ogni stream è limitato a 65.536 byte per comando salvo override bounded; root repository, home, directory temporanea, URL e marker sensibili vengono redatti.
+Un `--output` esplicito deve comunque risolvere sotto `test-results/`. Se `test-results/` esiste come symbolic link, il runner rifiuta la scrittura.
 
-L'artefatto include lo SHA osservato e lo stato `clean`, `dirty` o `unavailable` della working tree. Non dichiara una working tree sporca come failure: la registra come contesto.
+`test-results/` è ignorata da Git.
 
-`counts.passed` conta entry del manifest, non assertion interne. `perTestResults` include test, build, checker e compile eseguiti. SHA più stato clean/dirty non identificano byte per byte una working tree sporca.
+### Struttura del risultato
 
-## Limiti della prima versione
+L'artefatto di esecuzione usa `schemaVersion: "1.0.0"` e contiene:
+
+```txt
+schemaVersion
+repositorySha
+profile
+startedAt
+completedAt
+durationMs
+environment
+manifestPath
+artifactPath
+counts
+status
+warnings
+limits
+workingTreeStatus
+changedPathCount
+perTestResults
+```
+
+`environment` registra:
+
+```txt
+platform
+architecture
+nodeVersion
+```
+
+`counts` contiene:
+
+```txt
+total
+passed
+failed
+timedOut
+skipped
+```
+
+Nella versione corrente `skipped` è `0`: i profili bloccati vengono fermati prima di produrre un normale risultato di suite.
+
+`counts.passed` conta entry del manifest concluse con stato `passed`, non le assertion interne ai singoli test. `perTestResults` contiene un record per ogni entry eseguita, inclusi test, build, checker e compile check.
+
+Per ciascuna entry il record comprende il contesto operativo e l'esito, fra cui:
+
+```txt
+id
+label
+area
+owner
+requirementIds
+type
+serialGroup
+mutatesFilesystem
+liveRequired
+command
+cwd
+status
+exitCode
+signal
+timedOut
+spawnError
+startedAt
+completedAt
+durationMs
+stdout
+stderr
+stdoutTruncated
+stderrTruncated
+stdoutOriginalBytes
+stderrOriginalBytes
+```
+
+### Output e redaction
+
+Ogni stream è limitato di default a `65.536` byte per comando. Il limite può essere modificato soltanto entro il range accettato da `--max-output-bytes`.
+
+Prima di essere registrati nell'artefatto, stdout, stderr e gli errori di spawn vengono redatti. La redaction copre, fra l'altro:
+
+- root del repository;
+- home dell'utente;
+- directory temporanea;
+- URL HTTP/HTTPS;
+- bearer token;
+- valori associati a marker come authorization, cookie, set-cookie, API key, app key, token e password;
+- path assoluti riconoscibili fuori dalla repository.
+
+L'artefatto include lo SHA osservato e lo stato `clean`, `dirty` o `unavailable` della working tree, oltre al numero di path modificati quando disponibile. Una working tree `dirty` viene registrata come contesto e non produce da sola un failure.
+
+SHA e stato `clean`/`dirty` non identificano byte per byte il contenuto di una working tree sporca.
+
+## Limiti della versione corrente
 
 - esecuzione interamente seriale;
-- manifest iniziale limitato alla superficie verificata durante il Punto 7 e ai checker introdotti successivamente;
+- manifest limitato alle entry esplicitamente registrate;
 - nessuna coverage;
-- nessun browser o test live;
-- nessun harness persistence o benchmark;
-- test React e lifecycle mirati presenti, ma nessun harness di interazione generale che chiuda integralmente `IMPL-030`;
-- nessuna CI.
+- nessun browser reale o test live;
+- profili `persistence`, `benchmark` e `live` non abilitati;
+- nessun harness persistence generale;
+- nessun benchmark runner abilitato;
+- test React e lifecycle mirati presenti, ma nessun harness di interazione frontend generale;
+- nessuna CI definita dal validation runner;
+- `requires` è metadata dichiarativo e non isola l'environment dei child;
+- `--no-write` non impedisce le scritture proprie delle entry.
 
-L'espansione completa test ↔ owner ↔ documento appartiene a IMPL-003. Il ledger storico e la gestione degli ultimi esiti appartengono a IMPL-031.
+L'espansione completa test ↔ owner ↔ documento non appartiene a questo README operativo. Allo stesso modo, l'artefatto di una singola esecuzione non è un ledger storico degli esiti.

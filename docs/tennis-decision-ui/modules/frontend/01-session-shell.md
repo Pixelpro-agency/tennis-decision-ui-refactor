@@ -65,6 +65,25 @@ La configurazione confermata viene applicata soltanto dopo che `startMatchTracki
 
 Gli input correnti restano disponibili per correggere la configurazione e riprovare.
 
+La configurazione confermata usa i campi:
+
+```txt
+confirmedUrl
+confirmedBetfairUrl
+confirmedBetfairGraphUrls
+confirmedBetfairMode
+confirmedChromeProfilePath
+confirmedCdpUrl
+```
+
+`buildAnalysisSessionUpdate()` mantiene distinto il valore del profilo inserito nel form dal percorso normalizzato consegnato al backend.
+
+### URL CDP effettivo
+
+`cdpUrl` e `confirmedCdpUrl` conservano l'endpoint effettivo della sessione. Per login e tracking, un valore corrente definito prevale anche quando è vuoto; in sua assenza può essere usato il valore confermato. Il valore viene normalizzato e il frontend non introduce automaticamente un fallback a `http://127.0.0.1:9222`.
+
+In modalità `cdp`, lo Start richiede un endpoint valido. Un valore vuoto o non valido interrompe l'azione con un errore bounded.
+
 ## Preflight
 
 `PreflightChecks` è diagnostica advisory. Non autorizza e non blocca automaticamente il pulsante Start.
@@ -89,6 +108,14 @@ preflight
 7. attiva la sessione e avvia il bootstrap associato a quell'ID.
 
 L'errore restituito alla UI usa un messaggio statico. Il codice diagnostico bounded viene conservato e inviato al logger tramite allow-list.
+
+## Visibilità della shell
+
+`sessionShellVisible` separa il form iniziale dalla shell live. Durante lo Start la shell viene aperta subito in stato di attesa, prima che esista una sessione attiva; Sidebar e TopBar sono quindi disponibili mentre la dashboard completa il bootstrap.
+
+Il contenuto centrale mostra la dashboard soltanto quando `dashboardContentReady` e `dashboardData` sono entrambi disponibili. Fino ad allora mostra `SourceIdentityGateWaitingScreen`. La presentazione Source Identity determina il contenuto della waiting screen, ma non sostituisce il gate di disponibilità dei dati.
+
+Uno Start fallito chiude la shell, revoca l'autorità locale, pulisce la configurazione confermata e lascia disponibili gli input correnti del form.
 
 ## Autorità dei poller
 
@@ -136,6 +163,19 @@ failure → { ok: false, code, error statico }
 ```
 
 `stopMatchTracking()` usa parsing JSON safe e considera riuscita soltanto una risposta HTTP positiva con `payload.ok === true`.
+
+## Login Betfair
+
+Il form espone `Apri login Betfair` come azione distinta da `Link Accounts & Start`.
+
+`useBetfairLoginAction()` costruisce una richiesta bounded tramite `buildBetfairLoginRequest()`:
+
+```txt
+persistent → url, mode, profileDir
+cdp        → url, mode, cdpUrl
+```
+
+`openBetfairLoginWindow()` considera riuscita soltanto una risposta HTTP positiva con `payload.ok === true`. In caso di errore, l'hook registra il solo codice diagnostico consentito e restituisce alla UI `{ ok: false, code, error statico }`.
 
 ## Source Identity
 
@@ -208,6 +248,17 @@ error
 
 La shell mostra un avviso comune per `degraded` ed `error`. Non legge journal, file o directory di storage e non esegue recovery.
 
+## Navigazione
+
+La Sidebar espone due viste:
+
+| View               | Componente                | Ruolo                                      |
+| ------------------ | ------------------------- | ------------------------------------------ |
+| `overview`         | `OverviewDashboard.jsx`   | stato della sessione e dati live aggregati |
+| `market-reactions` | `MarketReactionsPage.jsx` | lettura dell'Evidence di Market Reactions  |
+
+Il cambio di vista modifica soltanto il contenuto centrale: non crea una nuova sessione, non riavvia gli scraper e non sostituisce i poller già posseduti dalla shell.
+
 ## Stop
 
 `Stop Live Tracking` arresta la sessione live senza cancellare timeline o history persistite.
@@ -221,6 +272,8 @@ Lo Stop riuscito:
 - restituisce un risultato strutturato alla UI.
 
 Il ritorno al form pulisce inoltre la configurazione confermata e il bootstrap.
+
+Il pulsante `Stop Live Tracking` nell'Overview arresta la sessione ma lascia visibile la shell. Il percorso `stopAndReturnToLinks()`, usato dalla waiting screen e dal rifiuto della conferma Source Identity, attende invece lo Stop riuscito prima di chiudere la shell e tornare al form.
 
 ## Riferimenti implementativi
 
@@ -272,15 +325,6 @@ La presenza di dati persistiti precedenti non prova che la nuova sessione sia pa
 | Confirm identity | gate aggiornato e bootstrap verificato       | nessuna falsa conferma locale            |
 | Decline identity | stop completato prima di chiudere il flusso  | modale/stato non anticipano il risultato |
 
-### Contratti di test
-
-```text
-frontend/src/utils/analysisSessionState.test.mjs
-frontend/src/utils/liveSessionRequests.test.mjs
-```
-
-I test devono coprire anche il lifecycle degli hook: start fallito, cambio sessione, teardown poller, mismatch e Stop parziale.
-
 ## Test
 
 Copertura diretta:
@@ -290,20 +334,20 @@ frontend/src/hooks/useLiveTrackingActions.test.mjs
 frontend/src/hooks/useDashboardBootstrapState.test.mjs
 frontend/src/hooks/useSourceIdentityGateUi.test.mjs
 frontend/src/utils/persistenceViewState.test.mjs
+frontend/src/utils/analysisSessionState.test.mjs
+frontend/src/utils/liveSessionRequests.test.mjs
 ```
 
-Le suite verificano autorità Start, assenza di session ID, isolamento del bootstrap, session mismatch nella conferma e classificazione dello stato di persistenza. Le procedure live storiche appartengono ai documenti in `docs/validations/`, non a questo owner di modulo.
+Le suite verificano autorità Start, assenza di session ID, isolamento del bootstrap, session mismatch nella conferma, classificazione dello stato di persistenza e costruzione delle configurazioni e richieste di sessione. Le procedure live storiche appartengono ai documenti in `docs/validations/`, non a questo owner di modulo.
 
 Verifica automatica:
 
 ```bash
-node --test <tutti i file frontend/src/**/*.test.mjs>
-npm.cmd run build
+node --test frontend/src/hooks/useLiveTrackingActions.test.mjs frontend/src/hooks/useDashboardBootstrapState.test.mjs frontend/src/hooks/useSourceIdentityGateUi.test.mjs frontend/src/utils/persistenceViewState.test.mjs frontend/src/utils/analysisSessionState.test.mjs frontend/src/utils/liveSessionRequests.test.mjs
+npm --prefix frontend run build
 python scripts/check_documentation_links.py
 python scripts/check_registry_consistency.py
 ```
-
-Il comando `npm.cmd run lint` non è una verifica disponibile finché il progetto non contiene una configurazione ESLint: lo script termina prima di analizzare i sorgenti.
 
 ## Documenti collegati
 

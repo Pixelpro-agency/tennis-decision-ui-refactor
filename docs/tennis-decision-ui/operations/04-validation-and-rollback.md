@@ -88,16 +88,16 @@ node scripts/validation/run.mjs --list
 
 Profili correnti:
 
-| Profilo        | Stato        | Regola                                               |
-| -------------- | ------------ | ---------------------------------------------------- |
-| `fast`         | implementato | nessun browser, credenziale, rete esterna o tracking |
-| `backend`      | implementato | test backend offline registrati                      |
-| `frontend`     | implementato | test Node registrati e build Vite                    |
-| `python`       | implementato | compileall e unittest enumerati esplicitamente       |
-| `full-offline` | implementato | tutte le entry offline abilitate, in serie           |
-| `persistence`  | pianificato  | dipende da IMPL-008                                  |
-| `benchmark`    | pianificato  | dipende da IMPL-013                                  |
-| `live`         | pianificato  | mai implicito o incluso per default                  |
+| Profilo        | Stato        | Regola                                                          |
+| -------------- | ------------ | --------------------------------------------------------------- |
+| `fast`         | implementato | entry rapide registrate, prive di capability vietate dichiarate |
+| `backend`      | implementato | test backend offline registrati                                 |
+| `frontend`     | implementato | test Node registrati e build Vite                               |
+| `python`       | implementato | compileall e unittest enumerati esplicitamente                  |
+| `full-offline` | implementato | entry abilitate associate al profilo, eseguite in serie         |
+| `persistence`  | pianificato  | dipende da IMPL-008                                             |
+| `benchmark`    | pianificato  | dipende da IMPL-013                                             |
+| `live`         | pianificato  | mai implicito o incluso per default                             |
 
 Un profilo pianificato restituisce exit code `2`. Non viene contato come saltato o passato.
 
@@ -121,6 +121,18 @@ Codici di uscita:
 | `2`    | errore d’uso, manifest/path non valido o profilo non eseguibile |
 
 Un path mancante è un errore di configurazione rilevato prima di avviare la suite.
+
+### Identità della working tree validata
+
+L’artefatto del runner registra:
+
+```txt
+repositorySha
+workingTreeStatus: clean | dirty | unavailable
+changedPathCount
+```
+
+Lo SHA identifica `HEAD`, non da solo il contenuto di una working tree modificata. Quando `workingTreeStatus` è `dirty`, l’artefatto conserva il numero dei path rilevati da `git status --short`, ma non il loro elenco né il diff. Il report della task deve quindi indicare separatamente i file modificati e deve riferirsi alla stessa working tree sulla quale sono stati eseguiti i controlli.
 
 ### Esecuzione mirata fuori profilo
 
@@ -158,12 +170,12 @@ I checker non correggono automaticamente file, ID o link.
 
 I controlli hanno perimetri distinti:
 
-| Controllo | Automatizza | Non dimostra |
-| --- | --- | --- |
-| link checker | target, anchor e divieto link MDX | correttezza semantica del contenuto |
-| registry checker | owner ID, Todo, stati e metadata implementati | validità del codice o completezza di ogni schema storico |
-| controlli strutturali | H1, fence, UTF-8 e pattern mirati quando eseguiti | comportamento runtime |
-| audit manuale | semantica, current-vs-historical e provenance | PASS automatico |
+| Controllo             | Automatizza                                       | Non dimostra                                             |
+| --------------------- | ------------------------------------------------- | -------------------------------------------------------- |
+| link checker          | target, anchor e divieto link MDX                 | correttezza semantica del contenuto                      |
+| registry checker      | owner ID, Todo, stati e metadata implementati     | validità del codice o completezza di ogni schema storico |
+| controlli strutturali | H1, fence, UTF-8 e pattern mirati quando eseguiti | comportamento runtime                                    |
+| audit manuale         | semantica, current-vs-historical e provenance     | PASS automatico                                          |
 
 ## Persistenza e recovery
 
@@ -188,6 +200,8 @@ Un `409 persistence_integrity` verifica la lettura pubblica di uno stato già no
 `TEST-072` non è un HTTP harness generale riusabile per ogni route. Per i contratti HTTP usare i test specifici presenti, una porta dinamica e cleanup dei soli processi owned; l'assenza di un harness comune va riportata come limite.
 
 `TEST-073` verifica la dichiarazione `requires` del manifest e rifiuta capability vietate nei profili interessati. Non crea un sandbox di sicurezza: i child ereditano ancora l'environment del runner finché la relativa hardening task resta aperta.
+
+Il timeout è applicato al child diretto. Su Windows la terminazione forzata usa `taskkill /T /F`; sugli altri sistemi il runner invia i segnali al processo figlio e non prova il drain completo dell’intero albero dei discendenti. Un risultato `timeout` non deve quindi essere interpretato come prova generale dell’assenza di processi residui.
 
 ### Test modulari reali
 
@@ -288,15 +302,21 @@ useMatchPolling
 useBetfairJson
 → conserva integrity
 
-App.jsx e useDashboardViewModel
-→ non propagano ancora integrity
-
 useMarketReactionEvidence
-→ conserva solo marketReactionEvidence
-→ non conserva wrapper integrity/sources
+→ conserva marketReactionEvidence, sources e integrity
+→ conserva persistenceComplete dal dataQuality Evidence
+
+App.jsx
+→ combina Sofa integrity, Betfair integrity ed Evidence integrity
+→ costruisce persistenceViewState
+→ lo passa a DashboardWorkspace e OverviewDashboard
+
+MarketReactionsPage
+→ riceve integrity e persistenceComplete
+→ rende esplicita la persistenza Evidence incompleta
 ```
 
-Non dichiarare implementata una UI persistence completa finché non esistono wiring e test React dedicati.
+`buildPersistenceViewState` dispone di un test puro dedicato. Questo non sostituisce un test di lifecycle React: per polling, cambi sessione, risposte tardive e rendering integrato resta necessario distinguere il wiring presente dalla sua osservazione nel browser.
 
 ## Documentazione
 
@@ -323,8 +343,8 @@ python scripts/check_documentation_links.py --forbid-mdx-links
 
 Il report finale deve indicare:
 
-- baseline o working tree verificata;
-- file modificati;
+- SHA e stato (`clean`, `dirty` o `unavailable`) della working tree verificata;
+- file modificati, elencati quando la working tree è `dirty`, perché l’artefatto conserva soltanto `changedPathCount`;
 - comandi eseguiti;
 - esito e exit code;
 - numero di test passati quando disponibile;
@@ -367,7 +387,7 @@ Sono implementati e configurati:
 - manifest in `scripts/validation/test-manifest.json`;
 - runner in `scripts/validation/run.mjs`;
 - profili offline `fast`, `backend`, `frontend`, `python` e `full-offline`;
-- child process separato, preflight path, timeout bounded e output redatto;
+- child process separato, preflight path, timeout bounded sul child e output redatto;
 - artefatto JSON per l’esecuzione corrente;
 - link checker strict con `--forbid-mdx-links` nei profili documentali;
 - controllo coerenza Todo ↔ registri;
@@ -385,6 +405,7 @@ Restano aperti:
 - profili `persistence`, `benchmark` e `live`.
 
 La presenza dell’artefatto JSON della singola esecuzione non equivale al ledger storico.
+I profili dichiarati offline non costituiscono una sandbox di capability e il profilo `full-offline` non prova test assenti, disabilitati o non associati al profilo nel manifest.
 
 ## Documenti collegati
 
