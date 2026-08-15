@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Read-only consistency checker for Todo and revision registers.
+"""Read-only consistency checker for the modular Todo and revision registers.
 
-The checker compares canonical synthetic rows in Todo Blocks E/F with detailed
-owner cards under implementazioni/, validates declared prefixes, detects owner
-and synthetic duplicates, and reports strict status contradictions. It never
-renumbers IDs or edits files.
+The checker compares canonical synthetic rows in the explicit Todo modules for
+Blocks E/F with detailed owner cards under implementazioni/, validates declared
+prefixes, detects owner and synthetic duplicates, and reports strict status
+contradictions. It never renumbers IDs or edits files.
 """
 
 from __future__ import annotations
@@ -19,7 +19,24 @@ from pathlib import Path
 from typing import Sequence
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-TODO_PATH = Path("todo-list-tennis-decision-ui.md")
+TODO_FACADE_PATH = Path("todo-list-tennis-decision-ui.md")
+TODO_MODULE_DIR = Path("todo-list-tennis-decision-ui")
+TODO_MODULE_PATHS = (
+    TODO_MODULE_DIR / "01-stato-fonti-inventario.md",
+    TODO_MODULE_DIR / "02-regole-documentali-permanenti.md",
+    TODO_MODULE_DIR / "03-audit-documentazione-storico.md",
+    TODO_MODULE_DIR / "04-audit-codice-storico.md",
+    TODO_MODULE_DIR / "05-ricontrollo-task-priorita.md",
+    TODO_MODULE_DIR / "06-rilievi-registrati.md",
+    TODO_MODULE_DIR / "07-implementazioni-utili.md",
+    TODO_MODULE_DIR / "08-workflow-operativo-permanente.md",
+    TODO_MODULE_DIR / "09-modularizzazione-e-pulizia.md",
+    TODO_MODULE_DIR / "10-preparazione-task-esecutive.md",
+    TODO_MODULE_DIR / "11-stato-di-chiusura.md",
+)
+TODO_FINDINGS_PATH = TODO_MODULE_DIR / "06-rilievi-registrati.md"
+TODO_IMPLEMENTATIONS_PATH = TODO_MODULE_DIR / "07-implementazioni-utili.md"
+TODO_SYNTHETIC_PATHS = (TODO_FINDINGS_PATH, TODO_IMPLEMENTATIONS_PATH)
 METHOD_PATH = Path("implementazioni/00-metodo-e-stati.md")
 REGISTRY_DIR = Path("implementazioni")
 
@@ -45,10 +62,6 @@ NEXT_STEP_RE = re.compile(r"prossim[oa]\s+(?:passo|punto)\s*:\s*(.+)", re.IGNORE
 NEXT_TOKEN_RE = re.compile(r"\b(?:Batch\s+\d+|IMPL-\d{3}|Punto\s+\d+)\b", re.IGNORECASE)
 
 PARITY_EXCLUDED_PREFIXES = {"DEC"}
-SYNTHETIC_SECTION_HEADINGS = {
-    "# BLOCCO E — Rilievi registrati",
-    "# BLOCCO F — Implementazioni utili",
-}
 STRICT_STATE_TOKENS = {
     "DA VERIFICARE",
     "IN VERIFICA",
@@ -171,26 +184,24 @@ def collect_owner_cards(root: Path) -> dict[str, list[Location]]:
     return owners
 
 
-def collect_synthetic_rows(root: Path) -> dict[str, list[Location]]:
-    path = root / TODO_PATH
-    lines = read_lines(path)
-    rows: dict[str, list[Location]] = defaultdict(list)
-    active = False
+def todo_paths(root: Path) -> list[Path]:
+    return [root / TODO_FACADE_PATH, *(root / path for path in TODO_MODULE_PATHS)]
 
-    for index, line in enumerate(lines):
-        if line.startswith("# "):
-            active = line.strip() in SYNTHETIC_SECTION_HEADINGS
-            continue
-        if not active:
-            continue
-        match = TODO_ROW_RE.match(line)
-        if not match:
-            continue
-        identifier = match.group(1)
-        tail = line[match.end() :].strip()
-        rows[identifier].append(
-            Location(relative_path(root, path), index + 1, tail, tail)
-        )
+
+def collect_synthetic_rows(root: Path) -> dict[str, list[Location]]:
+    rows: dict[str, list[Location]] = defaultdict(list)
+    for relative in TODO_SYNTHETIC_PATHS:
+        path = root / relative
+        lines = read_lines(path)
+        for index, line in enumerate(lines):
+            match = TODO_ROW_RE.match(line)
+            if not match:
+                continue
+            identifier = match.group(1)
+            tail = line[match.end() :].strip()
+            rows[identifier].append(
+                Location(relative_path(root, path), index + 1, tail, tail)
+            )
     return rows
 
 
@@ -203,7 +214,7 @@ def collect_declared_prefixes(root: Path) -> set[str]:
 
 def collect_all_ids(root: Path) -> dict[str, list[Location]]:
     occurrences: dict[str, list[Location]] = defaultdict(list)
-    candidates = [root / TODO_PATH, root / "implementazioni-tennis-decision-ui.md"]
+    candidates = [*todo_paths(root), root / "implementazioni-tennis-decision-ui.md"]
     candidates.extend(sorted((root / REGISTRY_DIR).rglob("*.md")))
     for path in candidates:
         if not path.is_file():
@@ -256,7 +267,7 @@ def collect_summary_metadata(
     owners: dict[str, list[Location]],
     rows: dict[str, list[Location]],
 ) -> dict[str, object]:
-    summary_paths = [root / "implementazioni-tennis-decision-ui.md", root / TODO_PATH]
+    summary_paths = [root / "implementazioni-tennis-decision-ui.md", *todo_paths(root)]
     sha_values: dict[str, set[str]] = defaultdict(set)
     ranges: list[dict[str, object]] = []
     next_steps: dict[str, str] = {}
@@ -275,18 +286,17 @@ def collect_summary_metadata(
                     else "checkpoint"
                 )
                 sha_values[label].add(match.group("sha").lower())
-            if path.name != TODO_PATH.name or line_number <= 180:
-                for match in RANGE_RE.finditer(line):
-                    ranges.append(
-                        {
-                            "file": relative_path(root, path),
-                            "line": line_number,
-                            "prefix": match.group("prefix"),
-                            "start": int(match.group("start")),
-                            "end": int(match.group("end")),
-                            "text": match.group(0),
-                        }
-                    )
+            for match in RANGE_RE.finditer(line):
+                ranges.append(
+                    {
+                        "file": relative_path(root, path),
+                        "line": line_number,
+                        "prefix": match.group("prefix"),
+                        "start": int(match.group("start")),
+                        "end": int(match.group("end")),
+                        "text": match.group(0),
+                    }
+                )
         next_step = extract_next_step(lines)
         if next_step:
             next_steps[relative_path(root, path)] = next_step

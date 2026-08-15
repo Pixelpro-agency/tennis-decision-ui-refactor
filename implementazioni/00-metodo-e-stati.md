@@ -28,13 +28,17 @@ Non è:
 - una prova che una task sia davvero completata senza verifica sul repository;
 - una lista di modifiche da eseguire tutte insieme.
 
-La Todo operativa collegata è:
+La Todo operativa collegata è organizzata come:
 
 ```txt
 todo-list-tennis-decision-ui.md
+→ facade operativa unica
+
+todo-list-tennis-decision-ui/*.md
+→ moduli della Todo per Blocco top-level
 ```
 
-La Todo mostra lo stato sintetico. Motivazioni, evidenze, rischi, dipendenze e criteri di chiusura restano nelle singole schede owner.
+La facade è l’unico entry point operativo, ma non è l’unico file fisico. I moduli mostrano lo stato sintetico senza duplicare le rispettive authority. Motivazioni, evidenze, rischi, dipendenze e criteri di chiusura restano nelle singole schede owner.
 
 Il processo è ora in steady state Markdown. Coesistenza MDX, conversione di massa e cleanup della migrazione sono fasi storiche concluse; restano operative la separazione storico/corrente, la verifica semantica, i link strict e la coerenza dei registri.
 
@@ -392,9 +396,9 @@ Regola aggiuntiva:
 
 ```txt
 ogni ID dettagliato soggetto a parity
-→ compare una sola volta nella Todo
-→ compare nel BLOCCO E se è un finding
-→ compare nel BLOCCO F se è un'implementazione
+→ compare una sola volta nei moduli della Todo
+→ compare nel BLOCCO E, `todo-list-tennis-decision-ui/06-rilievi-registrati.md`, se è un finding
+→ compare nel BLOCCO F, `todo-list-tennis-decision-ui/07-implementazioni-utili.md`, se è un'implementazione
 → usa un prefisso dichiarato
 → mantiene lo stesso stato sostanziale
 ```
@@ -413,7 +417,7 @@ Controlli minimi di checkpoint:
 ```txt
 owner card ricorsive in implementazioni/**/*.md
 escluse le decisioni DEC-*
-→ uguali agli ID sintetici dei blocchi E e F della Todo
+→ uguali agli ID sintetici nei file canonici `06-rilievi-registrati.md` e `07-implementazioni-utili.md`
 
 prefissi usati
 → sottoinsieme dei prefissi dichiarati
@@ -429,14 +433,16 @@ Il controllo automatico è implementato da `IMPL-005` e deve essere eseguito pri
 
 Contratto effettivo del checker corrente:
 
+- `todo-list-tennis-decision-ui.md` è la facade operativa unica e `todo-list-tennis-decision-ui/*.md` contiene i moduli della Todo;
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md` è l’authority sintetica dei finding e `todo-list-tennis-decision-ui/07-implementazioni-utili.md` è l’authority sintetica delle `IMPL-*`;
 - discovery ricorsiva delle owner card in `implementazioni/**/*.md` mediante heading Markdown con ID e titolo;
-- confronto di parità fra owner card e righe sintetiche dei blocchi E e F della Todo;
+- confronto di parità fra owner card e righe sintetiche lette dai due percorsi canonici espliciti, indipendentemente dal testo completo degli heading;
 - esclusione delle decisioni `DEC-*` dalla parity dei finding;
 - rilevazione di duplicati owner e righe sintetiche duplicate;
 - controllo dei prefissi usati nelle identità canoniche rispetto ai prefissi dichiarati in questo documento;
 - vocabolario di stati riconosciuto e controllo delle contraddizioni sostanziali esplicitamente codificate;
 - controlli sui metadata sintetici implementati: coerenza degli SHA esposti, range, ultimo ID `TEST-*` e `IMPL-*`, ultima decisione riassunta, ultimo Punto e prossimo passo;
-- output testuale o JSON, comportamento read-only e codice di ritorno non zero in presenza di errori.
+- output testuale o JSON, comportamento read-only e codice di ritorno non zero in presenza di errori; `scripts/check_registry_consistency.py` non modifica facade, moduli o registri.
 
 Il checker non prova la correttezza semantica del codice o dei documenti, non esegue le task, non valida ogni campo dello schema esteso, non pretende l'identità letterale di tutti gli stati e non sostituisce link checker, test o audit manuale.
 

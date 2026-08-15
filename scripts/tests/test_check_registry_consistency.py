@@ -26,6 +26,15 @@ class RegistryConsistencyTests(unittest.TestCase):
             "| `DOC-` | docs |\n| `IMPL-` | implementation |\n| `TEST-` | tests |\n",
         )
         self.write("implementazioni-tennis-decision-ui.md", "# Index\n")
+        self.write("todo-list-tennis-decision-ui.md", "# Todo facade\n")
+        self.write(
+            "todo-list-tennis-decision-ui/06-rilievi-registrati.md",
+            "# BLOCCO E — Rilievi registrati **0/0 COMPLETA**\n",
+        )
+        self.write(
+            "todo-list-tennis-decision-ui/07-implementazioni-utili.md",
+            "# BLOCCO F — Implementazioni utili **0/0 COMPLETA**\n",
+        )
 
     def tearDown(self) -> None:
         self.temp.cleanup()
@@ -38,8 +47,8 @@ class RegistryConsistencyTests(unittest.TestCase):
 
     def todo(self, rows: str) -> None:
         self.write(
-            "todo-list-tennis-decision-ui.md",
-            "# Todo\n\n# BLOCCO E — Rilievi registrati\n\n" + rows + "\n",
+            "todo-list-tennis-decision-ui/06-rilievi-registrati.md",
+            "# BLOCCO E — Rilievi registrati **2/6 COMPLETA**\n\n" + rows + "\n",
         )
 
     def owner(self, content: str) -> None:
@@ -124,17 +133,27 @@ class RegistryConsistencyTests(unittest.TestCase):
         report = MODULE.check_registries(self.root)
         self.assertNotIn("incompatible_status", self.codes(report))
 
-    def test_references_before_block_e_are_not_synthetic_rows(self) -> None:
+    def test_facade_references_are_not_synthetic_rows(self) -> None:
         self.owner("### DOC-001 — Titolo\n\n**Stato:** `CONFERMATO`\n")
         self.write(
             "todo-list-tennis-decision-ui.md",
-            "# Todo\n\n- [x] summary (`DOC-001`)\n\n"
-            "# BLOCCO E — Rilievi registrati\n\n"
-            "- [ ] `DOC-001` — Titolo — **CONFERMATO**\n",
+            "# Todo facade\n\n- [ ] `DOC-001` — riferimento non canonico\n",
         )
+        self.todo("- [ ] `DOC-001` — Titolo — **CONFERMATO**")
         report = MODULE.check_registries(self.root)
         self.assertEqual(report["syntheticRows"], 1)
         self.assertNotIn("duplicate_synthetic_row", self.codes(report))
+
+    def test_heading_suffix_does_not_define_synthetic_identity(self) -> None:
+        self.owner("### DOC-001 — Titolo\n\n**Stato:** `CONFERMATO`\n")
+        self.write(
+            "todo-list-tennis-decision-ui/06-rilievi-registrati.md",
+            "# BLOCCO E — Rilievi registrati **99/100 IN REVISIONE**\n\n"
+            "- [ ] `DOC-001` — Titolo — **CONFERMATO**\n",
+        )
+        report = MODULE.check_registries(self.root)
+        self.assertEqual(report["errors"], 0)
+        self.assertEqual(report["syntheticRows"], 1)
 
     def test_block_f_rows_are_canonical(self) -> None:
         self.owner("# Audit\n")
@@ -143,8 +162,8 @@ class RegistryConsistencyTests(unittest.TestCase):
             "### IMPL-001 — Utility\n\n**Stato:** `CONFERMATO`\n",
         )
         self.write(
-            "todo-list-tennis-decision-ui.md",
-            "# Todo\n\n# BLOCCO F — Implementazioni utili\n\n"
+            "todo-list-tennis-decision-ui/07-implementazioni-utili.md",
+            "# BLOCCO F — Implementazioni utili **0/1 COMPLETA**\n\n"
             "- [x] `IMPL-001` — Utility — **NECESSARIA**\n",
         )
         report = MODULE.check_registries(self.root)
@@ -207,10 +226,10 @@ class RegistryConsistencyTests(unittest.TestCase):
             "implementazioni-tennis-decision-ui.md",
             "# Index\n→ prossimo passo: IMPL-001 poi IMPL-028\n",
         )
+        self.todo("- [ ] `DOC-001` — Titolo — **CONFERMATO**")
         self.write(
-            "todo-list-tennis-decision-ui.md",
-            "# Todo\n\n# BLOCCO E — Rilievi registrati\n\n"
-            "- [ ] `DOC-001` — Titolo — **CONFERMATO**\n\n"
+            "todo-list-tennis-decision-ui/11-stato-di-chiusura.md",
+            "# BLOCCO J — Stato di chiusura\n\n"
             "## Prossimo punto\n\n```txt\nIMPL-005\n```\n",
         )
         report = MODULE.check_registries(self.root)
