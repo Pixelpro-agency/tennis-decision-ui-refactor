@@ -454,9 +454,11 @@ Ogni ID può avere una sola scheda owner riconoscibile dalla forma:
 ### <identificatore> — Titolo
 ```
 
-Una scoperta iniziale, un ampliamento successivo o un riferimento trasversale non deve creare un secondo owner. Deve usare una forma esplicita che conservi l’ID senza replicare il pattern owner:
+Quando `<identificatore>` è un ID di registro riconosciuto, questa forma è riservata alla owner card canonica. Riferimenti, sintesi, addenda, ampliamenti storici e relazioni trasversali devono conservare l’ID nel testo senza replicare il pattern owner:
 
 ```txt
+### Riferimento a IMPL-003 — Titolo
+### Sintesi di IMPL-015 — Titolo
 ### Nota iniziale collegata a <identificatore> — Titolo
 ### Estensione intermedia collegata a <identificatore> — Titolo
 ### Riferimento audit a <identificatore> — Titolo

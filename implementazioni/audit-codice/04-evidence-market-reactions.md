@@ -259,24 +259,823 @@ windowState
 
 Field → Market espone `windowClosed`; Market → Field restituisce finestre temporali e qualità senza lo stesso stato esplicito open/closed/final.
 
+### DOC-026 — Temporal provenance e policy di alignment non documentate
+
+**Stato:** `RISOLTO LATO DOCUMENTAZIONE`
+**Classificazione:** `DOCUMENTAZIONE MANCANTE`
+
+**Problema originario**
+
+Il finding storico rilevava che provenance temporale e policy di alignment non erano documentate con sufficiente precisione. Il contratto doveva distinguere `acquiredAt`, `recordedAt`, freshness, source skew, pipeline delay, future clock skew, baseline gap, first post-source gap, observation window e stato open/closed della finestra, mantenendo distinta l'età del dato dal gap fra le fonti.
+
+**Stato ed evidenza corrente**
+
+Il difetto documentale originario è risolto: gli owner correnti documentano freshness delle fonti, `crossSourceGapSec`, disponibilità pairwise, timestamp futuri e comportamento corrente delle finestre. La provenance tecnica completa resta però incompleta.
+
+**Responsabilità tecnica collegata**
+
+Il debito tecnico residuo appartiene a `IMPL-022 — Evidence temporal provenance and alignment policy`. DOC-026 non dichiara completata `IMPL-022`.
+
+**Criterio di chiusura**
+
+DOC-026 resta risolto lato documentazione perché il comportamento corrente e i limiti ancora aperti sono documentati. Il completamento tecnico della provenance resta responsabilità autonoma di `IMPL-022`.
+
+**Riferimenti essenziali**
+
+- `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
+- `docs/tennis-decision-ui/modules/evidence/03-quality-flow-and-alignment.md`
+- `docs/tennis-decision-ui/modules/evidence/04-market-reactions.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+- provenance storica: commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`
+
+---
+
+### DOC-027 — Availability, activity, response e threshold non documentati
+
+**Stato:** `RISOLTO LATO DOCUMENTAZIONE`
+**Classificazione:** `DOCUMENTAZIONE MANCANTE`
+
+**Problema originario**
+
+Il finding storico rilevava che detector eseguito, input availability, source event, activity, runner variation, qualified observation, provisional/final e natura delle threshold non erano distinti con sufficiente precisione.
+
+**Stato ed evidenza corrente**
+
+Il difetto documentale originario è risolto: gli owner correnti distinguono availability, flow, source event, observation, reliability e qualità e documentano le soglie correnti senza presentarle come segnali calibrati.
+
+Non esiste ancora un contratto tecnico uniforme con `computed`, `inputAvailable`, `sourceEventAvailable`, `observationAvailable`, `observationDetected`, `provisional`, `stale` e `windowState`.
+
+**Responsabilità tecnica collegata**
+
+Il contratto tecnico uniforme residuo appartiene a `IMPL-023 — Market Reaction eligibility e branch state`. DOC-027 non dichiara completata `IMPL-023`.
+
+**Criterio di chiusura**
+
+DOC-027 resta risolto lato documentazione; l'uniformazione tecnica futura resta responsabilità di `IMPL-023`.
+
+**Riferimenti essenziali**
+
+- `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
+- `docs/tennis-decision-ui/modules/evidence/03-quality-flow-and-alignment.md`
+- `docs/tennis-decision-ui/modules/evidence/04-market-reactions.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+- provenance storica: commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`
+
+---
+
+### TEST-031 — Tick `status-only` non crea nuovo Significant Flow/source event
+
+**Stato corrente:** `PARZIALE`
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Un tick Betfair classificato tecnicamente `status-only` deve restare utilizzabile per health/diagnostica ma non deve:
+
+- creare nuovo Significant Flow;
+- entrare come nuova osservazione algoritmica qualificata;
+- diventare `sourceMarketEvent`.
+
+**Evidenza/copertura corrente**
+
+Sono già presenti primitive collegate:
+
+- flow con confidence `suppressed` non viene promosso a Significant Flow;
+- Significant Flow invalido/assente non produce un source flow valido;
+- il comportamento tecnico `status-only` viene degradato nelle primitive Betfair pertinenti.
+
+Questa copertura non equivale ancora alla regressione end-to-end dedicata.
+
+**Gap residuo**
+
+Manca la regressione esplicita:
+
+```txt
+status-only
+→ no Significant Flow
+→ no sourceMarketEvent
+```
+
+**Owner tecnico collegato**
+
+`IMPL-023 — Market Reaction eligibility e branch state`.
+
+**Criterio di chiusura**
+
+Chiudere soltanto quando una regressione end-to-end dimostra che un tick `status-only` non genera flow/source event pur restando disponibile alla diagnostica.
+
+**Riferimenti essenziali**
+
+- `backend/src/sofa/significantMarketFlowEvidence.test.mjs`
+- `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-032 — Eligibility tecnica Market Reactions su stale/Graph/ladder/skew
+
+**Stato corrente:** `PARZIALE`
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Gli input tecnicamente non eleggibili devono poter restare nelle timeline/diagnostica senza essere promossi automaticamente a osservazioni Market Reactions affidabili.
+
+Il contratto comprende almeno:
+
+- Graph degradato/stale;
+- ladder non affidabile/assente;
+- flow `suppressed`;
+- runner identity insufficiente dove richiesta;
+- source gap / clock skew / provenance temporale dove applicabile.
+
+**Evidenza/copertura corrente**
+
+Significant Flow possiede già controlli reali e test mirati che rifiutano almeno:
+
+- Graph stale;
+- ladder assente/non affidabile;
+- `selectionId` mancante;
+- money flow `suppressed`.
+
+Esistono inoltre primitive di alignment/data quality per source gap e timestamp futuri.
+
+**Gap residuo**
+
+Manca un eligibility gate uniforme e condiviso da tutti i branch Market Reactions con stato/reason coerenti.
+
+**Owner tecnico collegato**
+
+`IMPL-023 — Market Reaction eligibility e branch state`.
+
+Collegamento tecnico secondario per provenance temporale: `IMPL-022 — Evidence temporal provenance and alignment policy`.
+
+**Criterio di chiusura**
+
+Chiudere soltanto quando tutti i branch usano un contratto uniforme di eligibility e la suite copre sistematicamente gli input tecnicamente degradati previsti.
+
+**Riferimenti essenziali**
+
+- `backend/src/sofa/significantMarketFlowEvidence.test.mjs`
+- `backend/src/sofa/matchEvidence/alignment.js`
+- `backend/src/sofa/matchEvidence/dataQuality.js`
+- `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-033 — `selectionId` obbligatorio senza fallback nome
+
+**Stato corrente:** `MANCANTE`
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Nei confronti temporali Betfair che richiedono identità certa del runner:
+
+```txt
+stesso runner
+→ stesso `selectionId` valido/stabile
+```
+
+Nessun fallback sul nome.
+
+**Evidenza/copertura corrente**
+
+Significant Flow richiede già `selectionId`, ma Field → Market può ancora usare il nome quando baseline e latest sono entrambi privi di ID.
+
+**Gap residuo**
+
+Manca la regressione che impedisca il fallback nominale nel confronto runner Field → Market e verifichi una reason esplicita di indisponibilità/degrado.
+
+**Owner tecnico collegato**
+
+`IMPL-024 — Runner temporal identity e price comparability`.
+
+**Criterio di chiusura**
+
+Chiudere quando runner senza `selectionId` non viene mai associato temporalmente tramite nome nei confronti Exchange che richiedono identità certa.
+
+**Riferimenti essenziali**
+
+- `backend/src/sofa/fieldLedReactionEvidence.js`
+- `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-034 — Market activity distinta da qualified observation
+
+**Stato corrente:** `MANCANTE`
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Il solo incremento generale di `market.totalMatched` deve poter indicare market activity presente senza diventare automaticamente qualified market observation / response runner-specific.
+
+Contratto target minimo:
+
+```txt
+market activity
+≠ runner variation
+≠ qualified observation
+```
+
+**Evidenza/copertura corrente**
+
+Field → Market continua a considerare:
+
+```txt
+priceChangeObserved
+OR
+matchedVolumeIncreaseObserved
+→ marketResponseObserved
+```
+
+Il test corrente accetta ancora questa semantica ampia.
+
+**Gap residuo**
+
+Manca la distinzione contrattuale e la regressione:
+
+```txt
+solo market totalMatched aumenta
+→ marketActivityObserved:true
+→ qualifiedMarketObservation:false
+```
+
+**Owner tecnico collegato**
+
+`IMPL-023 — Market Reaction eligibility e branch state`.
+
+**Criterio di chiusura**
+
+Chiudere soltanto quando attività generica e osservazione qualificata sono campi/semantiche distinte e la regressione impedisce falsi qualified observation.
+
+**Riferimenti essenziali**
+
+- `backend/src/sofa/fieldLedReactionEvidence.js`
+- `backend/src/sofa/fieldLedReactionEvidence.test.mjs`
+- `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-035 — Marker presente distinto da marker transition
+
+**Stato corrente:** `MANCANTE`
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Un marker già presente prima del source market event e ancora presente dopo non deve essere automaticamente promosso a nuova transizione post-source.
+
+Target:
+
+```txt
+markerPresentAfterSource
+≠ markerTransitionObservedAfterSource
+```
+
+**Evidenza/copertura corrente**
+
+Market → Field può ancora considerare la presenza di marker rilevanti nella finestra come parte di `fieldEventObservedAfterFlow`.
+
+Non esiste la distinzione completa fra presenza e nuova transizione.
+
+**Gap residuo**
+
+Manca la regressione:
+
+```txt
+stesso marker prima e dopo source flow
+→ markerPresentAfterSource:true
+→ markerTransitionObservedAfterSource:false
+```
+
+**Owner tecnico collegato**
+
+`IMPL-023 — Market Reaction eligibility e branch state`.
+
+**Criterio di chiusura**
+
+Chiudere quando persistenza e transizione sono distinte nel contratto e testate separatamente.
+
+**Riferimenti essenziali**
+
+- `backend/src/sofa/marketLedObservationEvidence.js`
+- `backend/src/sofa/marketLedObservationEvidence/observationWindow.js`
+- `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-036 — Price source change degradata/unavailable
+
+**Stato corrente:** `MANCANTE`
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Un confronto di prezzo deve conoscere la source di `baselinePrice` e `latestPrice` e distinguere un cambio di source, per esempio:
+
+```txt
+LTP
+→ midpoint
+→ bestBack
+→ bestLay
+```
+
+da un confronto pienamente comparabile.
+
+**Evidenza/copertura corrente**
+
+Field → Market risolve il prezzo con precedenza:
+
+```txt
+lastTradedPrice
+→ midpoint
+→ bestBack
+→ bestLay
+```
+
+ma conserva il valore numerico senza esporre la source usata per baseline/latest.
+
+**Gap residuo**
+
+Mancano:
+
+- `baselinePriceSource`;
+- `latestPriceSource`;
+- `priceSourcesComparable`;
+- reason/status di source change;
+- regressione dedicata.
+
+**Owner tecnico collegato**
+
+`IMPL-024 — Runner temporal identity e price comparability`.
+
+**Criterio di chiusura**
+
+Chiudere quando un cambio di source produce stato degraded/unavailable secondo policy esplicita e la source dei due prezzi è verificabile.
+
+**Riferimenti essenziali**
+
+- `backend/src/sofa/fieldLedReactionEvidence.js`
+- `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-037 — Baseline gap oltre soglia
+
+**Stato corrente:** `MANCANTE`
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Una baseline Betfair troppo distante temporalmente dall'anchor non deve essere trattata come confronto affidabile.
+
+Target:
+
+```txt
+baselineAt <= anchorAt
++ baselineGapSec calcolato
++ baselineGapSec <= soglia
+```
+
+Se oltre soglia:
+
+```txt
+→ degraded/unavailable
+→ reason esplicita
+→ nessun confronto affidabile
+```
+
+**Evidenza/copertura corrente**
+
+Field → Market usa ancora l'ultimo tick Betfair con timestamp `<= anchor` senza applicare `maxBaselineGapSec` o contratto equivalente.
+
+**Gap residuo**
+
+Mancano soglia, gap esposto uniformemente e regressione oltre-soglia.
+
+**Owner tecnico collegato**
+
+`IMPL-024 — Runner temporal identity e price comparability`.
+
+Collegamento di provenance: `IMPL-022 — Evidence temporal provenance and alignment policy`.
+
+**Criterio di chiusura**
+
+Chiudere quando baseline esattamente in soglia e oltre soglia sono testate deterministicamente e il secondo caso degrada il confronto.
+
+**Riferimenti essenziali**
+
+- `backend/src/sofa/fieldLedReactionEvidence.js`
+- `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-038 — Coverage runner complete/partial/none
+
+**Stato corrente:** `MANCANTE`
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Per un mercato tennis a due runner deve essere possibile distinguere esplicitamente coverage:
+
+```txt
+complete
+partial
+none
+```
+
+almeno per gli aspetti pertinenti:
+
+```txt
+book
+ladder
+flow
+price comparison
+```
+
+Un solo runner valido non deve produrre un falso stato globale di coverage completa.
+
+**Evidenza/copertura corrente**
+
+I boolean globali correnti diventano veri se almeno un runner soddisfa il predicato rilevante.
+
+Non sono ancora esposti i conteggi/stati completi previsti dal contratto target.
+
+**Gap residuo**
+
+Mancano conteggi runner e regressioni:
+
+- entrambi completi → `complete`;
+- uno completo / uno degradato → `partial`;
+- nessuno valido → `none`.
+
+**Owner tecnico collegato**
+
+`IMPL-023 — Market Reaction eligibility e branch state`.
+
+Collegamento tecnico aggiuntivo: `IMPL-024 — Runner temporal identity e price comparability`.
+
+**Criterio di chiusura**
+
+Chiudere quando coverage `complete/partial/none` è esplicita e nessun boolean aggregato può essere interpretato come copertura completa basandosi su un solo runner.
+
+**Riferimenti essenziali**
+
+- `backend/src/sofa/matchEvidence/dataQuality.js`
+- `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-039 — Acquisition timestamp, source skew e clock skew
+
+**Stato corrente:** `PARZIALE`
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+La provenance temporale deve distinguere almeno timestamp della sorgente, acquisition e recording, e deve degradare esplicitamente freshness/alignment quando i timestamp non sono validi o lo skew fra le fonti supera la policy ammessa.
+
+Il caso minimo storico comprende:
+
+```txt
+timestamp futuro
+recordedAt diverso da acquiredAt
+source skew elevato
+→ freshness/alignment degradati correttamente
+```
+
+**Evidenza/copertura corrente**
+
+Sono già presenti e testate primitive reali:
+
+- `sofaAgeSec` e `betfairAgeSec`;
+- `crossSourceGapSec`;
+- `pairwiseAvailable`;
+- timestamp invalido;
+- timestamp futuro oltre la tolleranza corrente degradato a qualità `poor`.
+
+**Gap residuo**
+
+Mancano ancora:
+
+- distinzione completa `acquiredAt` / `recordedAt`;
+- `pipelineDelaySec`;
+- policy versionata di `sourceSkewSec`;
+- uso uniforme dello skew di acquisizione nella classificazione cross-source.
+
+**Owner tecnico collegato**
+
+`IMPL-022 — Evidence temporal provenance and alignment policy`.
+
+**Criterio di chiusura**
+
+Chiudere soltanto quando acquisition, recording, future clock skew e source skew sono rappresentati dal contratto Evidence e coperti da regressioni deterministiche sulla qualità temporale.
+
+**Riferimenti essenziali**
+
+- `backend/src/sofa/matchEvidence/alignment.js`
+- `backend/src/sofa/matchEvidence/alignment.test.mjs`
+- `backend/src/sofa/matchEvidence/time.js`
+- `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-040 — Baseline Significant Flow per `selectionId`
+
+**Stato corrente:** `MANCANTE`
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+La baseline relativa usata per Significant Flow deve essere runner-specific: il flow storico del runner A non può contribuire alla baseline del runner B.
+
+Il caso minimo richiesto è:
+
+```txt
+runner A
+→ baseline costruita solo da campioni con lo stesso selectionId
+→ nessun flow del runner B nella baseline di A
+```
+
+**Evidenza/copertura corrente**
+
+La baseline corrente calcola una mediana su una sequenza di importi numerici validi. L'identità `selectionId` non appartiene al contratto del calcolo della baseline.
+
+**Gap residuo**
+
+Manca una baseline runner-specific vincolata allo stesso `selectionId`, con relativo test di regressione cross-runner.
+
+**Owner tecnico collegato**
+
+`IMPL-023 — Market Reaction eligibility e branch state`.
+
+**Criterio di chiusura**
+
+Chiudere quando la baseline relativa di ogni runner usa esclusivamente campioni dello stesso `selectionId` e una regressione dimostra che i campioni dell'altro runner non possono contaminarla.
+
+**Riferimenti essenziali**
+
+- `backend/src/sofa/significantMarketFlow/baseline.js`
+- `backend/src/sofa/significantMarketFlowEvidence.js`
+- `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-041 — Cluster temporali non sovrapposti
+
+**Stato corrente:** `MANCANTE`
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+I cluster Significant Flow devono rispettare una policy temporale deterministica e non devono riutilizzare lo stesso tick in cluster sovrapposti o produrre doppio conteggio.
+
+Il caso minimo storico comprende:
+
+```txt
+tick consecutivi ma temporalmente distanti
+→ non uniti
+
+tick già assegnato
+→ non doppio conteggio in cluster sovrapposti
+```
+
+**Evidenza/copertura corrente**
+
+Il clustering corrente:
+
+- raggruppa i candidate per runner;
+- richiede consecutività dei `tickIndex`;
+- limita la finestra con `maxClusterTicks`;
+- produce una deduplicazione finale.
+
+Non usa però una policy `maxClusterGapSec` e non implementa il contratto target esplicito di assegnazione non sovrapposta dei tick.
+
+**Gap residuo**
+
+Mancano:
+
+- gap temporale massimo esplicito;
+- `inputTickIds` univoci;
+- policy deterministica di non sovrapposizione;
+- regressione dedicata contro il doppio conteggio.
+
+**Owner tecnico collegato**
+
+`IMPL-023 — Market Reaction eligibility e branch state`.
+
+**Criterio di chiusura**
+
+Chiudere quando i cluster sono temporalmente bounded, non sovrapposti secondo una policy deterministica e nessun tick può contribuire due volte alla stessa interpretazione aggregata.
+
+**Riferimenti essenziali**
+
+- `backend/src/sofa/significantMarketFlow/clusters.js`
+- `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-042 — Semantica computed/available/observed
+
+**Stato corrente:** `PARZIALE`
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Il fatto che un detector sia stato calcolato deve restare distinto dalla disponibilità dell'input, dalla disponibilità dell'osservazione e dal fatto che un'osservazione sia stata effettivamente rilevata.
+
+Il caso minimo storico richiede almeno:
+
+```txt
+detector computed
++ nessuna osservazione
+→ computed:true
+→ observationAvailable:false
+→ top-level coerente
+```
+
+**Evidenza/copertura corrente**
+
+Esistono già distinzioni reali e testate fra:
+
+- `available`;
+- presenza/assenza di osservazioni;
+- `marketResponseObserved`;
+- `marketResponseReliable`;
+- Significant Flow disponibile ma senza `largeFlowDetected`.
+
+Queste primitive non formano però un branch state uniforme.
+
+**Gap residuo**
+
+Manca un contratto condiviso che distingua in modo coerente almeno:
+
+```txt
+computed
+inputAvailable
+sourceEventAvailable
+observationAvailable
+observationDetected
+provisional
+stale
+dataQuality
+reasons
+```
+
+**Owner tecnico collegato**
+
+`IMPL-023 — Market Reaction eligibility e branch state`.
+
+**Criterio di chiusura**
+
+Chiudere quando tutti i branch Market Reactions espongono la stessa semantica di stato e i test distinguono esplicitamente detector calcolato, input disponibile, osservazione disponibile e osservazione rilevata.
+
+**Riferimenti essenziali**
+
+- `backend/src/sofa/marketReactionEvidence.js`
+- `backend/src/sofa/marketReactionEvidence.test.mjs`
+- `backend/src/sofa/fieldLedReactionEvidence.js`
+- `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-043 — Finestre open/closed e provisional/final
+
+**Stato corrente:** `MANCANTE`
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Market → Field e Field → Market devono usare una semantica uniforme per distinguere finestre ancora aperte da finestre concluse e risultati provvisori da risultati finali per quella finestra.
+
+Il caso minimo storico richiede:
+
+```txt
+finestra non conclusa
+→ provisional/open
+
+finestra conclusa
+→ closed/final per quella finestra
+```
+
+**Evidenza/copertura corrente**
+
+Field → Market espone già `windowClosed`.
+
+Market → Field espone finestre temporali e qualità, ma non lo stesso contratto uniforme. Non esiste ancora una semantica cross-branch completa `open/closed` e `provisional/final`.
+
+**Gap residuo**
+
+Mancano:
+
+- `windowState` uniforme;
+- `provisional`;
+- `finalForWindow`;
+- regressione dedicata che distingua finestra aperta e finestra conclusa nei branch pertinenti.
+
+**Owner tecnico collegato**
+
+Owner primario: `IMPL-022 — Evidence temporal provenance and alignment policy`.
+
+Collegamento tecnico per il branch state uniforme: `IMPL-023 — Market Reaction eligibility e branch state`.
+
+**Criterio di chiusura**
+
+Chiudere quando entrambi i rami usano lo stesso contratto di lifecycle della finestra e la suite verifica esplicitamente gli stati open/provisional e closed/final senza confonderli con la sola availability.
+
+**Riferimenti essenziali**
+
+- `backend/src/sofa/fieldLedReactionEvidence.js`
+- `backend/src/sofa/marketLedObservationEvidence/observationWindow.js`
+- `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
 ### Matrice delle verifiche associate
 
 Questa matrice conserva il collegamento con i test previsti. La loro presenza non implica che siano implementati o superati.
 
 | ID       | Contratto da verificare                               | Copertura specifica presente                                                         |
 | -------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| TEST-031 | status-only non crea nuovi flow/source event          | copertura specifica non presente                                                     |
-| TEST-032 | eligibility tecnica uniforme                          | non identificata                                                                     |
+| TEST-031 | status-only non crea nuovi flow/source event          | copertura parziale delle primitive: flow `suppressed` non diventa Significant Flow e senza flow non esiste source event valido; manca la regressione end-to-end dedicata `status-only → no flow → no source event` |
+| TEST-032 | eligibility tecnica uniforme                          | copertura parziale: Significant Flow rifiuta Graph stale, ladder assente/non affidabile, `selectionId` mancante e flow `suppressed`; alignment/data quality coprono primitive temporali, ma manca un eligibility gate uniforme su tutti i branch |
 | TEST-033 | `selectionId` obbligatorio senza fallback nome        | non identificata; il fallback esiste nel codice                                      |
 | TEST-034 | attività matched distinta da osservazione qualificata | non identificata; il test corrente accetta `marketResponseObserved` su matched/price |
 | TEST-035 | marker persistente distinto da transizione            | non identificata                                                                     |
 | TEST-036 | source prezzo non comparabile                         | non identificata                                                                     |
 | TEST-037 | baseline oltre soglia                                 | non identificata                                                                     |
 | TEST-038 | coverage parziale dei runner                          | non identificata                                                                     |
-| TEST-039 | acquisition, recording e clock skew                   | non identificata come contratto completo                                             |
+| TEST-039 | acquisition, recording e clock skew                   | copertura parziale: source age, `crossSourceGapSec`, pairwise availability e timestamp futuri sono coperti; mancano `acquiredAt`/`recordedAt` e policy completa di source skew |
 | TEST-040 | baseline Significant Flow per `selectionId`           | non identificata come contratto completo                                             |
 | TEST-041 | cluster temporali non sovrapposti                     | non identificata come contratto completo                                             |
-| TEST-042 | availability semantica uniforme                       | non identificata                                                                     |
+| TEST-042 | availability semantica uniforme                       | copertura parziale: `available`, observation e reliability sono già distinti/testati; manca il branch state uniforme con `computed`, input/source/observation availability e detection |
 | TEST-043 | finestre open/closed uniformi                         | non identificata                                                                     |
 
 I test associati coprono, nei rispettivi fixture:

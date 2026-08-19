@@ -679,6 +679,1430 @@ Market Reactions
 
 La sidebar non monta voci Strategy separate.
 
+### FRONTEND-005 — I vecchi loop possono ricrearsi dopo cleanup
+
+**Stato:** `RISOLTO NEL FINDING SPECIFICO`
+**Classificazione storica:** `BUG CONFERMATO`
+**Priorità storica:** critica
+
+**Problema originario**
+
+Il cleanup dei poller poteva cancellare il timeout noto senza impedire a una fetch già in corso di completarsi e programmare una nuova iterazione. Il vecchio e il nuovo ciclo condividevano inoltre stato di polling, per cui un nuovo Start poteva riabilitare una closure appartenente al ciclo precedente.
+
+**Stato ed evidenza corrente**
+
+Il finding specifico è risolto: i reader live usano generation locale, `requestId`, `AbortController`, cleanup del timeout e guardie prima di aggiornare lo stato o riprogrammare il fetch. Una completion appartenente a una generation precedente non ricrea quindi il vecchio loop.
+
+**Responsabilità tecnica collegata**
+
+`IMPL-026 — Polling runtime session-scoped` resta una responsabilità più ampia e non viene dichiarata completata: i poller conservano lifecycle separati e non condividono ancora una primitive session-scoped unica.
+
+**Criterio di chiusura**
+
+FRONTEND-005 resta chiuso nel finding specifico finché cleanup o cambio sessione invalidano la catena precedente e una completion tardiva non può creare nuovi timer o fetch. La convergenza verso un'autorità comune dei poller resta separata in `IMPL-026`.
+
+**Riferimenti essenziali**
+
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `docs/tennis-decision-ui/modules/frontend/02-live-polling-and-view-model.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### FRONTEND-006 — Start e Stop concorrenti non serializzati
+
+**Stato:** `CONFERMATO`
+**Classificazione storica:** `BUG CONFERMATO`
+**Priorità storica:** alta
+
+**Problema originario**
+
+Start e Stop potevano sovrapporsi senza un'autorità di comando dedicata. Lo stato frontend non costituiva un lock del comando e non esistevano command ID, generation del comando, deduplicazione o arbitraggio capace di rendere stale una risposta concorrente.
+
+**Stato ed evidenza corrente**
+
+Il finding resta confermato. Il frontend possiede `trackingSessionId` come identità della sessione accettata, ma non sono presenti `startCommandId`, `stopCommandId` o un arbitro Start/Stop equivalente. Una serializzazione dei comandi non viene quindi dichiarata come già implementata.
+
+**Responsabilità tecnica collegata**
+
+Il lifecycle della sessione è collegato a `IMPL-025 — Frontend live-session controller`, ma FRONTEND-006 resta un finding autonomo e non viene assorbito dall'IMPL.
+
+**Criterio di chiusura**
+
+Il finding potrà essere chiuso soltanto quando richieste Start/Stop concorrenti avranno un'autorità esplicita e una risposta appartenente a un comando superato non potrà modificare lo stato della sessione corrente.
+
+**Riferimenti essenziali**
+
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### FRONTEND-007 — Stop Live Tracking non crea una modalità statica reale
+
+**Stato:** `PARZIALMENTE RISOLTO`
+**Classificazione storica:** `BUG CONFERMATO`
+**Priorità storica:** critica
+
+**Problema originario**
+
+Lo Stop Live Tracking non rappresentava in modo coerente la cessazione di tutti i consumer live e non definiva una modalità statica esplicita capace di preservare uno snapshot verificato senza continuare a presentarlo come dato corrente.
+
+**Stato ed evidenza corrente**
+
+La parte relativa ai consumer live è stata corretta: quando `sessionActive` diventa `false`, `App.jsx` rimuove gli input attivi e SofaScore, Betfair, Evidence e Source Identity vengono disabilitati. Resta però assente una vera modalità `stopped_static` o equivalente con snapshot frozen preservato come stato esplicito.
+
+**Responsabilità tecnica collegata**
+
+Il lifecycle Stop e lo stato della sessione sono collegati a `IMPL-025`, senza trasformare FRONTEND-007 in un alias dell'IMPL.
+
+**Criterio di chiusura**
+
+Il finding resta parziale finché lo Stop non dispone di un contratto esplicito per lo stato statico post-Stop e per la distinzione fra snapshot frozen, dato current e consumer live disabilitati.
+
+**Riferimenti essenziali**
+
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### FRONTEND-008 — Indicatori live derivati dalla presenza del dato
+
+**Stato:** `CONFERMATO`
+**Classificazione storica:** `BUG CONFERMATO`
+**Priorità storica:** alta
+
+**Problema originario**
+
+Alcuni indicatori live potevano derivare lo stato dalla semplice presenza di dati o da segnali presentazionali, producendo una semantica più forte dell'autorità reale della sessione e dei reader.
+
+**Stato ed evidenza corrente**
+
+Una parte del frontend usa oggi `readStatus` e distingue `current`, `waiting`, `degraded` ed `error`. Restano però indicatori globali e componenti di shell che non derivano integralmente da una state machine di sessione autoritativa; la presenza di un dato non viene quindi trattata come prova generale di sessione live o polling attivo.
+
+**Responsabilità tecnica collegata**
+
+Il finding riguarda session state e presentazione. Questa card non crea una nuova IMPL e non dichiara completa una state machine globale che il progetto non possiede.
+
+**Criterio di chiusura**
+
+FRONTEND-008 resta aperto finché tutti gli indicatori che dichiarano stato live, connected o engine active non derivano da authority e read state espliciti, anziché dalla sola disponibilità di payload o da euristiche locali.
+
+**Riferimenti essenziali**
+
+- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
+- `docs/tennis-decision-ui/modules/frontend/02-live-polling-and-view-model.md`
+- `docs/tennis-decision-ui/modules/frontend/03-betfair-and-market-reactions-ui.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### FRONTEND-009 — Market Reactions UI promuove rami unavailable e usa campi errati
+
+**Stato:** `PARZIALMENTE RISOLTO`
+**Classificazione storica:** `BUG CONFERMATO`
+**Priorità storica:** alta
+
+**Problema originario**
+
+La UI Market Reactions poteva presentare come osservabili rami non disponibili e consumare campi non coerenti con lo schema Evidence effettivo, confondendo availability, osservazione e interpretazione del risultato.
+
+**Stato ed evidenza corrente**
+
+La parte principale è stata corretta: il view model usa `available === true`, gestisce il source market e gli stati base di lettura e mantiene il disclaimer di non causalità. Resta però assente un contratto frontend unico per `provisional/final`, stato delle finestre e stato integrity/availability uniforme.
+
+**Responsabilità tecnica collegata**
+
+La responsabilità tecnica più ampia resta `IMPL-027 — Market Reactions frontend view model`, che non viene dichiarata completata da questa card.
+
+**Criterio di chiusura**
+
+Il finding resta parziale finché pagina e card non consumano un contratto frontend coerente per availability, window state, provisional/final e integrity senza ricostruire semantiche non presenti nel payload.
+
+**Riferimenti essenziali**
+
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `docs/tennis-decision-ui/modules/frontend/03-betfair-and-market-reactions-ui.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### FRONTEND-010 — Modale pending non legata al vero contesto Source Identity
+
+**Stato:** `PARZIALMENTE RISOLTO`
+**Classificazione storica:** `BUG CONFERMATO`
+**Priorità storica:** alta
+
+**Problema originario**
+
+La modale pending poteva identificare il contesto tramite elementi presentazionali come evento e nomi, senza un'identità opaca sufficiente a distinguere revisioni o nuovi contesti Source Identity con gli stessi partecipanti.
+
+**Stato ed evidenza corrente**
+
+Conferma e refresh sono oggi vincolati al `trackingSessionId`, e la UI richiede che lo status riletto appartenga alla stessa sessione prima di considerare conclusa la conferma. La chiave locale usata per la pending modal resta però basata principalmente su `sofaEventId` e nomi; non esistono ancora `sourceIdentityContextId` o revision opachi.
+
+**Responsabilità tecnica collegata**
+
+Il finding resta nel confine session/context di Source Identity e usa gli owner già esistenti; non viene creata una nuova IMPL.
+
+**Criterio di chiusura**
+
+FRONTEND-010 resta parziale finché un nuovo contesto Source Identity con gli stessi nomi può essere distinto in modo autoritativo tramite identità o revisione opaca, senza affidarsi soltanto a event ID e label.
+
+**Riferimenti essenziali**
+
+- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
+- `docs/tennis-decision-ui/modules/evidence/02-source-identity.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### FRONTEND-011 — Risultati Preflight non legati agli input verificati
+
+**Stato:** `CONFERMATO`
+**Classificazione storica:** `BUG CONFERMATO`
+**Priorità storica:** medio-alta
+
+**Problema originario**
+
+Un risultato Preflight poteva restare visibile dopo la modifica dell'input a cui si riferiva, perché lo stato non conservava un fingerprint o una revisione dell'input verificato e le response asincrone non erano legate a una request authority sufficiente.
+
+**Stato ed evidenza corrente**
+
+Il finding resta confermato. I check conservano principalmente `status` e `message`; non possiedono una generation/request identity analoga ai poller, un fingerprint persistito dell'input verificato o invalidazione automatica completa quando l'input cambia.
+
+**Responsabilità tecnica collegata**
+
+Questa card non crea una nuova IMPL. Il finding resta autonomo nel confine Preflight e session configuration.
+
+**Criterio di chiusura**
+
+FRONTEND-011 potrà essere chiuso quando ogni risultato Preflight sarà associato allo snapshot/revisione degli input verificati e una response stale non potrà aggiornare o mantenere valido lo stato relativo a input ormai diversi.
+
+**Riferimenti essenziali**
+
+- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### FRONTEND-012 — Layout responsive strutturalmente assente
+
+**Stato:** `LIMITE CONFERMATO`
+**Classificazione storica:** `LIMITE NOTO + STRUTTURA ASSENTE`
+**Priorità storica:** dopo la robustezza
+
+**Problema originario**
+
+La shell frontend non possedeva un contratto responsive strutturale end-to-end per layout, sidebar, TopBar e principali superfici applicative.
+
+**Stato ed evidenza corrente**
+
+Il limite resta confermato. Esistono breakpoint e adattamenti locali, ma non è documentata né implementata una strategia responsive completa che governi insieme shell, sidebar e TopBar sui principali viewport.
+
+**Responsabilità tecnica collegata**
+
+Il responsive resta una task separata. Questa owner card non introduce una nuova IMPL e non trasforma la presente micro-task in implementazione UI.
+
+**Criterio di chiusura**
+
+FRONTEND-012 resta aperto finché una task dedicata non definisce e verifica il comportamento responsive end-to-end almeno sui viewport previsti, senza dedurre completezza dalla sola presenza di breakpoint locali.
+
+**Riferimenti essenziali**
+
+- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
+- `docs/tennis-decision-ui/modules/frontend/03-betfair-and-market-reactions-ui.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-044 — Start concorrenti e risposta tardiva
+
+**Stato corrente:** `MANCANTE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Due comandi Start concorrenti non devono permettere alla risposta più vecchia di diventare authority della sessione dopo che un nuovo Start ha sostituito la richiesta precedente.
+
+Caso minimo:
+
+```txt
+Start A in flight
+→ Start B
+→ B diventa richiesta corrente
+→ risposta A arriva dopo
+→ A ignorata
+→ soltanto B può diventare sessione accettata
+```
+
+**Evidenza/copertura corrente**
+
+Il frontend separa già configurazione richiesta e configurazione confermata e attiva `sessionActive` soltanto dopo una risposta Start valida con `trackingSessionId`.
+
+Questa protezione non equivale però alla regressione richiesta su due Start concorrenti con risposte invertite.
+
+**Gap residuo**
+
+Manca una regressione deterministica che dimostri che uno Start precedente, completato dopo quello corrente, non può:
+
+- applicare una configurazione stale;
+- sostituire `trackingSessionId`;
+- riattivare una sessione superata;
+- avviare bootstrap/poller della richiesta vecchia.
+
+**Owner tecnico collegato**
+
+`IMPL-025 — Frontend live-session controller`.
+
+**Criterio di chiusura**
+
+Chiudere soltanto quando una regressione Start A/Start B con response invertite dimostra che soltanto il comando corrente può acquisire l'authority frontend.
+
+**Riferimenti essenziali**
+
+- `frontend/src/hooks/useLiveTrackingActions.js`
+- `frontend/src/hooks/useLiveTrackingActions.test.mjs`
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-045 — Start fallito o ambiguo e cleanup compensativo
+
+**Stato corrente:** `MANCANTE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Uno Start fallito o con esito ambiguo non deve lasciare una sessione frontend apparentemente attiva né consumer live associati a una configurazione non confermata.
+
+Caso minimo:
+
+```txt
+sessione richiesta
+→ Start fallisce oppure il client non può determinare con certezza l'esito
+→ authority locale rimossa
+→ poller fermi
+→ eventuale cleanup compensativo
+→ errore bounded visibile
+```
+
+**Evidenza/copertura corrente**
+
+Il normale failure path di Start già:
+
+- resetta il bootstrap;
+- pulisce la configurazione confermata;
+- rende `sessionActive=false`;
+- azzera `trackingSessionId`;
+- chiude la shell;
+- conserva un errore frontend bounded.
+
+Questa copertura non chiude il caso ambiguo in cui il backend potrebbe avere accettato la sessione ma il client non possiede una conferma affidabile dell'esito.
+
+**Gap residuo**
+
+Manca una regressione del caso ambiguo con eventuale cleanup compensativo della sessione backend e verifica che nessun poller resti attivo.
+
+**Owner tecnico collegato**
+
+`IMPL-025 — Frontend live-session controller`.
+
+**Criterio di chiusura**
+
+Chiudere soltanto quando failure certa ed esito ambiguo sono entrambi coperti e nessuna authority/poller può sopravvivere a una sessione non confermata.
+
+**Riferimenti essenziali**
+
+- `frontend/src/hooks/useLiveTrackingActions.js`
+- `frontend/src/hooks/useLiveTrackingActions.test.mjs`
+- `frontend/src/App.jsx`
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-046 — Response Sofa/Betfair vecchie o fuori ordine
+
+**Stato corrente:** `PARZIALE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Una response appartenente a una generation/evento/request precedente non deve poter aggiornare lo stato corrente dopo una riconfigurazione del poller.
+
+Caso minimo:
+
+```txt
+request A
+→ switch al contesto B
+→ response B accettata
+→ response A completa dopo
+→ nessun setState corrente da A
+```
+
+Il contratto deve valere almeno per:
+
+SofaScore
+Betfair
+
+**Evidenza/copertura corrente**
+
+I poller possiedono già primitive reali di protezione:
+
+- generation/version;
+- `requestId`;
+- `AbortController`;
+- una request attiva per generation;
+- verifica della generation prima degli update;
+- cleanup delle request in flight.
+
+Esiste inoltre copertura reale del lifecycle SofaScore contro una response vecchia dopo cambio evento.
+
+Per Betfair esistono abort/invalidation e protezioni di generation, ma non è ancora dimostrato l'intero contratto con una regressione equivalente di delayed old response rispetto allo stato nuovo.
+
+**Gap residuo**
+
+Manca la regressione completa e simmetrica che dimostri per SofaScore e Betfair che una vecchia promise che completa dopo il cambio di contesto non possa sovrascrivere lo stato corrente.
+
+**Owner tecnico collegato**
+
+`IMPL-026 — Polling runtime session-scoped`.
+
+**Criterio di chiusura**
+
+Chiudere soltanto quando il caso response fuori ordine è verificato deterministicamente sui poller richiesti senza dipendere dal solo fatto che `AbortController.abort()` sia stato invocato.
+
+**Riferimenti essenziali**
+
+- `frontend/src/hooks/useMatchPolling.js`
+- `frontend/src/hooks/useMatchPolling.test.mjs`
+- `frontend/src/hooks/useBetfairJson.js`
+- `frontend/src/hooks/useBetfairJson.test.mjs`
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-047 — Cleanup durante fetch senza reschedule
+
+**Stato corrente:** `PARZIALE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Il cleanup di un poller mentre una fetch è in flight deve impedire sia l'aggiornamento dello stato sia la riattivazione della vecchia catena di polling quando quella fetch completa successivamente.
+
+Caso minimo:
+
+```txt
+fetch in flight
+→ cleanup
+→ vecchia fetch completa comunque
+→ nessun setState
+→ nessun nuovo timeout
+→ nessuna nuova fetch della generation chiusa
+```
+
+**Evidenza/copertura corrente**
+
+I poller possiedono già:
+
+- generation invalidation;
+- `AbortController`;
+- cleanup delle request;
+- cleanup dei timeout;
+- verifica della generation prima del reschedule.
+
+Queste primitive costituiscono copertura reale ma non equivalgono ancora alla regressione completa del contratto storico.
+
+**Gap residuo**
+
+Manca una regressione che completi deliberatamente una fetch vecchia dopo cleanup e verifichi contemporaneamente:
+
+- nessun update;
+- nessun timeout successivo;
+- nessuna nuova request della catena disposta.
+
+**Owner tecnico collegato**
+
+`IMPL-026 — Polling runtime session-scoped`.
+
+**Criterio di chiusura**
+
+Chiudere quando il resolve tardivo dopo cleanup non produce alcun effetto osservabile né riattiva il loop.
+
+**Riferimenti essenziali**
+
+- `frontend/src/hooks/useMatchPolling.js`
+- `frontend/src/hooks/useBetfairJson.js`
+- `frontend/src/hooks/useMarketReactionEvidence.js`
+- `frontend/src/hooks/useSourceIdentityGateStatus.js`
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-048 — Stop completo: poller off, snapshot frozen e audio fermo
+
+**Stato corrente:** `MANCANTE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Uno Stop completo deve produrre uno stato frontend statico e coerente.
+
+Caso minimo:
+
+```txt
+Stop accettato
+→ SofaScore polling off
+→ Betfair polling off
+→ Evidence polling off
+→ Source Identity Gate polling off
+→ ultimo snapshot verificato mantenuto/frozen
+→ stato stopped_static
+→ audio Betfair fermo
+```
+
+**Evidenza/copertura corrente**
+
+Dopo uno Stop accettato il frontend già:
+
+- ferma il polling Sofa esplicitamente;
+- imposta `sessionActive=false`;
+- azzera `trackingSessionId`;
+- imposta `trackingStopped=true`;
+- mantiene montata la shell.
+
+Poiché gli input dei consumer dipendono da `sessionActive`, SofaScore, Betfair ed Evidence vengono riconfigurati come inattivi e Source Identity Gate viene disabilitato.
+
+Il comportamento corrente non soddisfa però il contratto completo:
+
+- i dati correnti vengono rimossi dagli hook;
+- la dashboard operativa viene sostituita dalla waiting screen;
+- non esiste ancora un vero snapshot frozen formalizzato come `stopped_static`;
+- il lifecycle audio non è dimostrato come parte atomica dello Stop completo.
+
+**Gap residuo**
+
+Mancano il contratto integrato e la regressione:
+
+```txt
+all pollers off
++
+snapshot frozen
++
+stopped_static
++
+audio off
+```
+
+**Owner tecnici collegati**
+
+Owner principale dello stato sessione:
+
+`IMPL-025 — Frontend live-session controller`.
+
+Owner del lifecycle poller:
+
+`IMPL-026 — Polling runtime session-scoped`.
+
+**Criterio di chiusura**
+
+Chiudere soltanto quando uno Stop completo lascia una shell statica esplicita con ultimo snapshot verificato, nessun poller attivo e nessun audio live residuo.
+
+**Riferimenti essenziali**
+
+- `frontend/src/App.jsx`
+- `frontend/src/hooks/useLiveTrackingActions.js`
+- `frontend/src/hooks/useBetfairHealthAlerts.js`
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-049 — Stop parziale visibile in UI
+
+**Stato corrente:** `MANCANTE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Uno Stop che non completa integralmente il proprio cleanup non deve essere presentato dal frontend come uno Stop completo indistinguibile dal successo.
+
+Caso minimo:
+
+```
+Stop richiesto
+→ backend restituisce esito incompleto/parziale
+→ dettaglio Stop/cleanup resta distinguibile
+→ frontend NON dichiara falsamente Stop completo
+→ partial failure è rappresentato in modo bounded e osservabile
+
+```
+
+**Evidenza/copertura corrente**
+
+Il backend possiede già un risultato Stop strutturato e il frontend distingue il normale success path dal failure path.
+
+Il failure path frontend viene però ancora ridotto a un errore generico e non esiste una regressione interaction/UI sul cleanup parziale.
+
+**Gap residuo**
+
+Manca una verifica deterministica della rappresentazione UI del partial failure e della distinzione fra Stop completamente riuscito e cleanup incompleto.
+
+**Owner tecnico collegato**
+
+`IMPL-025 — Frontend live-session controller`.
+
+Collegamento semantico anche con `FRONTEND-007`, senza trasformare TEST-049 in un duplicato del finding.
+
+**Criterio di chiusura**
+
+Chiudere soltanto quando un test interaction/UI dimostra che un partial Stop è visibile come tale e non può produrre una falsa rappresentazione di Stop completo.
+
+**Riferimenti essenziali**
+
+- `frontend/src/hooks/useLiveTrackingActions.js`
+- `frontend/src/services/liveSessionApi.js`
+- `frontend/src/App.jsx`
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-050 — Persistence UI locale/globale e snapshot degraded
+
+**Stato corrente:** `PARZIALE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Gli stati di persistence integrity devono essere presentati coerentemente in tutte le superfici UI che dichiarano l'affidabilità del dato.
+
+Caso minimo:
+
+```
+integrity degraded
+→ stato aggregato degraded
+→ indicatore globale coerente
+→ card locale coerente
+→ eventuale superficie modale/sidebar coerente
+→ snapshot non presentato come current affidabile
+
+```
+
+Il contratto deve distinguere almeno:
+
+```
+partial_persistence
+recovery_failed
+
+```
+
+e deve poter mantenere bounded uno stato future/unknown senza promuoverlo arbitrariamente a healthy.
+
+**Evidenza/copertura corrente**
+
+La copertura già presente comprende:
+
+- `persistenceViewState` gestisce `inactive`, `waiting`, `current`, `degraded`, `error`;
+- Evidence propaga degraded/integrity;
+- `App.jsx` aggrega gli stati;
+- esiste una presentazione globale degraded/error;
+- alcune card ricevono lo stato persistence.
+
+**Gap residuo**
+
+Non è ancora dimostrato il contratto interaction completo su tutte le superfici locali/globali e sulla semantica degraded/frozen dello snapshot.
+
+**Owner tecnico collegato**
+
+Gli owner frontend esistenti per persistence integrity e presentazione restano invariati; TEST-050 non introduce una nuova IMPL.
+
+**Criterio di chiusura**
+
+Chiudere quando una regressione integrata dimostra che lo stesso stato persistence produce una rappresentazione coerente in tutte le superfici previste e che un dato degraded/frozen non viene presentato come current healthy.
+
+**Riferimenti essenziali**
+
+- `frontend/src/App.jsx`
+- `frontend/src/utils/persistenceViewState.js`
+- `frontend/src/utils/persistenceViewState.test.mjs`
+- `frontend/src/hooks/useMarketReactionEvidence.js`
+- `frontend/src/components/DashboardWorkspace.jsx`
+- `frontend/src/components/OverviewDashboard.jsx`
+- `frontend/src/components/BetfairDepthCard.jsx`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-051 — EventId e trackingSessionId dalla risposta Start
+
+**Stato corrente:** `PARZIALE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+L'identità della sessione accettata deve provenire dalla risposta Start autoritativa e deve essere usata coerentemente dai consumer downstream.
+
+Caso minimo:
+
+```
+Start accettato
+→ response contiene eventId
+→ response contiene trackingSessionId
+→ trackingSessionId diventa authority della sessione/bootstrap
+→ eventId della response diventa authority del match downstream
+→ valori derivati dalla request non possono sostituire l'authority restituita
+
+```
+
+**Evidenza/copertura corrente**
+
+La copertura corrente dimostra che:
+
+- `trackingSessionId` viene già letto dalla response Start;
+- uno Start senza `trackingSessionId` viene rifiutato;
+- il bootstrap usa quel `trackingSessionId`;
+- esiste un test mirato di `readTrackingSessionAuthority(...)`.
+
+Resta però il seguente residuo corrente:
+
+```
+sofaEventId
+=
+getSofaEventId(confirmedUrl)
+
+```
+
+quindi l'`eventId` consumato dal frontend non è ancora dimostrato come authority propagata direttamente dalla response Start.
+
+**Gap residuo**
+
+Manca la regressione end-to-end che dimostri entrambe le authority:
+
+```
+response.eventId
+response.trackingSessionId
+
+```
+
+e il loro uso downstream.
+
+**Owner tecnici collegati**
+
+Owner sessione principale:
+
+`IMPL-025 — Frontend live-session controller`.
+
+Per il confine poller resta pertinente:
+
+`IMPL-026 — Polling runtime session-scoped`.
+
+**Criterio di chiusura**
+
+Chiudere quando il test dimostra che l'identità downstream della sessione/match deriva dalla risposta Start accettata e non viene ricostruita autonomamente da URL o input della richiesta.
+
+**Riferimenti essenziali**
+
+- `frontend/src/hooks/useLiveTrackingActions.js`
+- `frontend/src/hooks/useLiveTrackingActions.test.mjs`
+- `frontend/src/App.jsx`
+- `frontend/src/services/liveSessionApi.js`
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-052 — Nuovo Source Identity context con stessi nomi
+
+**Stato corrente:** `MANCANTE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Un nuovo contesto Source Identity deve essere distinguibile da uno precedente anche quando event ID e nomi visualizzati coincidono.
+
+Caso minimo:
+
+```
+context A pending
+→ utente acknowledgement/conferma A
+→ nasce context B
+→ stessi nomi visibili
+→ context B deve essere riconosciuto come nuovo
+→ modal può riaprirsi
+→ acknowledgement/conferma A non sopprime B
+
+```
+
+**Evidenza/copertura corrente**
+
+La conferma corrente è già session-bound tramite `trackingSessionId` e il refresh verifica la stessa sessione.
+
+La pending-key locale usa però ancora principalmente:
+
+```
+sofaEventId
+nomi SofaScore
+nomi Betfair
+
+```
+
+e non possiede un context ID/revision/epoch opaco.
+
+**Gap residuo**
+
+Manca una regressione che crei due contesti distinti con gli stessi nomi e dimostri che il secondo non viene considerato già acknowledged.
+
+**Owner tecnico collegato**
+
+`FRONTEND-010 — Modale pending non legata al vero contesto Source Identity`.
+
+Il contratto resta nel confine degli owner esistenti e non introduce una nuova IMPL.
+
+**Criterio di chiusura**
+
+Chiudere soltanto quando un'identità/revisione autoritativa del contesto impedisce il riuso accidentale dello stato locale di acknowledgement e la regressione same-names/new-context passa.
+
+**Riferimenti essenziali**
+
+- `frontend/src/hooks/useSourceIdentityGateUi.js`
+- `frontend/src/hooks/useSourceIdentityGateStatus.js`
+- `frontend/src/App.jsx`
+- `docs/tennis-decision-ui/modules/evidence/02-source-identity.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-053 — Preflight input-bound e response stale
+
+**Stato corrente:** `MANCANTE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Un risultato Preflight deve appartenere allo snapshot degli input che ha effettivamente verificato.
+
+Caso minimo:
+
+```
+input A
+→ parte Preflight A
+→ prima della response l'utente passa a input B
+→ response A arriva OK
+→ A non può validare B
+→ nessun falso stato Preflight current/valid per B
+
+```
+
+**Evidenza/copertura corrente**
+
+Il Preflight conserva principalmente:
+
+```
+status
+message
+
+```
+
+e non possiede ancora una identity completa della richiesta/input equivalente alle protezioni dei poller.
+
+**Gap residuo**
+
+Manca una regressione deterministica che ritardi la response A, cambi gli input e dimostri che il risultato precedente viene ignorato o invalidato.
+
+**Owner tecnico collegato**
+
+`FRONTEND-011 — Risultati Preflight non legati agli input verificati`.
+
+Il contratto resta nel confine di questo finding e non introduce una nuova IMPL.
+
+**Criterio di chiusura**
+
+Chiudere quando ogni risultato Preflight è associato allo snapshot/revisione degli input verificati e una response stale non può rendere valido lo stato relativo a input differenti.
+
+**Riferimenti essenziali**
+
+- `frontend/src/hooks/usePreflightChecks.js`
+- `frontend/src/hooks/usePreflightChecks.test.mjs`
+- `frontend/src/App.jsx`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-054 — Market Reactions branch `available:false`
+
+**Stato corrente:** `PARZIALE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Un ramo Market Reaction Evidence non disponibile non deve essere promosso dalla UI come osservazione disponibile soltanto perché esiste un oggetto ramo.
+
+Caso minimo:
+
+```txt
+ramo Evidence presente
++ available = false
+→ branch non disponibile
+→ nessuna promozione a osservazione/card disponibile
+→ stato/reasons coerenti con l'indisponibilità
+```
+
+**Evidenza/copertura corrente**
+
+`marketReactionViewModel.js` considera disponibile un ramo soltanto quando `available === true`.
+
+`marketReactionViewModel.test.mjs` verifica esplicitamente:
+
+```txt
+available: false → false
+available: true  → true
+available assente → false
+```
+
+Questa è copertura mirata reale del criterio base di availability.
+
+**Gap residuo**
+
+Non è ancora dimostrato il contratto completo di branch state/availability attraverso l'intera Market Reactions UI, incluse pagina e card, né l'integrazione uniforme con gli altri stati previsti dal view model.
+
+**Owner tecnici collegati**
+
+`IMPL-027 — Market Reactions frontend view model`.
+
+Il finding frontend collegato resta `FRONTEND-009 — Market Reactions UI promuove rami unavailable e usa campi errati`.
+
+**Criterio di chiusura**
+
+Chiudere quando una regressione integrata dimostra che un ramo con `available:false` resta non disponibile in tutte le superfici Market Reactions pertinenti e non viene promosso da presenza dell'oggetto, payload parziale o fallback presentazionali.
+
+**Riferimenti essenziali**
+
+- `frontend/src/components/marketReactions/marketReactionViewModel.js`
+- `frontend/src/components/marketReactions/marketReactionViewModel.test.mjs`
+- `frontend/src/components/MarketReactionsPage.jsx`
+- `frontend/src/components/marketReactions/FieldLedReactionCard.jsx`
+- `frontend/src/components/marketReactions/MarketLedObservationCard.jsx`
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-055 — Mapping schema Market Reactions reale
+
+**Stato corrente:** `PARZIALE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+La UI Market Reactions deve consumare i nomi campo effettivamente esposti dal contratto Evidence corrente, senza dipendere da alias storici o ricostruire uno schema differente.
+
+Caso minimo per il market source:
+
+```txt
+runner
+observedFlowAmount
+absoluteFlowTier
+relativeFlowTier
+direction
+flowAmbiguous
+→ mapping presentazionale coerente
+→ valori mostrati senza alias legacy
+```
+
+**Evidenza/copertura corrente**
+
+`buildMarketSourceView(...)` legge già:
+
+```txt
+runner
+observedFlowAmount
+absoluteFlowTier
+relativeFlowTier
+direction
+flowAmbiguous
+```
+
+e `marketReactionViewModel.test.mjs` verifica con un payload mirato che questi campi vengano mappati nel view model presentazionale.
+
+**Gap residuo**
+
+La copertura attuale verifica soltanto una parte dello schema reale. Il contratto più ampio di `IMPL-027` resta aperto per stato pagina, availability, provisional/final, quality, reasons, visualizzazione della sorgente evento e finestre.
+
+**Owner tecnici collegati**
+
+`IMPL-027 — Market Reactions frontend view model`.
+
+Il finding frontend collegato resta `FRONTEND-009 — Market Reactions UI promuove rami unavailable e usa campi errati`.
+
+**Criterio di chiusura**
+
+Chiudere quando una regressione rappresentativa del payload Evidence reale dimostra che pagina e card consumano lo schema corrente end-to-end e non dipendono da nomi campo legacy o mapping incompleti.
+
+**Riferimenti essenziali**
+
+- `frontend/src/components/marketReactions/marketReactionViewModel.js`
+- `frontend/src/components/marketReactions/marketReactionViewModel.test.mjs`
+- `frontend/src/components/MarketReactionsPage.jsx`
+- `frontend/src/components/marketReactions/FieldLedReactionCard.jsx`
+- `frontend/src/components/marketReactions/MarketLedObservationCard.jsx`
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-056 — Nessun falso stato live/connected/polling active
+
+**Stato corrente:** `PARZIALE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Le superfici frontend non devono dichiarare uno stato live, connected o polling active quando l'autorità della sessione o lo stato reale dei reader non lo consentono.
+
+Il contratto deve coprire almeno:
+
+```txt
+stopped
+waiting
+collecting/pending
+polling off
+read error
+integrity degraded
+stato unknown/inattivo
+→ nessun falso green/connected/active
+```
+
+**Evidenza/copertura corrente**
+
+`dashboardConnections.test.mjs` verifica già diversi casi negativi:
+
+- server SofaScore in `waiting`;
+- Source Identity in `collecting` o `pending`;
+- assenza di dati;
+- read state `error`;
+- read state `degraded`.
+
+In questi casi non viene prodotto un falso `connected` per SofaScore; anche Betfair richiede dati presenti e `readStatus === "current"` per risultare `ok`.
+
+**Gap residuo**
+
+Manca ancora una regressione integrata della shell che leghi insieme session authority, stato dei poller e tutte le superfici presentazionali. `Sidebar.jsx` e altri indicatori di shell non derivano ancora integralmente dalla stessa authority usata da `buildDashboardConnections(...)`.
+
+**Owner tecnici collegati**
+
+Il finding principale è `FRONTEND-008 — Indicatori live derivati dalla presenza del dato`.
+
+Il completamento della state authority resta collegato a `IMPL-025 — Frontend live-session controller` e al lifecycle dei poller di `IMPL-026 — Polling runtime session-scoped`.
+
+**Criterio di chiusura**
+
+Chiudere quando una regressione integrata dimostra che TopBar, Sidebar e indicatori di connessione non possono mostrare live/connected/active quando sessione, polling o read state risultano stopped, waiting, degraded, error o inattivi.
+
+**Riferimenti essenziali**
+
+- `frontend/src/utils/dashboardConnections.js`
+- `frontend/src/utils/dashboardConnections.test.mjs`
+- `frontend/src/components/DashboardWorkspace.jsx`
+- `frontend/src/components/Sidebar.jsx`
+- `frontend/src/components/TopBar.jsx`
+- `frontend/src/App.jsx`
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-057 — Sessione Sofa-only senza polling Betfair
+
+**Stato corrente:** `MANCANTE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Una sessione accettata senza configurazione Betfair deve poter operare come Sofa-only senza attivare il poller Betfair o produrre request verso gli endpoint Betfair.
+
+Caso minimo:
+
+```txt
+sessione attiva
++ SofaScore configurato
++ Betfair URL assente
+→ SofaScore può restare attivo
+→ Betfair readStatus = inactive
+→ Betfair polling = off
+→ zero request /api/betfair/*
+```
+
+Il requisito storico comprende inoltre l'assenza di polling Source Identity non necessario nel percorso Sofa-only.
+
+**Evidenza/copertura corrente**
+
+`useBetfairJson(...)` disattiva il polling quando manca `url` oppure `sofaEventId`, imposta `isPolling=false` e `readStatus="inactive"`.
+
+`App.jsx` passa al hook una URL Betfair vuota quando la sessione non possiede una `confirmedBetfairUrl`, per cui il runtime corrente ha già una protezione reale contro l'avvio normale del poller Betfair senza configurazione.
+
+`App.jsx` abilita però `useSourceIdentityGateStatus(...)` tramite `sessionActive` senza subordinare direttamente `enabled` a `hasBetfairUrl`.
+
+**Gap residuo**
+
+Manca una regressione esplicita Sofa-only che misuri le request e dimostri deterministicamente:
+
+```txt
+nessuna configurazione Betfair
+→ zero request Betfair
+```
+
+e il requisito più ampio di poll policy Sofa-only non è coperto end-to-end per il Gate.
+
+**Owner tecnico collegato**
+
+`IMPL-026 — Polling runtime session-scoped` è l'owner principale della poll enable policy.
+
+La configurazione accettata della sessione resta collegata a `IMPL-025 — Frontend live-session controller`.
+
+**Criterio di chiusura**
+
+Chiudere quando una regressione Sofa-only dimostra che l'assenza di Betfair non avvia alcuna request Betfair e che i consumer non necessari alla configurazione accettata restano disabilitati secondo la poll policy prevista.
+
+**Riferimenti essenziali**
+
+- `frontend/src/App.jsx`
+- `frontend/src/hooks/useBetfairJson.js`
+- `frontend/src/hooks/useBetfairJson.test.mjs`
+- `frontend/src/hooks/useSourceIdentityGateStatus.js`
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-058 — StrictMode con una sola catena polling
+
+**Stato corrente:** `PARZIALE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+Il lifecycle React in `StrictMode` non deve creare più catene concorrenti per lo stesso poller dopo la sequenza mount → cleanup → remount.
+
+Caso minimo:
+
+```txt
+StrictMode mount
+→ cleanup
+→ remount
+→ una sola chain corrente
+→ nessuna request duplicata concorrente
+→ vecchia request abortita/invalida
+→ nessun late write o reschedule della generation chiusa
+```
+
+**Evidenza/copertura corrente**
+
+`pollingLifecycle.test.mjs` usa già `React.StrictMode` sul probe SofaScore e sul Source Identity Gate.
+
+La regressione verifica request count, abort della request precedente e, per SofaScore, anche che una response tardiva del vecchio evento non sovrascriva lo stato corrente. Lo stesso file verifica inoltre che `resumePolling()` non avvii una seconda request quando il loop è già attivo.
+
+Questa è copertura reale del lifecycle, ma non costituisce ancora un harness StrictMode completo e simmetrico per tutti i poller applicativi.
+
+**Gap residuo**
+
+Manca una regressione canonica che applichi lo stesso contratto almeno a SofaScore, Betfair, Evidence e Source Identity Gate e dimostri, per ciascuno, una sola catena attiva sotto mount/cleanup/remount.
+
+**Owner tecnico collegato**
+
+`IMPL-026 — Polling runtime session-scoped`.
+
+**Criterio di chiusura**
+
+Chiudere quando un harness deterministico StrictMode verifica per tutti i poller richiesti request/timer count, invalidazione o abort della chain precedente, assenza di late write e assenza di reschedule dopo cleanup.
+
+**Riferimenti essenziali**
+
+- `frontend/src/hooks/pollingLifecycle.test.mjs`
+- `frontend/src/hooks/useMatchPolling.js`
+- `frontend/src/hooks/useBetfairJson.js`
+- `frontend/src/hooks/useMarketReactionEvidence.js`
+- `frontend/src/hooks/useSourceIdentityGateStatus.js`
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### TEST-059 — Smoke responsive desktop/tablet/mobile
+
+**Stato corrente:** `MANCANTE`
+
+**Natura:** owner della verifica/regressione richiesta
+
+**Contratto del test**
+
+La session shell deve essere verificata sui principali profili di viewport previsti dal progetto senza dedurre la completezza responsive dalla sola presenza di breakpoint o adattamenti locali.
+
+Caso minimo:
+
+```txt
+desktop
+tablet
+mobile
+→ shell e navigazione strutturalmente utilizzabili
+→ Sidebar e TopBar coerenti con il viewport
+→ contenuto principale raggiungibile e leggibile
+→ nessuna regressione strutturale evidente fra i tre profili
+```
+
+Lo smoke deve riguardare il comportamento end-to-end della shell e delle principali superfici applicative, non la sola presenza di classi responsive in singoli componenti.
+
+**Evidenza/copertura corrente**
+
+`FRONTEND-012` resta `LIMITE CONFERMATO`: esistono breakpoint e adattamenti locali, ma non una strategia responsive completa che governi insieme shell, Sidebar e TopBar sui principali viewport.
+
+`Sidebar.jsx` mantiene una sidebar `w-64`, `h-screen` e `sticky`; `DashboardWorkspace.jsx` compone direttamente Sidebar, TopBar e contenuto principale. Questa struttura non costituisce di per sé una prova del comportamento responsive end-to-end.
+
+La suite frontend espone test di componenti basati su `react-test-renderer`; `frontend/package.json` non definisce un harness browser/E2E dedicato al responsive e `frontendComponents.test.jsx` non esegue variazioni di viewport.
+
+**Gap residuo**
+
+Manca uno smoke responsive desktop/tablet/mobile che verifichi in modo ripetibile la shell e le superfici principali dopo la task responsive dedicata.
+
+**Owner tecnico collegato**
+
+`FRONTEND-012 — Layout responsive strutturalmente assente`.
+
+La responsabilità responsive resta separata da `IMPL-025` e `IMPL-026`: session correctness e layout adaptation appartengono a confini distinti.
+
+**Criterio di chiusura**
+
+Chiudere quando il comportamento responsive end-to-end è definito e uno smoke ripetibile verifica desktop, tablet e mobile sulle superfici principali, con esito coerente per shell, navigazione, TopBar, Sidebar e contenuto operativo.
+
+**Riferimenti essenziali**
+
+- `frontend/src/App.jsx`
+- `frontend/src/components/DashboardWorkspace.jsx`
+- `frontend/src/components/Sidebar.jsx`
+- `frontend/src/components/TopBar.jsx`
+- `frontend/src/components/frontendComponents.test.jsx`
+- `frontend/package.json`
+- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
+- `docs/tennis-decision-ui/modules/frontend/03-betfair-and-market-reactions-ui.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+
+**Provenance storica**
+
+Commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`.
+
+---
+
+### DOC-028 — Session shell contraddice la session authority approvata
+
+**Stato:** `RISOLTO NEL DIFETTO ORIGINARIO`
+**Classificazione:** `DOCUMENTAZIONE ERRATA`
+
+**Problema originario**
+
+La documentazione storica della session shell non distingueva correttamente input, configurazione accettata, authority della sessione, attivazione dei consumer live e bootstrap.
+
+**Stato ed evidenza corrente**
+
+Il difetto originario è risolto. La documentazione corrente distingue input correnti, configurazione confirmed, `trackingSessionId`, `sessionActive`, `sessionShellVisible` e bootstrap associato alla sessione accettata.
+
+**Responsabilità tecnica collegata**
+
+DOC-028 resta un finding documentale e non diventa owner tecnico del lifecycle frontend. Le responsabilità tecniche restano negli owner correnti, incluso `IMPL-025` dove pertinente.
+
+**Criterio di chiusura**
+
+Il finding resta risolto finché la documentazione mantiene distinti input, sessione accettata, `trackingSessionId`, `sessionActive` e bootstrap.
+
+**Riferimenti essenziali**
+
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+- provenance storica: commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`
+
+---
+
+### DOC-029 — Polling e view model descrivono funzioni non implementate
+
+**Stato:** `PARZIALE / ANCORA PERTINENTE`
+**Classificazione:** `DOCUMENTAZIONE PIÙ FORTE DEL CODICE`
+
+**Problema originario**
+
+Il finding storico rilevava che polling e view model erano descritti con un isolamento di sessione più forte di quello realmente implementato.
+
+**Stato ed evidenza corrente**
+
+Generation, `requestId`, `AbortController`, cleanup dei timeout e protezioni contro response stale sono reali.
+
+Il residuo resta però pertinente: i poller non condividono necessariamente una `sessionKey` comune e non usano tutti `trackingSessionId` come dipendenza diretta dell'effect. Il loro scope deriva ancora da `sessionActive`, URL/eventId confermati e generation locale.
+
+**Responsabilità tecnica collegata**
+
+Il confine tecnico dei poller session-scoped resta collegato a `IMPL-026`.
+
+**Criterio di chiusura**
+
+DOC-029 resta `PARZIALE / ANCORA PERTINENTE` finché documentazione e implementazione non convergono sul medesimo confine di sessione.
+
+**Riferimenti essenziali**
+
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `docs/tennis-decision-ui/modules/frontend/02-live-polling-and-view-model.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+- provenance storica: commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`
+
+---
+
+### DOC-030 — UI Betfair e Market Reactions descritta come integrity-aware
+
+**Stato:** `RISOLTO NEL DIFETTO ORIGINARIO`
+**Classificazione:** `DOCUMENTAZIONE PIÙ FORTE DEL CODICE`
+
+**Problema originario**
+
+La documentazione descriveva Betfair e Market Reactions come integrity-aware prima che il wiring runtime fosse realmente collegato.
+
+**Stato ed evidenza corrente**
+
+Il difetto originario è risolto: SofaScore, Betfair ed Evidence propagano integrity; `App.jsx` costruisce `persistenceViewState`; la shell espone degradazione ed errori; Betfair e Market Reactions ricevono le informazioni pertinenti.
+
+Health, persistence, freshness e Source Identity restano assi distinti.
+
+**Responsabilità tecnica collegata**
+
+DOC-030 resta un finding documentale e non diventa owner tecnico della persistence UI. Le responsabilità tecniche restano negli owner frontend esistenti, incluso `IMPL-027` dove pertinente.
+
+**Criterio di chiusura**
+
+Il finding resta risolto finché la documentazione descrive soltanto il wiring integrity realmente presente e non attribuisce alla UI lettura del journal, recovery o ricostruzione autonoma dell'integrità.
+
+**Riferimenti essenziali**
+
+- `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
+- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
+- `docs/tennis-decision-ui/modules/frontend/02-live-polling-and-view-model.md`
+- `docs/tennis-decision-ui/modules/frontend/03-betfair-and-market-reactions-ui.md`
+- `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
+- provenance storica: commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`
+
+---
+
 ### Invarianti del wiring
 
 Il comportamento della session shell può essere riassunto nelle seguenti invarianti:

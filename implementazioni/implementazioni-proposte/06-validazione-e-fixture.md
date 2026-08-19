@@ -92,7 +92,7 @@ I riferimenti del range `TEST-060…075` non attribuiti in modo più specifico i
 
 Le relazioni trasversali restano centralizzate in questa facade per evitare duplicazioni nei tre child.
 
-### IMPL-003 — Test map machine-checkable
+### Riferimento a IMPL-003 — Test map machine-checkable
 
 Il manifest di validazione espone già campi utili alla mappa:
 
@@ -120,7 +120,7 @@ ownership univoca dei TEST-ID tra le entry
 
 La mappa completa test ↔ owner ↔ documento non è però equivalente al solo manifest corrente.
 
-### IMPL-005 — Coerenza registri
+### Riferimento a IMPL-005 — Coerenza registri
 
 Il manifest integra due entry documentali read-only:
 
@@ -138,7 +138,7 @@ full-offline
 
 Questa integrazione resta separata dalle responsabilità specifiche dei tre child.
 
-### IMPL-008 — Profilo persistence
+### Riferimento a IMPL-008 — Profilo persistence
 
 Il profilo:
 
@@ -155,7 +155,7 @@ status: planned
 
 La sua attivazione richiede una sandbox persistence dedicata e non riapre `IMPL-028`.
 
-### IMPL-012 — Replay
+### Riferimento a IMPL-012 — Replay
 
 Il replay resta un modulo dedicato.
 
@@ -163,7 +163,7 @@ Nel manifest corrente non esiste un profilo `replay` né una entry replay dedica
 
 L'eventuale integrazione nel runner deve restare un'invocazione isolata e non incorporare il replay nel runner stesso.
 
-### IMPL-013 — Profilo benchmark
+### Riferimento a IMPL-013 — Profilo benchmark
 
 Il profilo:
 
@@ -180,7 +180,7 @@ status: planned
 
 Non è incluso in `full-offline` e non è un gate ordinario.
 
-### CODE-005 — Lint
+### Riferimento a CODE-005 — Lint
 
 Il frontend espone uno script lint, ma il manifest di validazione non contiene una entry lint.
 

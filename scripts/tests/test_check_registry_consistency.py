@@ -84,6 +84,26 @@ class RegistryConsistencyTests(unittest.TestCase):
         report = MODULE.check_registries(self.root)
         self.assertIn("duplicate_owner_card", self.codes(report))
 
+    def test_reference_heading_with_same_id_is_not_duplicate_owner(self) -> None:
+        self.owner("### IMPL-001 — Utility\n\n**Stato:** `CONFERMATO`\n")
+        self.write(
+            "implementazioni/07-riferimenti.md",
+            "### Riferimento a IMPL-001 — Utility\n\nSintesi trasversale.\n",
+        )
+        self.write(
+            "todo-list-tennis-decision-ui/07-implementazioni-utili.md",
+            "# BLOCCO F — Implementazioni utili **0/1 COMPLETA**\n\n"
+            "- [ ] `IMPL-001` — Utility — **CONFERMATO**\n",
+        )
+        report = MODULE.check_registries(self.root)
+        duplicate_ids = {
+            item["identifier"]
+            for item in report["findings"]
+            if item["code"] == "duplicate_owner_card"
+        }
+        self.assertNotIn("IMPL-001", duplicate_ids)
+        self.assertEqual(report["errors"], 0)
+
     def test_duplicate_synthetic_row(self) -> None:
         self.owner("### DOC-001 — Uno\n\n**Stato:** `CONFERMATO`\n")
         self.todo(
