@@ -2,8 +2,7 @@
 
 > **Registro principale:** [06-implementazioni-proposte.md](../06-implementazioni-proposte.md)  
 > **Perimetro:** `IMPL-028…031`  
-> **Parte precedente:** [Frontend, sessione live e polling](05-frontend-session-polling.md)  
-> **Parte successiva:** [Migrazione documentale e normalizzazione dei registri](07-documentazione-e-normalizzazione.md)
+> **Parte precedente:** [Frontend, sessione live e polling](05-frontend-session-polling.md)
 
 ## 21. Modulo di validazione
 

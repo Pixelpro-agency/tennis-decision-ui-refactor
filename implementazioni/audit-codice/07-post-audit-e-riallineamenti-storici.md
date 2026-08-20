@@ -1,8 +1,8 @@
-> **Parte 7 di 7 — Post-audit e migrazione documentale**
-> Controllo finale post-audit, migrazione documentale, implementazione iniziale e validazione storica di IMPL-028, chiusura archive e closeout di IMPL-015.
-> [Indice](../03-audit-codice.md) · [Parte 6](06-validazione-e-test.md) · [Indice](../03-audit-codice.md)
+> **Parte 7 di 7 — Post-audit e riallineamenti storici**
+> Controllo finale post-audit, implementazione iniziale e validazione storica di IMPL-028 e closeout di IMPL-015.
+> [Indice](../03-audit-codice.md) · [Parte 6](06-validazione-e-test.md)
 
-## 23. Controllo finale post-audit e avvio della migrazione documentale
+## 23. Controllo finale post-audit e riallineamenti storici
 
 **Baseline storica del controllo originale:** `275008a5cd6451f24c6895068639ee3055395986`  
 **Checkpoint storico dei registri:** `eef267aab3c138395a5ca3d644a942190c5360e8`  
@@ -10,7 +10,7 @@
 
 ### Scopo
 
-Questo modulo chiude la sequenza `audit-codice` come record di post-audit, migrazione documentale e closeout, senza sostituire gli owner tecnici delle aree richiamate.
+Questo modulo chiude la sequenza `audit-codice` come record di post-audit e closeout storici, senza sostituire gli owner tecnici delle aree richiamate.
 
 Il controllo trasversale originale aveva seguito il percorso:
 
@@ -107,7 +107,7 @@ Le idee future possono restare nei registri o nell’archivio storico, ma un doc
 ### DOC-033 — Documentazione canonica che anticipava contratti non implementati
 
 **Classificazione storica:** `BUG DOCUMENTALE CONFERMATO`  
-**Esito storico:** `POLICY DI CORREZIONE APPROVATA E APPLICATA ALLA MIGRAZIONE`
+**Stato:** `RISOLTO; CRITERIO EDITORIALE PRESERVATO`
 
 Nel checkpoint alcuni documenti owner descrivevano come già collegati o completi comportamenti che il codice non possedeva ancora, in particolare:
 
@@ -133,123 +133,7 @@ deprecato ma ancora presente
 
 Le voci soltanto approvate o pianificate restano nei registri fino alla relativa implementazione. Gli stati storici devono restare qualificati temporalmente e non essere convertiti in prova corrente.
 
-### WORKFLOW-005 — Migrazione documentale per batch
-
-**Classificazione storica:** `WORKFLOW APPROVATO`  
-**Stato al checkpoint iniziale:** `BATCH 0 PREPARATO`  
-**Esito storico successivo:** `IMPL-032 COMPLETATA`
-
-La migrazione non era prevista come rinomina massiva.
-
-Ogni batch doveva includere:
-
-```txt
-SHA base
-file completi
-mapping vecchio → nuovo
-owner e stato
-link da aggiornare
-controlli eseguiti
-limiti
-rollback
-```
-
-Prima della consegna erano richiesti:
-
-1. completezza dell’inventario;
-2. assenza di informazioni tecniche uniche perse;
-3. coerenza col codice corrente;
-4. distinzione fra corrente, storico, deprecato e futuro;
-5. link relativi;
-6. assenza di duplicati canonici;
-7. nessuna cancellazione anticipata.
-
-La migrazione canonica finale risulta storicamente chiusa tramite `IMPL-032`; il workflow resta documentato come parte del processo storico di migrazione.
-
-### TEST-076…079 — Controlli della migrazione
-
-I controlli storicamente associati alla migrazione erano:
-
-```txt
-TEST-076
-→ tutti i documenti indicizzati inventariati una sola volta
-
-TEST-077
-→ mapping univoco .mdx → .md e nessun duplicato canonico
-
-TEST-078
-→ link dei file migrati validi e nessun riferimento a path rimossi
-
-TEST-079
-→ stato corrente/deprecato/storico/futuro coerente con codice e registri
-```
-
-`TEST-076` fu eseguito nel Batch 0 sui quaranta documenti allora elencati dall’indice canonico.
-
-`TEST-077…079` avevano uno stato intermedio `CONFERMATO` nel Batch 0 e risultano successivamente registrati come `COMPLETATO`. I due momenti non sono stati fusi retroattivamente: lo stato intermedio resta parte della cronologia, mentre la completion successiva ne rappresenta l’esito storico finale.
-
-Il manifest del runner include, tra le entry abilitate, il registry consistency checker e il link checker Markdown/MDX. La loro presenza nel manifest descrive la configurazione del runner e non costituisce da sola un nuovo risultato di esecuzione.
-
-### Confini storici del Batch 0
-
-Il Batch 0 produceva soltanto:
-
-```txt
-aggiornamento dei registri
-inventario documenti
-manifest di migrazione
-owner matrix
-link report
-piano dei batch
-checklist di validazione
-```
-
-Non sostituiva, rinominava o eliminava alcun documento canonico in quella fase.
-
----
-
-## 24. Schede owner dei controlli di migrazione documentale
-
-Le righe sintetiche `TEST-076…079` erano già presenti nella Todo e il controllo di coerenza aveva confermato l’assenza, in quel momento, delle corrispondenti schede owner singole.
-
-Le schede seguenti conservarono il significato dei test senza rinumerarli.
-
-### TEST-076 — Inventario univoco dei documenti canonici
-
-**Stato storico finale registrato:** `COMPLETATO`  
-**Area:** migrazione documentale
-
-Verifica che tutti i documenti indicizzati siano inventariati una sola volta. Il controllo fu eseguito nel Batch 0 sui quaranta documenti dell’indice canonico allora corrente.
-
-### TEST-077 — Mapping univoco MDX → Markdown
-
-**Stato storico finale registrato:** `COMPLETATO`  
-**Stato al Batch 0:** `CONFERMATO`; da ripetere durante i batch allora futuri.  
-**Area:** migrazione documentale
-
-Verifica, per ogni batch, che ogni sostituzione abbia un solo mapping, che il nuovo owner sia identificato e che la sovrapposizione temporanea `.mdx`/`.md` non venga presentata come doppia fonte canonica.
-
-### TEST-078 — Link relativi dei file migrati
-
-**Stato storico finale registrato:** `COMPLETATO`  
-**Stato al Batch 0:** `CONFERMATO`; da ripetere durante i batch allora futuri.  
-**Area:** migrazione documentale
-
-Verifica che i link relativi risolvano sulla working tree combinata e distingue target mancanti, anchor mancanti o non verificabili e riferimenti `.mdx` ammessi soltanto durante la transizione.
-
-`scripts/validation/test-manifest.json` registra `scripts/check_documentation_links.py --forbid-mdx-links` come controllo documentale abilitato nei profili `fast` e `full-offline`. La presenza dell’entry descrive la configurazione del runner e non costituisce da sola un PASS.
-
-### TEST-079 — Coerenza fra corrente, deprecato, storico e futuro
-
-**Stato storico finale registrato:** `COMPLETATO`  
-**Stato al Batch 0:** `CONFERMATO`; da ripetere durante i batch allora futuri.  
-**Area:** migrazione documentale
-
-Verifica che gli owner canonici descrivano il codice corrente, che le validazioni storiche non diventino prove correnti, che i componenti deprecati restino espliciti finché esistono e che il planning futuro non sia presentato come implementato.
-
----
-
-## 24.1 Implementazione iniziale di IMPL-028
+## 24. Implementazione iniziale di IMPL-028
 
 **Data storica:** `2026-08-03`  
 **Stato iniziale registrato:** `IMPLEMENTATA, DA VALIDARE SULLA WORKING TREE LOCALE`  
@@ -368,28 +252,7 @@ Restano non abilitati i profili `persistence`, `benchmark` e `live`.
 
 ---
 
-## 25. Chiusura archive e completamento IMPL-015
-
-### Archive closeout storico
-
-**Baseline archive storica:** `2697f66ea8e17a9e35481299cb47ec402558df55`
-
-Nel closeout originale furono controllati tutti i 64 Markdown della superficie documentale allora pubblicata e, separatamente, i due ODT presenti in `docs/archive/planning/legacy/`.
-
-L’esito registrato fu:
-
-```txt
-owner canonici → mantenuti
-validations con evidenza → mantenute
-registri e audit di lavoro → mantenuti
-8 Markdown archive duplicati → consolidati e rimossi
-2 ODT → letti, requisiti unici consolidati e rimossi
-archive → solo registro fonte/destinazione
-```
-
-Furono corrette anche due dichiarazioni allora obsolete: il runner canonico era disponibile e `IMPL-032` risultava completata. La pulizia non modificava il codice runtime.
-
-Questi conteggi e questa disposizione dell’archive sono una fotografia storica della baseline `2697f66…` e non costituiscono la policy archive corrente.
+## 25. Completamento IMPL-015
 
 ### Esito storico di IMPL-015
 

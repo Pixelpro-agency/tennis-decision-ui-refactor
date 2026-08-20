@@ -12,7 +12,6 @@ Questo file è l’indice corrente delle schede `IMPL-*`. Le schede complete viv
 | IMPL-022…024 | [Evidence e provenance](implementazioni-proposte/04-evidence-provenance.md)                         | Provenance temporale, eligibility, runner identity e comparabilità                           |
 | IMPL-025…027 | [Frontend, sessione e polling](implementazioni-proposte/05-frontend-session-polling.md)             | Live-session controller, polling session-scoped e Market Reactions UI                        |
 | IMPL-028…031 | [Validazione e fixture](implementazioni-proposte/06-validazione-e-fixture.md)                       | Runner canonico, fixture, sandbox, harness e result ledger                                   |
-| IMPL-032     | [Documentazione e normalizzazione](implementazioni-proposte/07-documentazione-e-normalizzazione.md) | Migrazione documentale e coerenza dei registri                                               |
 
 ## Stato sintetico
 
@@ -23,7 +22,6 @@ Completate:
 - IMPL-005;
 - IMPL-015;
 - IMPL-028;
-- IMPL-032.
 
 Future o condizionate:
 

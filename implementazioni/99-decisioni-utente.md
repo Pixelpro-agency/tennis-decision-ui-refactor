@@ -133,7 +133,7 @@ TopBar principalmente dedicata a SofaScore e Betfair.
 
 **Stato:** approvata.
 
-I collaudi approfonditi restano separati dai documenti owner e confluiscono in `docs/validations/`.
+I collaudi approfonditi restano separati dai documenti owner e vengono conservati nell’area corrente dedicata alle evidenze di validazione.
 
 ## DEC-014 — Cleanup offline robusto
 
@@ -147,18 +147,6 @@ Usare:
 - fail-closed;
 - recheck metadata;
 - nessun kill-by-port.
-
-## DEC-015 — Esclusioni planning
-
-**Stato:** applicata durante l'audit iniziale; superata da `DEC-026` per la pulizia finale.
-
-Durante l'audit iniziale non leggere né classificare:
-
-```txt
-docs.rar
-idee future.odt
-idee per stream api betfair.odt
-```
 
 ## DEC-016 — Quattro ruoli operativi
 
@@ -608,95 +596,32 @@ IMPL-005
 
 
 
-## DEC-025 — Riscrittura documentale corrente, per batch e senza anticipazioni
+## DEC-025 — Coerenza della documentazione corrente
 
-**Stato:** approvata integralmente.
+**Stato:** approvata come regola strutturale corrente.
 
-1. la nuova documentazione canonica descrive soltanto il comportamento realmente presente nel codice corrente;
+1. la documentazione canonica descrive soltanto il comportamento realmente presente e verificato nel codice corrente;
 2. una decisione tecnica approvata ma non ancora implementata resta nei registri e non viene presentata come funzionalità esistente;
-3. le funzionalità future non restano nella documentazione canonica attiva; vengono documentate quando implementate;
-4. i contenuti futuri o storici utili possono essere archiviati come non canonici, con stato esplicito;
-5. la migrazione `.mdx` → `.md` procede in più batch piccoli e revisionabili;
-6. il Batch 0 crea inventario, manifest, owner matrix, link report, piano batch e checklist senza sostituire file canonici;
-7. ogni documento deve avere un owner unico e rimandare agli altri moduli senza duplicarne l’intero contratto;
-8. i report di collaudo storico vengono separati dai runbook correnti e spostati in `docs/validations/`;
-9. Strategy e altri elementi deprecati restano documentati come presenti finché il codice esiste, poi vengono rimossi insieme alla relativa task;
-10. nessun `.mdx` viene eliminato prima della disponibilità del sostituto completo, della verifica dei link e del controllo dei duplicati;
-11. non usare conversioni automatiche di massa non revisionate;
-12. ogni consegna deve essere controllata prima del download e includere limiti e rollback;
-13. la riscrittura strutturale viene prima delle nuove funzionalità;
-14. i documenti comportamentali destinati a cambiare vengono finalizzati insieme alla relativa task di codice;
-15. dopo la stabilizzazione del nucleo si potrà riaprire l’analisi di nuove funzionalità.
+3. le funzionalità future non vengono presentate come stato corrente e vengono documentate come tali soltanto quando implementate;
+4. i contenuti futuri o storici utili possono essere conservati come materiali non canonici con stato esplicito;
+5. ogni responsabilità documentale deve avere un solo owner canonico e gli altri documenti vi rimandano senza duplicarne l’intero contratto;
+6. i report di collaudo storico restano separati dai documenti owner correnti e vengono conservati nell’area dedicata alle evidenze di validazione quando costituiscono evidenza utile;
+7. elementi deprecati ancora presenti nel codice vengono documentati come tali finché esistono realmente;
+8. i documenti comportamentali vengono aggiornati insieme alle modifiche di codice che ne cambiano il contratto;
+9. evitare riscritture documentali massive o automatiche non revisionate;
+10. ogni modifica documentale deve essere verificata per contenuto, struttura e collegamenti prima della chiusura della relativa attività.
 
-### Ordine approvato
+## DEC-027 — Policy dei materiali non canonici preservati
 
-```txt
-Batch 0 inventario e manifest
-→ Batch 1 struttura e navigazione
-→ controlli documentali read-only
-→ runner minimo
-→ task critiche di robustezza
-→ aggiornamento dei documenti owner insieme al codice
-→ baseline e replay
-→ nuova analisi funzionale
-```
+**Stato:** approvata come regola strutturale corrente.
 
-### Confini
+I materiali storici, planning, brief, fonti future o altri artefatti che l’utente decide esplicitamente di preservare restano non canonici e separati dalla documentazione tecnica corrente.
 
-La decisione non autorizza:
+Questi materiali:
 
-- cancellazioni immediate di `.mdx`;
-- riscrittura simultanea di tutta la documentazione;
-- documentazione di feature non implementate come stato corrente;
-- rimozione di contenuti unici senza assorbimento o archivio;
-- modifica del codice applicativo nel Batch 0;
-- commit o push automatici.
-
-
-## DEC-026 — Consolidamento e rimozione delle fonti archive
-
-**Stato:** approvata integralmente; il solo punto 3 è superato da `DEC-027`.
-
-1. il repository non deve conservare prompt, backlog, pacchetti esecutivi o ODT separati quando il contenuto utile è già nei documenti di lavoro;
-2. ogni fonte viene letta prima della rimozione e il contenuto unico viene trasferito nell'owner, nel registro o nella validation pertinente;
-3. `docs/archive/README.md` avrebbe dovuto conservare una descrizione breve della provenienza e della destinazione; questo punto è superato da `DEC-027`;
-4. i report di collaudo con evidenza utile restano in `docs/validations/`;
-5. le idee future consolidate restano esplicitamente non implementate; 
-6. i pacchetti ZIP, report di consegna e sorgenti temporanee scaricati sul PC possono essere eliminati tramite una lista di nomi esatti, senza scansioni distruttive o pattern generici;
-7. conclusa la pulizia documentale, il prossimo lavoro tecnico urgente è `IMPL-015` — writer authority esclusiva per `match_history`.
-
-### Fonti rimosse
-
-```txt
-brief Source Identity
-prompt navigazione/modularizzazione
-backlog e pacchetti esecutivi storici
-report intermedio Task 6
-planning replay e Market Reactions Journal
-Idee Future.odt
-Idee Per Stream API Betfair.odt
-```
-
-### Destinazioni principali
-
-```txt
-IMPL-010 / IMPL-012
-→ replay, Strategy Lab, Value Hypothesis e analisi offline
-
-IMPL-018
-→ provenance e futura attribuzione Stream API
-
-IMPL-023
-→ eligibility e futuro journal derivato Market Reactions
-
-docs/validations/
-→ evidenze storiche ancora utili
-```
-
-## DEC-027 — Closeout della directory archive
-
-**Stato:** applicata; supera il solo punto 3 di `DEC-026`.
-
-La mappa di provenienza inizialmente prevista in `docs/archive/README.md` è stata consolidata nel record di migrazione e nei registri owner. Dopo tale verifica anche il README e la directory vuota sono stati rimossi. Non esiste quindi un owner corrente sotto `docs/archive/` e la directory non deve essere ricreata automaticamente.
-
-Restano invariati gli altri vincoli di `DEC-026`: lettura prima della rimozione, assorbimento del contenuto unico, conservazione delle validation utili e divieto di presentare idee future come implementate.
+- non sono owner della documentazione tecnica corrente;
+- non costituiscono prova del comportamento attuale del prodotto;
+- non sostituiscono codice, registri, test o evidenze di validazione;
+- non vengono promossi automaticamente nella documentazione canonica;
+- non vengono eliminati mediante cleanup generici o automatici;
+- possono essere rimossi soltanto con un perimetro esplicito e dopo aver verificato l’eventuale contenuto unico da preservare.

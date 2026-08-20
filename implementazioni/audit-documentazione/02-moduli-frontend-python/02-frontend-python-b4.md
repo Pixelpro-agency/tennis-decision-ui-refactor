@@ -2,29 +2,29 @@
 
 [← Checkpoint B3 — documenti owner dei moduli](01-moduli-owner-b3.md) · [Moduli, frontend e Python](../02-moduli-frontend-python.md)
 
-> Questo modulo conserva il record del checkpoint storico B4. Percorsi `.mdx`, qualificatore sui test, finding e osservazioni descrivono il checkpoint; le sottosezioni “Stato corrente” riportano soltanto l’overlay tecnico pertinente.
+> Questo modulo conserva il record del checkpoint storico B4. Qualificatore sui test, finding e osservazioni descrivono il checkpoint; le sottosezioni “Stato corrente” riportano soltanto l’overlay tecnico pertinente.
 
 ### 13.1 Perimetro del checkpoint
 
-I documenti frontend registrati al checkpoint erano:
+I documenti frontend registrati al checkpoint coprivano:
 
 ```txt
-modules/frontend/01-session-shell.mdx
-modules/frontend/02-live-polling-and-view-model.mdx
-modules/frontend/03-betfair-and-market-reactions-ui.mdx
-modules/frontend/04-match-context-ui.mdx
+session shell
+live polling e view model
+UI Betfair e Market Reactions
+Match Context UI
 ```
 
-I documenti Python registrati al checkpoint erano:
+I documenti Python registrati al checkpoint coprivano:
 
 ```txt
-modules/python/01-entrypoints-and-runtime.mdx
-modules/python/02-sofascore-scraper.mdx
-modules/python/03-betfair-scraper.mdx
-modules/python/04-betfair-graph-url-validation.mdx
+entrypoint e runtime
+scraper SofaScore
+scraper Betfair
+validazione Graph URL Betfair
 ```
 
-Anche questi percorsi `.mdx` sono provenance pre-migrazione. Il checkpoint confrontò allora:
+Il checkpoint confrontò allora:
 
 ```txt
 App.jsx

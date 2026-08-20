@@ -19,12 +19,9 @@ SHA verificato: b277bd9b7373dfd8702e65446c88bab7a0f64dcc
 Audit documentazione/codice B1–B6: completato in lettura
 ```
 
-### IMPL-001 — Controllo automatico dei link Markdown/MDX
+### IMPL-001 — Controllo automatico dei link documentali
 
-**Classificazione storica:** `NECESSARIA PRIMA DELLA MIGRAZIONE DOCUMENTALE`
 **Stato del registro:** `IMPLEMENTATA E VERIFICATA`
-
-**Problema originario al checkpoint B6:** `Manca però un controllo globale ripetibile` per link relativi, target spostati o rimossi, anchor locali, riferimenti `.mdx` durante la migrazione e materiali legacy esclusi intenzionalmente.
 
 #### Stato attuale
 
@@ -42,7 +39,7 @@ Il checker è read-only e:
 
 `scripts/validation/test-manifest.json` registra inoltre `documentation-link-check` nei profili `fast` e `full-offline`, con `--forbid-mdx-links`.
 
-Il closeout storico della voce resta quindi coerente con il comportamento attuale.
+La voce descrive quindi una capacità corrente, read-only e verificabile di controllo dei collegamenti documentali.
 
 ### IMPL-002 — Inventario automatico degli endpoint
 
@@ -84,28 +81,15 @@ Il progetto contiene una struttura di validation più evoluta rispetto al proble
 
 Questa infrastruttura non equivale automaticamente al closeout della matrice storica, perché il registro non dispone di un closeout specifico di `IMPL-003` e il manifest non va interpretato come prova di un ultimo `PASS` corrente. La voce resta pertanto non completata nel registro, pur avendo oggi una base machine-readable utile.
 
-### IMPL-004 — Archivio separato dei collaudi storici
+### IMPL-004 — Separazione dei collaudi storici dagli owner
 
-**Classificazione storica:** `CONSIGLIATA`
 **Stato del registro:** `IMPLEMENTATA E COMPLETATA TRAMITE DEC-013`
 
-La separazione fra documenti owner e collaudi storici è presente nella struttura corrente:
+La separazione fra documenti owner e collaudi storici è presente nella struttura corrente.
 
-```txt
-docs/validations/
-├── README.md
-└── report di validazione datati
-```
+L’area dedicata alle validazioni storiche contiene un indice e report di validazione datati.
 
-La directory contiene l’indice `README.md` e più report di validazione dedicati. La precedente proposta:
-
-```txt
-docs/tennis-decision-ui/archive/validations/
-```
-
-resta superata e non deve essere ricreata.
-
-Il closeout storico è quindi compatibile con la struttura corrente. I report di validation rimangono provenance di collaudo e non sostituiscono i contratti posseduti dal codice e dai documenti owner.
+I report di validation rimangono evidence di collaudo e non sostituiscono i contratti posseduti dal codice e dai documenti owner.
 
 ### IMPL-005 — Controllo di coerenza Todo ↔ registri
 
@@ -137,9 +121,9 @@ La sequenza seguente appartiene al checkpoint storico che generò queste voci. N
 ```txt
 1. IMPL-005 — coerenza registri
 2. IMPL-003 — matrice test
-3. IMPL-001 — link checker prima della migrazione docs
+3. IMPL-001 — controllo link documentali
 4. IMPL-002 — inventario endpoint prima della riscrittura API
-5. IMPL-004 — archivio collaudi completato in `docs/validations/`
+5. IMPL-004 — separazione dei collaudi storici dagli owner
 ```
 
 ## 13.2 Cosa non fare adesso

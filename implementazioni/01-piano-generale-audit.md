@@ -30,16 +30,8 @@ Output:
 
 Controllare:
 
-- `README.md`;
-- `docs/tennis-decision-ui/index.mdx`;
-- `reference/`;
-- `architecture/`;
-- `api/`;
-- `modules/`;
-- `operations/`;
-- `roadmap/`;
+- documentazione canonica corrente e relativi documenti owner;
 - collegamenti relativi;
-- frontmatter e metadata;
 - documenti legacy;
 - duplicazioni;
 - contratti ripetuti;
@@ -135,31 +127,14 @@ Non introdurre implementazioni soltanto perché tecnicamente interessanti.
 Valutare almeno:
 
 - controlli automatici di coerenza documentazione ↔ file;
-- validazione link MDX;
+- validazione dei link documentali;
 - inventario endpoint;
 - test dei contratti pubblici;
 - audit dei file legacy;
 - automazioni di controllo senza side effect;
 - riduzione delle duplicazioni documentali;
 - separazione fra stato corrente e storico delle validazioni;
-- eventuale archivio dei collaudi;
 - strumenti per aggiornare Todo e registro senza divergenze.
-
-### BLOCCO F — Audit differito di `docs/planning`
-
-Questa fase viene eseguita dopo l’audit della documentazione canonica e del codice.
-
-Obiettivi:
-
-- inventariare i file presenti;
-- collegare ogni piano all’area tecnica corrispondente;
-- confrontare le proposte con il codice attuale;
-- verificare le task indicate come completate;
-- recuperare requisiti ancora utili;
-- classificare contenuti obsoleti, duplicati o futuri;
-- decidere cosa mantenere, archiviare, riscrivere o eliminare.
-
-Non usare `docs/planning` per definire lo stato corrente prima del confronto con il codice.
 
 ### BLOCCO G — Integrazione del metodo dell’altro progetto
 
@@ -218,9 +193,6 @@ BLOCCO D — ricontrollo task completate
 
 BLOCCO E — implementazioni utili
 → classificate, non ancora eseguite
-
-BLOCCO F — docs/planning
-→ ancora differito
 ```
 
 Il completamento dell’audit B1–B6 significa:
@@ -236,8 +208,6 @@ Non significa:
 - che i test siano stati eseguiti nuovamente;
 - che le task dichiarate completate siano tutte riconfermate;
 - che i bug siano già corretti;
-- che la documentazione canonica sia già riscritta;
-- che `docs/planning` sia già classificata.
 
 Ordine successivo:
 
@@ -246,8 +216,6 @@ ricontrollo task completate
 → decisioni utente strettamente necessarie
 → raggruppamento dei rilievi in task esecutive
 → correzioni codice prioritarie
-→ riscrittura documentazione canonica
-→ audit differito docs/planning
 ```
 
 ---
@@ -296,15 +264,13 @@ decisioni utente strettamente necessarie
 → raggruppamento dei rilievi in task
 → preparazione prompt esecutivi
 → correzioni prioritarie
-→ riscrittura documentazione canonica
-→ docs/planning ancora differito
 ```
 
 Il ricontrollo D1–D18 non ha eseguito suite, collaudi live o modifiche al prodotto.
 
 ---
 
-## 8.3 Stato dopo decisioni, workflow e planning
+## 8.3 Stato dopo decisioni e workflow
 
 Metadata dello snapshot: data della verifica `non registrato`; SHA verificato `non registrato`; commit di registrazione `non registrato`; fonte `registro locale storico`. Un eventuale commit che ha aggiunto questo testo non viene assunto come baseline verificata.
 
@@ -320,20 +286,6 @@ workflow Props24 adattato
 → Desktop Esecutore
 → Desktop Collaudatore
 → utente owner di commit e push
-
-docs/planning accessibile
-→ classificato per gruppi
-→ tre file esclusi non letti
-
-docs/_work, change brief e percorsi
-→ informazioni utili assorbite nel workflow
-→ non più necessari come procedura ordinaria
-
-formato documentazione
-→ Markdown .md ordinario
-→ nessun MDX
-→ nessun frontmatter predefinito
-```
 
 Decisione di sequenza:
 
@@ -352,60 +304,4 @@ Non sono comprese in questo checkpoint:
 - modifica Evidence;
 - cleanup frontend;
 - nuova UI persistence;
-- migrazione dei documenti canonici;
-- eliminazione di planning o materiali locali.
-
 ---
-
-## 8.4 Audit dei materiali locali esterni alla documentazione canonica
-
-Metadata dello snapshot: data della verifica `non registrato`; SHA verificato `non applicabile` per l'archivio locale; commit di registrazione `non registrato`; fonte `docs.zip` locale non repository.
-
-Archivio ricevuto:
-
-```txt
-docs.zip
-```
-
-Perimetro:
-
-```txt
-tutti i file inclusi
-esclusa docs/tennis-decision-ui/
-```
-
-Esito:
-
-```txt
-9 file letti
-→ Prompt: 1
-→ _work: 2
-→ legacy: 1
-→ percorsi: 1
-→ planning: 4
-```
-
-Sono state completate:
-
-- classificazione file per file;
-- distinzione fra storico, processo superato e requisito futuro;
-- assorbimento delle regole utili nei registri;
-- individuazione di nuove strutture mancanti;
-- separazione fra ciò che può essere deprecato e ciò che va archiviato.
-
-Non sono state eseguite:
-
-- cancellazioni locali;
-- modifiche alle cartelle ignorate;
-- rimozioni da `.gitignore`;
-- migrazione della documentazione canonica;
-- implementazioni di codice.
-
-Nuove proposte registrate:
-
-```txt
-IMPL-012 — fixture e replay offline deterministico
-IMPL-013 — baseline end-to-end e freshness
-IMPL-014 — ottimizzazione Betfair misurata e reversibile
-IMPL-015 — invariante single-writer match_history
-```

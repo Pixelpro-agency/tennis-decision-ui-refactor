@@ -5,17 +5,19 @@
 Verificati:
 
 ```txt
-operations/01-local-runtime.mdx
-operations/02-live-tracking-control.mdx
-operations/03-betfair-diagnostics.mdx
-operations/04-validation-and-rollback.mdx
-operations/05-retention-and-cleanup.mdx
-operations/06-source-identity-live-verification.mdx
-operations/07-betfair-live-validation.mdx
+Operations
+→ runtime locale
+→ controllo tracking live
+→ diagnostica Betfair
+→ validation e rollback
+→ retention e cleanup
+→ verifica live Source Identity
+→ validazione live Betfair
 
-roadmap/01-current-state.mdx
-roadmap/02-replay-and-backtesting.mdx
-roadmap/03-market-reactions-journal.mdx
+Roadmap
+→ stato corrente
+→ replay e backtesting
+→ Market Reactions Journal
 ```
 
 Confrontati con launcher, server, tracking, process registry, commit journal, cleanup runtime, test cleanup e rilievi frontend/Python di B4.
@@ -24,18 +26,18 @@ I test sono stati letti ma non eseguiti.
 
 ## Esito sintetico
 
-| Documento | Esito |
-| --- | --- |
-| Runtime locale | Coerente, ma troppo vicino a un documento architetturale |
-| Controllo tracking | Runbook coerente |
-| Diagnostica Betfair | Sequenza utile; hardening pubblico descritto troppo forte |
-| Validation e rollback | Documento monolitico e duplicato |
-| Retention e cleanup | Allow-list corretta; path e offline check da correggere |
-| Source Identity live | Checklist e risultati storici mescolati |
-| Betfair live validation | Report storico trasparente, da archiviare |
-| Current State | Non più affidabile |
-| Replay/backtesting | `FUTURA`, non implementata |
-| Market Reactions Journal | `FUTURA`, non implementata |
+| Documento                | Esito                                                     |
+| ------------------------ | --------------------------------------------------------- |
+| Runtime locale           | Coerente, ma troppo vicino a un documento architetturale  |
+| Controllo tracking       | Runbook coerente                                          |
+| Diagnostica Betfair      | Sequenza utile; hardening pubblico descritto troppo forte |
+| Validation e rollback    | Documento monolitico e duplicato                          |
+| Retention e cleanup      | Allow-list corretta; path e offline check da correggere   |
+| Source Identity live     | Checklist e risultati storici mescolati                   |
+| Betfair live validation  | Report storico trasparente, da archiviare                 |
+| Current State            | Non più affidabile                                        |
+| Replay/backtesting       | `FUTURA`, non implementata                                |
+| Market Reactions Journal | `FUTURA`, non implementata                                |
 
 ---
 
@@ -69,7 +71,7 @@ Correzione: usare ovunque il percorso con `.pending_commits`.
 **Stato:** `CONFERMATO`
 **Priorità:** alta
 
-`operations/04-validation-and-rollback.mdx` contiene metodo generale, matrici test, collaudi storici, contratti di modulo, smoke test, validazione live e rollback.
+Il documento di validation e rollback del checkpoint contiene metodo generale, matrici test, collaudi storici, contratti di modulo, smoke test, validazione live e rollback.
 
 La stessa informazione vive quindi nei documenti owner, nei runbook, nel Current State e nei report live.
 
@@ -154,9 +156,9 @@ sequenze Stop/login
 note TopBar
 ```
 
-`operations/07-betfair-live-validation.mdx` è un report storico.
+Il documento di validazione live Betfair del checkpoint è un report storico.
 
-`operations/06-source-identity-live-verification.mdx` combina procedura aperta, risultati osservati e note UX.
+Il documento di verifica live Source Identity del checkpoint combina procedura aperta, risultati osservati e note UX.
 
 Struttura proposta:
 

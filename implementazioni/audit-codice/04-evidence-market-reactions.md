@@ -283,8 +283,6 @@ DOC-026 resta risolto lato documentazione perché il comportamento corrente e i 
 **Riferimenti essenziali**
 
 - `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
-- `docs/tennis-decision-ui/modules/evidence/03-quality-flow-and-alignment.md`
-- `docs/tennis-decision-ui/modules/evidence/04-market-reactions.md`
 - `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
 - provenance storica: commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`
 
@@ -316,8 +314,6 @@ DOC-027 resta risolto lato documentazione; l'uniformazione tecnica futura resta 
 **Riferimenti essenziali**
 
 - `implementazioni/implementazioni-proposte/04-evidence-provenance.md`
-- `docs/tennis-decision-ui/modules/evidence/03-quality-flow-and-alignment.md`
-- `docs/tennis-decision-ui/modules/evidence/04-market-reactions.md`
 - `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
 - provenance storica: commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`
 

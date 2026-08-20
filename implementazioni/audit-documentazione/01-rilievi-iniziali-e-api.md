@@ -8,13 +8,12 @@ Conserva la navigazione verso i due blocchi che in origine erano raccolti nello 
 
 | Modulo                                                               | Perimetro                                                                 | Owner storici                               |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------- |
-| [Rilievi iniziali](01-rilievi-iniziali-e-api/01-rilievi-iniziali.md) | checkpoint B1, sezioni 9–10, inclusa la checklist iniziale                | `DOC-001…008`, `WORKFLOW-001`               |
+| [Rilievi iniziali](01-rilievi-iniziali-e-api/01-rilievi-iniziali.md) | checkpoint B1, sezioni 9–10, inclusa la checklist iniziale                | `DOC-001…003, DOC-006…007, WORKFLOW-001`    |
 | [Checkpoint API](01-rilievi-iniziali-e-api/02-api.md)                | checkpoint B2, sezione 11, SHA `b277bd9b7373dfd8702e65446c88bab7a0f64dcc` | `DOC-009…013`; richiamo storico a `DOC-003` |
 
 ## Regole di lettura
 
 - il modulo è un registro storico e non sostituisce gli owner tecnici correnti;
-- i percorsi `.mdx` conservati nei checkpoint rappresentano lo stato documentale dell’epoca;
 - gli stati correnti riportati nei child servono a distinguere il checkpoint storico dalla situazione successiva;
 - gli ID owner restano unici e non vengono rinumerati;
 - la checklist B1 resta evidenza storica e non è la Todo corrente;

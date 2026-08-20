@@ -1,18 +1,18 @@
 # Tennis Decision UI — Audit del codice
 
-Questo file è l’indice del registro storico dell’audit tecnico, suddiviso per dominio in sette moduli. I moduli conservano rilievi, decisioni e stati riferiti ai rispettivi checkpoint: non costituiscono la documentazione tecnica canonica del comportamento corrente, che resta sotto `docs/tennis-decision-ui/`.
+Questo file è l’indice del registro storico dell’audit tecnico, suddiviso per dominio in sette moduli. I moduli conservano rilievi, decisioni e stati riferiti ai rispettivi checkpoint e non costituiscono la documentazione tecnica canonica del comportamento corrente.
 
 ## Moduli
 
-| Parte | Modulo                                                                      | Perimetro                                                      |
-| ----: | --------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| 1     | [Rilievi iniziali e Punto 1](audit-codice/01-rilievi-iniziali.md)           | Finding iniziali, entry point, launcher e writer authority     |
-| 2     | [Runtime, sessioni e Betfair](audit-codice/02-runtime-sessioni-betfair.md)  | Start/Stop, generazioni, Betfair, Graph, diagnostica e cleanup |
-| 3     | [Storage, journal e recovery](audit-codice/03-storage-recovery.md)          | Persistenza, documenti canonici, journal e recovery            |
-| 4     | [Evidence e Market Reactions](audit-codice/04-evidence-market-reactions.md) | Provenance, alignment, eligibility e confronti cross-source    |
-| 5     | [Frontend e session shell](audit-codice/05-frontend-session-shell.md)       | Session controller, polling, integrity UI e presentazione      |
-| 6     | [Validazione e test](audit-codice/06-validazione-e-test.md)                 | Runner, fixture, sandbox, harness e result ledger              |
-| 7     | [Post-audit e migrazione](audit-codice/07-post-audit-e-migrazione.md)       | Chiusura dei Punti 1–7 e riallineamenti storici successivi     |
+| Parte | Modulo                                                                                        | Perimetro                                                      |
+| ----: | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 1     | [Rilievi iniziali e Punto 1](audit-codice/01-rilievi-iniziali.md)                             | Finding iniziali, entry point, launcher e writer authority     |
+| 2     | [Runtime, sessioni e Betfair](audit-codice/02-runtime-sessioni-betfair.md)                    | Start/Stop, generazioni, Betfair, Graph, diagnostica e cleanup |
+| 3     | [Storage, journal e recovery](audit-codice/03-storage-recovery.md)                            | Persistenza, documenti canonici, journal e recovery            |
+| 4     | [Evidence e Market Reactions](audit-codice/04-evidence-market-reactions.md)                   | Provenance, alignment, eligibility e confronti cross-source    |
+| 5     | [Frontend e session shell](audit-codice/05-frontend-session-shell.md)                         | Session controller, polling, integrity UI e presentazione      |
+| 6     | [Validazione e test](audit-codice/06-validazione-e-test.md)                                   | Runner, fixture, sandbox, harness e result ledger              |
+| 7     | [Post-audit e riallineamenti storici](audit-codice/07-post-audit-e-riallineamenti-storici.md) | Chiusura dei Punti 1–7 e riallineamenti storici successivi     |
 
 ## Mappa rapida
 
@@ -24,7 +24,7 @@ Questo file è l’indice del registro storico dell’audit tecnico, suddiviso p
 | Evidence, timestamp, source skew e Market Reactions         | 4     |
 | Session shell, polling e integrity frontend                 | 5     |
 | Test runner, fixture, harness e artefatti                   | 6     |
-| Chiusura dell’audit, migrazione e riallineamenti storici    | 7     |
+| Chiusura dell’audit e riallineamenti storici                | 7     |
 
 ## Regole
 

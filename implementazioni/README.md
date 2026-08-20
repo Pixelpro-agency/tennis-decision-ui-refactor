@@ -21,10 +21,9 @@ Questa cartella contiene il registro analitico operativo della revisione. Non so
   - [04-evidence-market-reactions.md](./audit-codice/04-evidence-market-reactions.md) — Punto 5, Evidence;
   - [05-frontend-session-shell.md](./audit-codice/05-frontend-session-shell.md) — Punto 6, frontend;
   - [06-validazione-e-test.md](./audit-codice/06-validazione-e-test.md) — Punto 7, test e validazione;
-  - [07-post-audit-e-migrazione.md](./audit-codice/07-post-audit-e-migrazione.md) — chiusura post-audit e migrazione;
+  - [07-post-audit-e-riallineamenti-storici.md](./audit-codice/07-post-audit-e-riallineamenti-storici.md) — chiusura post-audit e riallineamenti storici;
 - [04-task-completate.md](./04-task-completate.md) — verifica delle task dichiarate concluse;
-- [05-audit-docs-planning.md](./05-audit-docs-planning.md) — closeout storico del cleanup; consuma policy archive e owner IMPL correnti senza possederli;
-- [06-implementazioni-proposte.md](./06-implementazioni-proposte.md) — facade di 7 moduli IMPL: utility/authority, runtime Betfair, storage, Evidence, frontend, validazione e documentazione;
+- [06-implementazioni-proposte.md](./06-implementazioni-proposte.md) — facade di 6 moduli IMPL: utility/authority, runtime Betfair, storage, Evidence, frontend e validazione;
 - [99-decisioni-utente.md](./99-decisioni-utente.md) — decisioni strutturali.
 
 ## Regole

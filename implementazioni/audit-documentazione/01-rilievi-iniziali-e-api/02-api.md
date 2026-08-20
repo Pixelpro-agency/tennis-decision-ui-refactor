@@ -8,15 +8,15 @@ Il riferimento a `DOC-003` collega B2 a una scheda owner nata nel blocco B1; non
 
 ### Perimetro verificato
 
-Il perimetro seguente è quello del checkpoint B2 e conserva i percorsi `.mdx` esistenti in quella fase:
+Il perimetro seguente è quello del checkpoint B2:
 
 ```txt
-docs/tennis-decision-ui/api/01-match.mdx
-docs/tennis-decision-ui/api/02-betfair.mdx
-docs/tennis-decision-ui/api/03-evidence.mdx
-docs/tennis-decision-ui/api/04-strategy.mdx
-docs/tennis-decision-ui/api/05-preflight.mdx
-docs/tennis-decision-ui/api/06-runtime-health.mdx
+API Match
+API Betfair
+API Evidence
+API Strategy
+API Preflight
+API Runtime Health
 ```
 
 Confronto eseguito con:
@@ -69,11 +69,7 @@ Nel checkpoint B2 questa verifica provava la presenza e il contenuto dei test su
 
 **Area:** API Match
 
-**Documento coinvolto:**
-
-```txt
-docs/tennis-decision-ui/api/01-match.mdx
-```
+**Documento coinvolto nel checkpoint:** documentazione API Match.
 
 **Codice coinvolto:**
 
@@ -136,11 +132,7 @@ Il contratto documentato deve corrispondere a un comportamento realmente raggiun
 
 **Area:** API Betfair e persistence integrity
 
-**Documento coinvolto:**
-
-```txt
-docs/tennis-decision-ui/api/02-betfair.mdx
-```
+**Documento coinvolto nel checkpoint:** documentazione API Betfair.
 
 **Osservazione**
 
@@ -190,12 +182,12 @@ Tutti i simboli citati nel documento devono esistere sul repository.
 
 **Area:** API Match, Betfair ed Evidence
 
-**Documenti coinvolti:**
+**Documenti coinvolti nel checkpoint:**
 
 ```txt
-docs/tennis-decision-ui/api/01-match.mdx
-docs/tennis-decision-ui/api/02-betfair.mdx
-docs/tennis-decision-ui/api/03-evidence.mdx
+- documentazione API Match;
+- documentazione API Betfair;
+- documentazione API Evidence.
 ```
 
 **Osservazione**
@@ -264,11 +256,7 @@ Il contratto HTTP deve restare completo senza diventare una seconda copia dei mo
 
 **Area:** API Strategy
 
-**Documento coinvolto:**
-
-```txt
-docs/tennis-decision-ui/api/04-strategy.mdx
-```
+**Documento coinvolto nel checkpoint:** documentazione API Strategy.
 
 **Codice verificato:**
 
@@ -338,11 +326,7 @@ Strategy deve essere descritta come legacy attiva, non come funzione completa n�
 
 **Area:** API Preflight
 
-**Documento coinvolto:**
-
-```txt
-docs/tennis-decision-ui/api/05-preflight.mdx
-```
+**Documento coinvolto nel checkpoint:** documentazione API Preflight.
 
 **Codice coinvolto:**
 
@@ -394,7 +378,7 @@ Preflight e login non devono applicare nozioni incompatibili di URL Betfair vali
 
 ### API Runtime Health — nessuna discrepanza funzionale confermata nel checkpoint
 
-**Stato corrente:** il verdetto “nessuna discrepanza” appartiene esclusivamente a B2 e non descrive più il contratto documentato corrente. Nel codice corrente `buildHealthResponse(...)` include `repositoryIdentity` e `storageIdentity`, mentre `docs/tennis-decision-ui/api/05-runtime-health.md` non include questi due campi né nell'esempio della response né nella tabella dell'identità backend. La discrepanza corrente è quindi documentale e distinta dall'esito storico del checkpoint.
+**Stato corrente:** il verdetto “nessuna discrepanza” appartiene esclusivamente a B2 e non descrive più il contratto documentato corrente. Nel codice corrente `buildHealthResponse(...)` include `repositoryIdentity` e `storageIdentity`, mentre la documentazione API Runtime Health corrente non include questi due campi né nell'esempio della response né nella tabella dell'identità backend. La discrepanza corrente è quindi documentale e distinta dall'esito storico del checkpoint.
 
 Il contratto di:
 
@@ -413,7 +397,7 @@ Sono stati verificati:
 - esclusione di `ownerToken`, `cdpUrl` e `profileDir`;
 - test HTTP dedicato in `backend/src/server.test.mjs`.
 
-Non è richiesta una riscrittura funzionale del contratto. Resta soltanto la conversione generale `.mdx → .md` e l’eventuale riduzione delle duplicazioni con Runtime locale.
+Non è richiesta una riscrittura funzionale del contratto. Resta da valutare soltanto l’eventuale riduzione delle duplicazioni con Runtime locale.
 
 ---
 

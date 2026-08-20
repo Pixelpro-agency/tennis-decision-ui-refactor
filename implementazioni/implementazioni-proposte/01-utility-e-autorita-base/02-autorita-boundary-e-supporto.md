@@ -246,9 +246,9 @@ La sequenza è conservata come decisione del checkpoint. Non va interpretata com
 4. IMPL-009 — adapter persistence frontend
 5. IMPL-003 — matrice test
 6. IMPL-008 — harness persistence/recovery
-7. IMPL-001 — link checker prima migrazione docs
+7. IMPL-001 — controllo link documentali
 8. IMPL-002 — inventario endpoint
-9. IMPL-004 — archivio collaudi già completato in `docs/validations/`
+9. IMPL-004 — separazione dei collaudi storici dagli owner
 ```
 
 L’ordine definitivo dipende dal raggruppamento delle task e dalle decisioni dell’utente.

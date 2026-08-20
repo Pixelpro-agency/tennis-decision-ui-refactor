@@ -55,7 +55,6 @@ Partire da questa facade e aprire soltanto i moduli indicati dal routing per la 
 ## Indice dei moduli
 
 1. [Stato, fonti e inventario — Blocco A](./todo-list-tennis-decision-ui/01-stato-fonti-inventario.md)
-2. [Regole documentali permanenti — Blocco B0](./todo-list-tennis-decision-ui/02-regole-documentali-permanenti.md)
 3. [Audit documentazione storico — Blocco B](./todo-list-tennis-decision-ui/03-audit-documentazione-storico.md)
 4. [Audit codice storico — Blocco C](./todo-list-tennis-decision-ui/04-audit-codice-storico.md)
 5. [Ricontrollo task e priorità — Blocco D](./todo-list-tennis-decision-ui/05-ricontrollo-task-priorita.md)
@@ -71,7 +70,7 @@ Partire da questa facade e aprire soltanto i moduli indicati dal routing per la 
 | Richiesta                                                          | Contesto iniziale                                                                                        |
 | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
 | Orientamento generale o inventario                                 | [01 — Stato, fonti e inventario](./todo-list-tennis-decision-ui/01-stato-fonti-inventario.md)            |
-| Regole documentali                                                 | [02 — Regole documentali permanenti](./todo-list-tennis-decision-ui/02-regole-documentali-permanenti.md) |
+| Regole documentali                                                 | [Metodo, stati e regole](./implementazioni/00-metodo-e-stati.md)                                         |
 | Ricostruzione dell’audit documentazione storico                    | [03 — Audit documentazione storico](./todo-list-tennis-decision-ui/03-audit-documentazione-storico.md)   |
 | Ricostruzione dell’audit codice storico                            | [04 — Audit codice storico](./todo-list-tennis-decision-ui/04-audit-codice-storico.md)                   |
 | Ricontrollo delle vecchie task o priorità correnti                 | [05 — Ricontrollo task e priorità](./todo-list-tennis-decision-ui/05-ricontrollo-task-priorita.md)       |

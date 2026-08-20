@@ -12,7 +12,7 @@ Questo file è la facade stabile dei checkpoint storici B3 e B4. Il dettaglio re
 ## Regole di lettura
 
 - B3 e B4 restano checkpoint storici distinti dallo stato tecnico corrente riportato nei rispettivi overlay;
-- i percorsi `.mdx` e gli SHA storici conservati nei child appartengono alla provenance dei checkpoint;
+- gli SHA storici conservati nei child appartengono alla provenance dei checkpoint;
 - il qualificatore “test letti, ma non eseguiti” resta associato al checkpoint in cui fu registrato e non equivale a un PASS corrente;
 - ogni scheda owner vive in un solo child e gli ID non vengono rinumerati;
 - i documenti canonici dei singoli domini restano owner dei rispettivi contratti tecnici correnti.

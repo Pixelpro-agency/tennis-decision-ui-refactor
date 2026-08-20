@@ -1,6 +1,6 @@
 > **Parte 6 di 7 — Validazione e test**
 > Secondo audit — Punto 7: runner, manifest, fixture, sandbox, harness frontend, result ledger e TEST-060…075.
-> [Indice](../03-audit-codice.md) · [Parte 5](05-frontend-session-shell.md) · [Parte 7](07-post-audit-e-migrazione.md)
+> [Indice](../03-audit-codice.md) · [Parte 5](05-frontend-session-shell.md) · [Parte 7](07-post-audit-e-riallineamenti-storici.md)
 
 ## 22. Secondo audit del codice — Punto 7: Test e strutture mancanti
 
@@ -32,7 +32,6 @@ frontend/src/hooks/useMatchPolling.test.mjs
 frontend/src/hooks/useBetfairJson.test.mjs
 frontend/src/utils/dashboardConnections.test.mjs
 
-docs/tennis-decision-ui/operations/04-validation-and-rollback.mdx
 
 implementazioni-tennis-decision-ui.md
 todo-list-tennis-decision-ui.md

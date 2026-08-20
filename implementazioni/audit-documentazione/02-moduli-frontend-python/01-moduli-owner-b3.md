@@ -2,7 +2,7 @@
 
 [← Moduli, frontend e Python](../02-moduli-frontend-python.md) · [Checkpoint B4 — Frontend e Python →](02-frontend-python-b4.md)
 
-> Questo modulo conserva il record del checkpoint storico B3. Baseline storica, percorsi `.mdx`, qualificatore sui test, finding e decisioni differite descrivono il checkpoint; le sottosezioni “Stato corrente” riportano soltanto l’overlay tecnico pertinente.
+> Questo modulo conserva il record del checkpoint storico B3. Baseline storica, qualificatore sui test, finding e decisioni differite descrivono il checkpoint; le sottosezioni “Stato corrente” riportano soltanto l’overlay tecnico pertinente.
 
 ### Perimetro del checkpoint
 
@@ -12,25 +12,27 @@ Il checkpoint B3 fu eseguito sullo SHA storico:
 b277bd9b7373dfd8702e65446c88bab7a0f64dcc
 ```
 
-I documenti registrati allora erano:
+I documenti registrati allora coprivano:
 
 ```txt
-modules/sofa/01-live-tracking.mdx
-modules/sofa/02-local-context-and-point-by-point.mdx
+SofaScore
+→ live tracking
+→ local context e point-by-point
 
-modules/betfair/01-scraper-lifecycle.mdx
-modules/betfair/02-technical-sample-validity.mdx
+Betfair
+→ scraper lifecycle
+→ validità tecnica del sample
 
-modules/storage/01-timelines-and-history.mdx
-modules/storage/02-commit-journal-and-recovery.mdx
+Storage
+→ timeline e history
+→ commit journal e recovery
 
-modules/evidence/01-match-evidence-snapshot.mdx
-modules/evidence/02-source-identity.mdx
-modules/evidence/03-quality-flow-and-alignment.mdx
-modules/evidence/04-market-reactions.mdx
+Evidence
+→ Match Evidence Snapshot
+→ Source Identity
+→ qualità, flow e alignment
+→ Market Reactions
 ```
-
-Questi percorsi `.mdx` sono parte della provenance del checkpoint e non rappresentano i percorsi canonici correnti.
 
 Il confronto storico coprì tracking, gate, point-by-point, local context, processor Betfair, timeline, history, journal, recovery, Evidence e Market Reactions.
 
@@ -45,7 +47,7 @@ Il confronto storico coprì tracking, gate, point-by-point, local context, proce
 | Lifecycle Betfair      | Coerente, ma sovrapposto a Runtime e Storage      | Confini fra owner                                                            |
 | Validità tecnica       | Coerente nel dominio                              | Ordine tracking key/classificazione descritto in modo non aderente al codice |
 | Timeline/history       | Sostanzialmente coerente                          | Distinzione fra facade storage e journal                                     |
-| Journal/recovery       | Coerente e vicino a un owner autonomo             | Pulizia strutturale e migrazione documentale                                 |
+| Journal/recovery       | Coerente e vicino a un owner autonomo             | Pulizia strutturale e separazione dell’owner documentale                     |
 | Match Evidence         | Coerente                                          | Ripetizioni su integrity e identity                                          |
 | Source Identity        | Coerente                                          | Distinzione gate live/effective snapshot da preservare                       |
 | Qualità/flow/alignment | Coerente                                          | Ripetizioni fra owner Evidence                                               |
@@ -220,7 +222,7 @@ timelineStore / createHistoryStorage
 → possono assicurare l’esistenza delle directory di storage
 ```
 
-La documentazione canonica corrente `docs/tennis-decision-ui/modules/storage/01-timelines-and-history.md` descrive esplicitamente `addBetfairUpdate` come facade `prepare-only` e separa il boundary comune dai writer specifici e dal journal/recovery.
+La documentazione canonica corrente di Storage descrive esplicitamente `addBetfairUpdate` come facade `prepare-only` e separa il boundary comune dai writer specifici e dal journal/recovery.
 
 La discrepanza documentale appartiene quindi al checkpoint storico e non descrive la documentazione canonica corrente.
 

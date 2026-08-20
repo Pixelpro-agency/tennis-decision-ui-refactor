@@ -1,8 +1,8 @@
 # Tennis Decision UI — Audit della documentazione — rilievi iniziali
 
-Questo modulo conserva il checkpoint storico B1 dell’audit documentale: rilievi iniziali, owner `DOC-001…008`, `WORKFLOW-001` e checklist generale del checkpoint.
+Questo modulo conserva il checkpoint storico B1 dell’audit documentale: rilievi iniziali, owner `DOC-001…003`, `DOC-006…007`, `WORKFLOW-001` e checklist generale del checkpoint.
 
-I percorsi `.mdx` presenti nelle schede sono storici. Gli stati correnti servono esclusivamente a riconciliare quei rilievi con la documentazione successiva senza riscrivere retroattivamente il checkpoint.
+Gli stati correnti servono esclusivamente a riconciliare quei rilievi con la documentazione successiva senza riscrivere retroattivamente il checkpoint.
 
 ## 9. Checkpoint B1 — rilievi iniziali già registrati
 
@@ -14,11 +14,7 @@ I percorsi `.mdx` presenti nelle schede sono storici. Gli stati correnti servono
 **Priorità nel checkpoint:** alta per la revisione documentale
 **Area:** roadmap e stato corrente
 
-**Documenti coinvolti:**
-
-```txt
-docs/tennis-decision-ui/roadmap/01-current-state.mdx
-```
+**Documento coinvolto nel checkpoint:** roadmap dello stato corrente.
 
 **Osservazione**
 
@@ -103,11 +99,7 @@ Definire con l’utente quanta cronologia mantenere e dove conservarla.
 **Priorità nel checkpoint:** media
 **Area:** orientamento documentale
 
-**Documento coinvolto:**
-
-```txt
-docs/tennis-decision-ui/reference/01-repository-map.mdx
-```
+**Documento coinvolto nel checkpoint:** repository map.
 
 **Osservazione**
 
@@ -162,7 +154,7 @@ La mappa deve spiegare dove si trova una responsabilità e quale documento la po
 
 ### DOC-003 — Confine read-only del router Evidence descritto in modo ambiguo
 
-**Stato corrente:** `ANCORA PERTINENTE`. Il codice continua a distinguere GET read-only da conferma/revoca mutanti. La facade `docs/tennis-decision-ui/api/03-evidence.md` afferma che POST e DELETE possono modificare esclusivamente il confirmation store; il child `api/evidence/02-source-identity-confirmation.md` documenta invece il bootstrap gate-aware, ma contiene anche una sequenza interna contraddittoria. Nel codice effettivo la conferma applica l'identità al gate, esegue `onOpenRecording(...)` e soltanto dopo effettua l'upsert della conferma.
+**Stato corrente:** `ANCORA PERTINENTE`. Il codice continua a distinguere GET read-only da conferma/revoca mutanti. La documentazione API Evidence corrente afferma che POST e DELETE possono modificare esclusivamente il confirmation store; la documentazione della conferma Source Identity descrive invece il bootstrap gate-aware, ma contiene anche una sequenza interna contraddittoria. Nel codice effettivo la conferma applica l'identità al gate, esegue `onOpenRecording(...)` e soltanto dopo effettua l'upsert della conferma.
 
 **Stato nel checkpoint:** `CONFERMATO`
 **Priorità nel checkpoint:** alta
@@ -178,11 +170,7 @@ backend/src/sofa/sourceIdentityGate/manualConfirmation.js
 backend/src/sofa/matchTracker.js
 ```
 
-**Documento coinvolto:**
-
-```txt
-docs/tennis-decision-ui/api/03-evidence.mdx
-```
+**Documento coinvolto nel checkpoint:** documentazione API Evidence.
 
 **Osservazione**
 
@@ -255,127 +243,6 @@ Il documento deve distinguere chiaramente endpoint read-only ed endpoint mutanti
 
 ---
 
-### DOC-004 — La migrazione `.mdx` → `.md` richiede conversione strutturale
-
-**Stato corrente:** `RISOLTO`. La documentazione canonica è migrata a Markdown `.md`; i riferimenti `.mdx` di questa sezione sono conservati esclusivamente come dato storico del checkpoint.
-
-**Stato nel checkpoint:** `CONFERMATO`
-**Priorità nel checkpoint:** alta
-**Area:** intera documentazione canonica
-
-**Documenti coinvolti:**
-
-```txt
-docs/tennis-decision-ui/**/*.mdx
-README.md
-```
-
-**Osservazione**
-
-I documenti contengono sintassi specifica MDX:
-
-```js
-export const meta = {
-  id: '...',
-  order: 1,
-  title: '...',
-};
-```
-
-Inoltre indice, convenzioni e collegamenti usano esplicitamente estensioni `.mdx`.
-
-Una semplice rinomina produrrebbe file `.md` contenenti JavaScript non appartenente al Markdown ordinario e lascerebbe link non aggiornati.
-
-**Cosa mantenere**
-
-- `id`;
-- ordine;
-- titolo;
-- eventuali campi `version`, `status` e `language`;
-- struttura di navigazione;
-- collegamenti fra documenti.
-
-**Proposta registrata nel checkpoint (non corrente)**
-
-Convertire i metadata in frontmatter YAML:
-
-```yaml
----
-id: source-identity
-order: 2
-title: Source Identity
-status: active
-language: it
----
-```
-
-**Verifiche lasciate aperte nel checkpoint**
-
-- eventuali script o CI che leggono `export const meta`;
-- eventuali consumer che cercano file `.mdx`;
-- gestione futura di frontmatter YAML;
-- link nel README, nei prompt, nei test e nei documenti planning;
-- compatibilità di GitHub e degli strumenti AI usati dall’utente.
-
-**Criterio di chiusura del finding storico**
-
-- nessun nuovo `.mdx`;
-- nessun `export const meta` rimasto nei nuovi `.md`;
-- metadata preservati in forma leggibile;
-- link aggiornati;
-- nessun duplicato canonico `.mdx`/`.md`.
-
----
-
-### DOC-005 — Le convenzioni documentali attuali impongono il formato da sostituire
-
-**Stato corrente:** `RISOLTO`. Le convenzioni correnti prescrivono `.md`, vietano `export const meta` e non impongono frontmatter predefinito.
-
-**Stato nel checkpoint:** `CONFERMATO`
-**Priorità nel checkpoint:** alta
-**Area:** convenzioni documentali
-
-**Documento coinvolto:**
-
-```txt
-docs/tennis-decision-ui/ai/02-documentation-conventions.mdx
-```
-
-**Osservazione**
-
-Il documento prescrive:
-
-```txt
-01-nome-chiaro.mdx
-02-nome-chiaro.mdx
-```
-
-e utilizza `.mdx` in owner, esempi, link e checklist.
-
-**Motivo**
-
-La nuova regola `.md` non può essere applicata stabilmente finché il documento che governa la documentazione continua a imporre `.mdx`.
-
-**Azione proposta nel checkpoint**
-
-Questo deve essere uno dei primi documenti riscritti.
-
-Deve definire:
-
-- estensione `.md`;
-- metadata Markdown compatibili;
-- documenti owner;
-- distinzione fra tecnico, planning, workflow e storico;
-- criteri di dimensione;
-- link senza dipendenze obsolete;
-- procedura di sostituzione dei vecchi file.
-
-**Criterio di chiusura del finding storico**
-
-La convenzione futura non deve contenere istruzioni che ricreino `.mdx`.
-
----
-
 ### DOC-006 — Repository map e documenti architetturali duplicano contratti owner
 
 **Stato corrente:** `ANCORA PERTINENTE`. La documentazione architetturale corrente dichiara di conservare invarianti e confini, ma include ancora dettagli significativi su authority, persistenza, Source Identity e lifecycle che si sovrappongono agli owner specifici.
@@ -384,12 +251,12 @@ La convenzione futura non deve contenere istruzioni che ricreino `.mdx`.
 **Priorità nel checkpoint:** alta
 **Area:** reference e architecture
 
-**Documenti coinvolti:**
+**Documenti coinvolti nel checkpoint:**
 
 ```txt
-reference/01-repository-map.mdx
-architecture/01-system-boundaries.mdx
-architecture/02-data-lifecycle.mdx
+- repository map;
+- system boundaries;
+- data lifecycle.
 ```
 
 **Osservazione**
@@ -457,7 +324,7 @@ Ogni contratto dettagliato deve avere un owner unico; i documenti architetturali
 
 ---
 
-### WORKFLOW-001 — `ai/01-context-selection.mdx` contiene più responsabilità
+### WORKFLOW-001 — Il documento di context selection contiene più responsabilità
 
 **Stato corrente:** `RISOLTO LATO DOCUMENTAZIONE`. `01-context-selection.md` è ora limitato alla selezione del contesto e delega esplicitamente ciclo esecutivo, diagnosi/modularizzazione e artefatti rispettivamente a `03-workflow-esecutivo.md`, `04-diagnosi-e-modularizzazione.md` e `05-artefatti-esecutivi.md`.
 
@@ -465,11 +332,7 @@ Ogni contratto dettagliato deve avere un owner unico; i documenti architetturali
 **Priorità nel checkpoint:** alta per il nuovo workflow
 **Area:** metodologia operativa e contesto AI
 
-**Documento coinvolto:**
-
-```txt
-docs/tennis-decision-ui/ai/01-context-selection.mdx
-```
+**Documento coinvolto nel checkpoint:** documento di context selection.
 
 **Osservazione**
 
@@ -541,7 +404,7 @@ Ogni regola operativa deve avere un owner chiaro e non deve essere confusa con l
 
 ---
 
-### DOC-007 — `roadmap/01-current-state.mdx` unisce stato, storia e validazione
+### DOC-007 — La roadmap dello stato corrente unisce stato, storia e validazione
 
 **Stato corrente:** `RISOLTO`. La roadmap corrente è centrata sullo stato reale, conserva una sezione distinta per validazioni storiche e rinvia finding, priorità e implementazioni future ai registri.
 
@@ -593,36 +456,6 @@ Lo stato corrente deve essere leggibile senza conoscere la numerazione storica d
 
 ---
 
-### DOC-008 — Il README deve diventare il primo punto della migrazione `.md`
-
-**Stato corrente:** `RISOLTO`. Il README corrente collega l'indice canonico `docs/tennis-decision-ui/index.md` e lo stato corrente `.md`.
-
-**Stato nel checkpoint:** `CONFERMATO`
-**Priorità nel checkpoint:** media
-**Area:** root
-
-**Documento coinvolto:**
-
-```txt
-README.md
-```
-
-**Osservazione**
-
-Il README collega direttamente:
-
-```txt
-docs/tennis-decision-ui/index.mdx
-```
-
-**Azione proposta nel checkpoint**
-
-Aggiornare il link soltanto quando il nuovo indice `.md` è pronto e verificato.
-
-**Criterio di chiusura del finding storico**
-
-Il README deve puntare a un unico indice canonico esistente.
-
 ## 10. Checkpoint B1 — aree da ricontrollare nella documentazione
 
 Lista iniziale del checkpoint. Le caselle seguenti sono conservate come evidenza storica e non costituiscono la todo corrente:
@@ -667,7 +500,6 @@ Lista iniziale del checkpoint. Le caselle seguenti sono conservate come evidenza
 - [ ] replay e backtesting;
 - [ ] Market Reactions Journal;
 - [ ] file legacy e collegamenti;
-- [ ] meta e frontmatter;
 - [ ] link relativi;
 - [ ] test citati;
 - [ ] percorsi citati;

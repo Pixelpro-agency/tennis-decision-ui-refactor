@@ -704,7 +704,6 @@ FRONTEND-005 resta chiuso nel finding specifico finché cleanup o cambio session
 **Riferimenti essenziali**
 
 - `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
-- `docs/tennis-decision-ui/modules/frontend/02-live-polling-and-view-model.md`
 - `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
 
 **Provenance storica**
@@ -738,7 +737,6 @@ Il finding potrà essere chiuso soltanto quando richieste Start/Stop concorrenti
 **Riferimenti essenziali**
 
 - `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
-- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
 - `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
 
 **Provenance storica**
@@ -772,7 +770,6 @@ Il finding resta parziale finché lo Stop non dispone di un contratto esplicito 
 **Riferimenti essenziali**
 
 - `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
-- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
 - `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
 
 **Provenance storica**
@@ -805,9 +802,6 @@ FRONTEND-008 resta aperto finché tutti gli indicatori che dichiarano stato live
 
 **Riferimenti essenziali**
 
-- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
-- `docs/tennis-decision-ui/modules/frontend/02-live-polling-and-view-model.md`
-- `docs/tennis-decision-ui/modules/frontend/03-betfair-and-market-reactions-ui.md`
 - `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
 
 **Provenance storica**
@@ -841,7 +835,6 @@ Il finding resta parziale finché pagina e card non consumano un contratto front
 **Riferimenti essenziali**
 
 - `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
-- `docs/tennis-decision-ui/modules/frontend/03-betfair-and-market-reactions-ui.md`
 - `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
 
 **Provenance storica**
@@ -874,8 +867,6 @@ FRONTEND-010 resta parziale finché un nuovo contesto Source Identity con gli st
 
 **Riferimenti essenziali**
 
-- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
-- `docs/tennis-decision-ui/modules/evidence/02-source-identity.md`
 - `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
 
 **Provenance storica**
@@ -908,7 +899,6 @@ FRONTEND-011 potrà essere chiuso quando ogni risultato Preflight sarà associat
 
 **Riferimenti essenziali**
 
-- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
 - `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
 
 **Provenance storica**
@@ -941,8 +931,6 @@ FRONTEND-012 resta aperto finché una task dedicata non definisce e verifica il 
 
 **Riferimenti essenziali**
 
-- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
-- `docs/tennis-decision-ui/modules/frontend/03-betfair-and-market-reactions-ui.md`
 - `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
 
 **Provenance storica**
@@ -1549,7 +1537,6 @@ Chiudere soltanto quando un'identità/revisione autoritativa del contesto impedi
 - `frontend/src/hooks/useSourceIdentityGateUi.js`
 - `frontend/src/hooks/useSourceIdentityGateStatus.js`
 - `frontend/src/App.jsx`
-- `docs/tennis-decision-ui/modules/evidence/02-source-identity.md`
 - `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
 
 **Provenance storica**
@@ -1997,8 +1984,6 @@ Chiudere quando il comportamento responsive end-to-end è definito e uno smoke r
 - `frontend/src/components/TopBar.jsx`
 - `frontend/src/components/frontendComponents.test.jsx`
 - `frontend/package.json`
-- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
-- `docs/tennis-decision-ui/modules/frontend/03-betfair-and-market-reactions-ui.md`
 - `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
 
 **Provenance storica**
@@ -2031,7 +2016,6 @@ Il finding resta risolto finché la documentazione mantiene distinti input, sess
 **Riferimenti essenziali**
 
 - `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
-- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
 - `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
 - provenance storica: commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`
 
@@ -2063,7 +2047,6 @@ DOC-029 resta `PARZIALE / ANCORA PERTINENTE` finché documentazione e implementa
 **Riferimenti essenziali**
 
 - `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
-- `docs/tennis-decision-ui/modules/frontend/02-live-polling-and-view-model.md`
 - `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
 - provenance storica: commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`
 
@@ -2095,9 +2078,6 @@ Il finding resta risolto finché la documentazione descrive soltanto il wiring i
 **Riferimenti essenziali**
 
 - `implementazioni/implementazioni-proposte/05-frontend-session-polling.md`
-- `docs/tennis-decision-ui/modules/frontend/01-session-shell.md`
-- `docs/tennis-decision-ui/modules/frontend/02-live-polling-and-view-model.md`
-- `docs/tennis-decision-ui/modules/frontend/03-betfair-and-market-reactions-ui.md`
 - `todo-list-tennis-decision-ui/06-rilievi-registrati.md`
 - provenance storica: commit `eef267aab3c138395a5ca3d644a942190c5360e8`, `implementazioni/03-audit-codice.md`
 

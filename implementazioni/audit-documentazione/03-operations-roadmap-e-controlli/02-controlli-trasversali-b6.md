@@ -23,7 +23,7 @@ SHA verificato: b277bd9b7373dfd8702e65446c88bab7a0f64dcc
 
 ### 15.2 Link e navigazione
 
-Tutti i target elencati direttamente in `docs/tennis-decision-ui/index.mdx` sono stati aperti durante i blocchi B1–B5.
+Tutti i target elencati direttamente nell’indice canonico del checkpoint sono stati aperti durante i blocchi B1–B5.
 
 Esito:
 
@@ -33,39 +33,24 @@ nessun link rotto confermato nell’indice canonico
 
 Questo non equivale a una scansione completa di tutti i link interni.
 
-Restano aperti link fra singoli documenti, anchor, materiali legacy e collegamenti che cambieranno durante la conversione `.mdx` → `.md`.
-
-Conclusione:
-
-```txt
-IMPL-001
-→ necessario prima della migrazione documentale
-```
-
-Il README root collega ancora `index.mdx`; è corretto nello stato corrente e dovrà cambiare insieme alla migrazione.
+Restavano fuori dal controllo completo i link fra singoli documenti, gli anchor e i materiali legacy.
 
 ### 15.3 Materiale legacy
 
-L’indice dichiara esplicitamente non canonici:
+Il checkpoint identificò materiale legacy esplicitamente non canonico.
 
-```txt
-chapters/
-sections/
-```
-
-Non è emersa una ragione per usarli come fonte dello stato corrente.
+Non emerse una ragione per usarlo come fonte dello stato corrente.
 
 Regola:
 
 ```txt
-non eliminarli durante l’audit
-→ verificare consumer e contenuti durante la migrazione
-→ archiviare o rimuovere solo dopo link check e manifest
+materiale legacy non canonico
+→ non usarlo come fonte dello stato corrente
+→ verificare consumer e contenuti prima della rimozione
+→ archiviare o rimuovere solo dopo verifiche dedicate
 ```
 
 I documenti Replay e Market Reactions Journal sono invece proposte future esplicite, non implementazioni abbandonate.
-
----
 
 ## WORKFLOW-002 — Todo e registro analitico non erano allineati
 
@@ -182,10 +167,7 @@ IMPL-003
 
 ```txt
 DOC-002
-DOC-004
-DOC-005
 DOC-006
-DOC-008
 DOC-010
 DOC-011
 DOC-014

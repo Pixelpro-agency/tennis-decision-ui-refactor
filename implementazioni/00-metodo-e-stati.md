@@ -22,7 +22,6 @@ Non è:
 
 - la documentazione tecnica canonica del progetto;
 - una cronologia completa dei prompt già eseguiti;
-- un sostituto dei documenti in `docs/tennis-decision-ui/`;
 - una raccolta indistinta di idee;
 - un’autorizzazione automatica a modificare il codice;
 - una prova che una task sia davvero completata senza verifica sul repository;
@@ -40,7 +39,7 @@ todo-list-tennis-decision-ui/*.md
 
 La facade è l’unico entry point operativo, ma non è l’unico file fisico. I moduli mostrano lo stato sintetico senza duplicare le rispettive authority. Motivazioni, evidenze, rischi, dipendenze e criteri di chiusura restano nelle singole schede owner.
 
-Il processo è ora in steady state Markdown. Coesistenza MDX, conversione di massa e cleanup della migrazione sono fasi storiche concluse; restano operative la separazione storico/corrente, la verifica semantica, i link strict e la coerenza dei registri.
+Il processo documentale usa Markdown ordinario. Restano operative la separazione fra storico e stato corrente, la verifica semantica, il controllo dei link e la coerenza dei registri.
 
 ---
 
@@ -256,58 +255,50 @@ la revisione deve:
 Non scegliere arbitrariamente.
 
 
-### 7.4 Formato corrente dei documenti tecnici
+### 7.4 Formato standard dei documenti tecnici
 
-Decisione dell’utente:
+I documenti tecnici del progetto usano Markdown ordinario con estensione `.md`.
 
-```txt
-tutti i nuovi documenti tecnici devono usare estensione .md
-non creare nuovi documenti .mdx
-```
+Regole:
 
-La migrazione è conclusa. Per nuovi documenti o modifiche correnti:
-
-- produrre file Markdown con estensione `.md`;
-- sostituire le funzionalità specifiche MDX con sintassi Markdown compatibile;
-- non copiare automaticamente `export const meta`, JSX, import o componenti MDX dentro file `.md`;
-- verificare prima il loader, il generatore o il sistema che legge `docs/`;
-- preservare metadata, ordine, titolo e navigazione nella forma Markdown adottata dal progetto;
+- non creare nuovi documenti tecnici `.mdx`;
+- non usare `export const meta`, JSX, import o componenti MDX nei documenti Markdown;
+- non usare frontmatter salvo esistenza di un consumer tecnico che lo richieda esplicitamente;
+- verificare loader, generatori o altri consumer quando una modifica interessa il sistema che legge `docs/`;
+- preservare titolo, ordine e navigazione secondo la struttura documentale corrente;
 - mantenere i link interni coerenti con i percorsi effettivi;
-- evitare copie canoniche parallele dello stesso documento;
-- non reintrodurre una copia `.mdx` parallela;
-- trattare le istruzioni di coesistenza e conversione di massa come procedura storica, non come flusso ordinario.
-
-La decisione di formato è applicata; ogni nuova migrazione eccezionale richiede un perimetro separato.
+- evitare copie canoniche parallele dello stesso documento.
 
 ### 7.5 Trattamento delle fonti storiche
 
-La mappa di provenienza è stata assorbita nel closeout della migrazione e nei registri. `docs/archive/README.md` e la directory archive non sono presenti nello stato corrente; una futura archive richiede una decisione nuova (`DEC-027`).
+`docs/archive/` è una radice non canonica destinata a materiali storici, planning, brief o fonti future esplicitamente preservati. Il suo contenuto non prova lo stato corrente del prodotto e non sostituisce codice, registri, test o validazioni.
 
 Regola:
 
 ```txt
 fonte storica
 → confronto con codice e registri
-→ assorbimento dei contenuti unici
-→ controllo link
-→ rimozione della copia
+→ classificazione del contenuto ancora utile
+→ eventuale assorbimento nei documenti pertinenti
+→ controllo dei riferimenti
+→ eventuale rimozione soltanto con perimetro e autorizzazione espliciti
 ```
 
 Le fonti storiche non devono essere lette in blocco nella fase iniziale di una
 task, né considerate prova di comportamento corrente. Un report con evidenza
 irripetibile può restare in `docs/validations/`; un backlog duplicato no.
 
-Ordine approvato:
+Ordine standard di consultazione:
 
 ```txt
 1. documentazione canonica corrente
 2. codice corrente
 3. test e collaudi
 4. discrepanze rilevate
-5. docs/planning come fonte storica e progettuale separata
+5. eventuali fonti storiche o progettuali non canoniche
 ```
 
-Quando una fonte di `docs/planning` viene riesaminata, ogni voce pertinente deve essere classificata come:
+Quando una fonte storica o progettuale non canonica viene riesaminata, ogni voce pertinente deve essere classificata come:
 
 ```txt
 SUPERATA
@@ -320,7 +311,7 @@ DUPLICATA ALTROVE
 NON PIÙ PERTINENTE
 ```
 
-`docs/planning` non è fonte primaria dello stato attuale. Può essere usata per:
+Una fonte storica o progettuale non canonica non è fonte primaria dello stato attuale. Può essere usata per:
 
 - recuperare requisiti utili non confluiti nella documentazione canonica;
 - verificare task dichiarate completate;
@@ -348,7 +339,7 @@ Evitare, quando possibile:
 - patch parziali molto grandi;
 - comandi terminale che modificano decine di documenti;
 - sostituzioni regex non revisionate;
-- rinomina automatica di massa senza conversione della sintassi;
+- rinomine o spostamenti massivi non revisionati;
 - richieste esecutive che devono ricostruire il contenuto completo da frammenti.
 
 Per una singola area, la consegna deve includere soltanto gli artefatti richiesti dal perimetro:
@@ -360,31 +351,9 @@ file .md completi
 + controlli eseguiti e limiti
 ```
 
-Un manifest di migrazione e un archivio che preserva la struttura sono richiesti soltanto quando il perimetro comprende più file o una directory completa. Non appartengono alla consegna ordinaria di un singolo documento.
-
-Esempio per una migrazione multi-file:
-
-```txt
-docs-tennis-decision-ui-md/
-├── MIGRATION-MANIFEST.md
-└── docs/
-    └── tennis-decision-ui/
-        └── <struttura finale .md>
-```
-
-Il manifest deve indicare per ogni file:
-
-```txt
-percorso precedente
-→ percorso nuovo
-→ azione: sostituire / riscrivere / spostare / archiviare / eliminare
-→ documenti collegati da aggiornare
-→ verifica necessaria
-```
-
 L’utente resta responsabile dell’inserimento nel repository e delle operazioni Git.
 
-Questa modalità richiede comunque una revisione del contenuto completo e dei link prima di sostituire o rimuovere file esistenti.
+Ogni sostituzione o rimozione documentale richiede la revisione del contenuto completo e dei link prima di modificare o rimuovere file esistenti.
 
 ---
 
