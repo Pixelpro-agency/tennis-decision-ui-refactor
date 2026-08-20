@@ -100,7 +100,7 @@ Eliminare la superficie strategica prematura senza cambiare:
 
 **Regola di scope**
 
-Prima della rimozione l’esecutore deve inventariare i consumer reali e distinguere:
+Prima della rimozione devono essere inventariati i consumer reali, distinguendo:
 
 ```txt
 componenti Strategy esclusivi
@@ -1239,7 +1239,7 @@ frontend/.eslintrc.json
 Impatto:
 
 - comando apparentemente supportato ma non affidabile;
-- task esecutive possono usarlo come controllo e ottenere un fallimento infrastrutturale;
+- il comando può essere usato come controllo e produrre un fallimento infrastrutturale non riconducibile al codice applicativo;
 - la Todo deve distinguere lint assente da lint fallito sul codice.
 
 Alternative:
@@ -1327,7 +1327,7 @@ CLEANUP-002
 CODE-005
 ```
 
-### Decisioni prima della task
+### Decisioni ancora aperte
 
 ```txt
 CODE-001

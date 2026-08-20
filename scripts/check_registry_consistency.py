@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 """Read-only consistency checker for the modular Todo and revision registers.
 
-The checker compares canonical synthetic rows in the explicit Todo modules for
-Blocks E/F with detailed owner cards under implementazioni/, validates declared
-prefixes, detects owner and synthetic duplicates, and reports strict status
-contradictions. It never renumbers IDs or edits files.
+The checker compares canonical synthetic rows in the explicit Todo modules for Blocks E/F with detailed owner cards under implementazioni/, validates declared prefixes, detects owner and synthetic duplicates, and reports strict status contradictions. It never renumbers IDs or edits files.
 """
 
 from __future__ import annotations
@@ -23,14 +20,11 @@ TODO_FACADE_PATH = Path("todo-list-tennis-decision-ui.md")
 TODO_MODULE_DIR = Path("todo-list-tennis-decision-ui")
 TODO_MODULE_PATHS = (
     TODO_MODULE_DIR / "01-stato-fonti-inventario.md",
-    TODO_MODULE_DIR / "02-regole-documentali-permanenti.md",
     TODO_MODULE_DIR / "03-audit-documentazione-storico.md",
     TODO_MODULE_DIR / "04-audit-codice-storico.md",
     TODO_MODULE_DIR / "05-ricontrollo-task-priorita.md",
     TODO_MODULE_DIR / "06-rilievi-registrati.md",
     TODO_MODULE_DIR / "07-implementazioni-utili.md",
-    TODO_MODULE_DIR / "08-workflow-operativo-permanente.md",
-    TODO_MODULE_DIR / "09-modularizzazione-e-pulizia.md",
     TODO_MODULE_DIR / "10-preparazione-task-esecutive.md",
     TODO_MODULE_DIR / "11-stato-di-chiusura.md",
 )
@@ -416,9 +410,7 @@ def check_registries(root: Path) -> dict[str, object]:
             )
         )
 
-    # Validate prefixes only for canonical registry identities. Free prose can
-    # legitimately contain unrelated tokens such as SHA-256; those are not
-    # registry IDs and must not produce an unknown-prefix finding.
+    # Validate prefixes only for canonical registry identities. Free prose can legitimately contain unrelated tokens such as SHA-256; those are not registry IDs and must not produce an unknown-prefix finding.
     canonical_ids = set(owners) | set(rows)
     used_prefixes = {prefix_of(identifier) for identifier in canonical_ids}
     for prefix in sorted(used_prefixes - declared):

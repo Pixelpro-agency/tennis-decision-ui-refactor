@@ -31,10 +31,9 @@ Questo file è l’indice del registro storico dell’audit tecnico, suddiviso p
 - ogni scheda owner del registro vive in un solo modulo;
 - gli ID, gli stati e le decisioni storiche non vengono rinumerati;
 - la Todo resta la vista sintetica unica dello stato delle attività;
-- lo storico delle revisioni è affidato ai commit Git;
 - questo indice non contiene schede owner, contratti tecnici né matrici di validazione;
 - baseline, stati e verifiche riportati nei moduli appartengono ai rispettivi checkpoint e non attestano da soli il comportamento corrente;
-- dopo una modifica documentale eseguire `python scripts/check_registry_consistency.py`, `python scripts/check_documentation_links.py --forbid-mdx-links`, `node scripts/validation/run.mjs fast` e `git diff --check`.
+- dopo una modifica documentale eseguire registry checker, link checker, profilo `fast` e `git diff --check`.
 
 ## Stato dell’audit
 

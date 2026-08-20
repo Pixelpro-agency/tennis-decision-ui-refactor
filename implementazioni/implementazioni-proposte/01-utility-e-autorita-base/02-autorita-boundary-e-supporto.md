@@ -251,10 +251,6 @@ La sequenza è conservata come decisione del checkpoint. Non va interpretata com
 9. IMPL-004 — separazione dei collaudi storici dagli owner
 ```
 
-L’ordine definitivo dipende dal raggruppamento delle task e dalle decisioni dell’utente.
-
----
-
 ## 15. Decisioni successive pertinenti ad authority, boundary e supporto
 
 ### Estensione approvata di IMPL-009 — Persistence locale e pannello globale

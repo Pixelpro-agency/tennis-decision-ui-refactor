@@ -1046,10 +1046,9 @@ Le decisioni seguenti appartengono al Punto 7 e spiegano l'origine delle struttu
 13. creare fixture condivise soltanto per contratti riusati;
 14. integrare `IMPL-008`, `IMPL-012` e `IMPL-013` senza fonderle in un mega-harness;
 15. produrre un result artifact JSON per ogni profilo;
-16. mantenere `fileModificati.md` e il report umano dell'esecutore;
-17. non introdurre CI prima che il runner locale sia deterministico;
-18. non rendere il full lint un gate prima di una baseline pulita;
-19. correggere nel checkpoint del Punto 7 SHA e range obsoleti della Todo.
+16. non introdurre CI prima che il runner locale sia deterministico;
+17. non rendere il full lint un gate prima di una baseline pulita;
+18. correggere nel checkpoint del Punto 7 SHA e range obsoleti della Todo.
 
 Delle decisioni sopra risultano implementati, fra gli altri elementi, runner/manifest, isolamento per child process, timeout, profili offline, result artifact e separazione del live. Altre decisioni restano solo parte del record storico oppure risultano realizzate solo parzialmente, come descritto nelle sezioni precedenti.
 
@@ -1069,7 +1068,4 @@ IMPL-005 esteso
 → IMPL-013 benchmark profile
 → TEST-060…075
 → eventuale CI offline
-→ raggruppamento delle task esecutive Punti 1–7
 ```
-
----

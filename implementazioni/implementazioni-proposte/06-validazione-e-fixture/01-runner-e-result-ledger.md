@@ -703,34 +703,6 @@ stdout/stderr bounded e redatti
 
 I due requirement non diventano PASS finché il contratto complessivo previsto per `IMPL-031` non viene chiuso.
 
-### Human report
-
-Il result JSON non sostituisce il resoconto umano quando il workflow lo richiede.
-
-Restano concetti distinti:
-
-```txt
-machine-readable run artifact
-≠ human execution report
-≠ historical result ledger
-```
-
-### Dipendenze e relazioni
-
-La relazione primaria è:
-
-```txt
-IMPL-028
-→ produce il run artifact v1
-
-IMPL-031
-→ lo estende e lo storicizza
-```
-
-Le estensioni condivise verso `IMPL-003`, `IMPL-005`, `IMPL-008`, `IMPL-012`, `IMPL-013` e `CODE-005` restano centralizzate nella [facade](../06-validazione-e-fixture.md).
-
----
-
 ## Invarianti del child
 
 ```txt

@@ -203,14 +203,11 @@ IMPL-005 esteso
 → IMPL-013 benchmark profile
 → TEST-060…075
 → eventuale CI offline
-→ raggruppamento delle task Punti 1–7
 ```
 
 Questo ordine non rende `IMPL-031` prerequisito della parte già completata di `IMPL-028`.
 
 Il run artifact v1 appartiene al closeout del runner; `IMPL-031` completa successivamente il ledger e le semantiche avanzate del risultato.
-
----
 
 ## 21.3 Invarianti del modulo
 

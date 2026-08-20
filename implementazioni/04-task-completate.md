@@ -1066,13 +1066,11 @@ IMPL-009
 → adapter frontend unico per persistence integrity
 ```
 
-Queste voci devono essere analizzate dopo il ricontrollo, insieme al raggruppamento delle task.
-
----
+Queste voci restano registrate in `06-implementazioni-proposte.md`.
 
 ## 6. Ordine tecnico risultante dal checkpoint storico
 
-Ordine consigliato, ancora da trasformare in task esecutive:
+Ordine tecnico registrato nel checkpoint:
 
 ```txt
 1. isolamento sessione live
@@ -1113,12 +1111,6 @@ Ordine consigliato, ancora da trasformare in task esecutive:
    EVIDENCE-001
    CLEANUP-001
 ```
-
-Questo ordine non autorizza ancora modifiche.
-
-Prima delle task esecutive vanno risolte soltanto le decisioni che cambiano il perimetro.
-
----
 
 ## 7. Esito storico del blocco D
 

@@ -102,37 +102,6 @@ struttura documentale
 
 Questa sequenza resta una decisione storica del checkpoint e non rappresenta una roadmap corrente.
 
-Le idee future possono restare nei registri o nell’archivio storico, ma un documento canonico non deve presentarle come comportamento implementato.
-
-### DOC-033 — Documentazione canonica che anticipava contratti non implementati
-
-**Classificazione storica:** `BUG DOCUMENTALE CONFERMATO`  
-**Stato:** `RISOLTO; CRITERIO EDITORIALE PRESERVATO`
-
-Nel checkpoint alcuni documenti owner descrivevano come già collegati o completi comportamenti che il codice non possedeva ancora, in particolare:
-
-```txt
-session authority frontend
-polling protetto da response tardive
-persistence integrity UI completa
-Market Reactions eligibility e availability uniformi
-storage contract verificato esteso
-```
-
-#### Criterio editoriale preservato
-
-La documentazione canonica descrive soltanto stati supportati dalle relative authority:
-
-```txt
-implementato
-implementato con limiti espliciti
-validato
-validazione aperta
-deprecato ma ancora presente
-```
-
-Le voci soltanto approvate o pianificate restano nei registri fino alla relativa implementazione. Gli stati storici devono restare qualificati temporalmente e non essere convertiti in prova corrente.
-
 ## 24. Implementazione iniziale di IMPL-028
 
 **Data storica:** `2026-08-03`  
@@ -256,13 +225,10 @@ Restano non abilitati i profili `persistence`, `benchmark` e `live`.
 
 ### Esito storico di IMPL-015
 
-Il closeout registrava:
+Commit storici:
 
 ```txt
-Prompt 1 e Fix 1:
 ac0361ef720831173619636b8ce0057348282fa4
-
-Prompt 2 e Fix 1:
 f86ac267919ca13859c98db7015362f26176ba36
 ```
 
@@ -337,5 +303,3 @@ comandi Stop
 Il perimetro tecnico resta quindi parziale: `trackingSessionId` è implementato per Start, bootstrap UI e guardie interne, mentre Stop non è session-scoped e non usa `commandId`. Lo stato della task `RUNTIME-002` appartiene al relativo owner/registro.
 
 `RUNTIME-003`, `DOC-024` e `TEST-004` risultavano chiusi nel closeout storico da `IMPL-015`; anche questa relazione viene conservata come informazione storica e non usata per riscrivere retroattivamente i registri.
-
-Nessuna task successiva risulta selezionata nel closeout.

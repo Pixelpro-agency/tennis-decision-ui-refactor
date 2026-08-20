@@ -9,8 +9,6 @@ indice canonico e target
 → riferimenti fra owner
 → percorsi filesystem citati
 → test citati
-→ materiale legacy
-→ futuro vs corrente
 → coerenza Todo/registri
 → classificazione delle implementazioni di supporto
 ```
@@ -34,23 +32,6 @@ nessun link rotto confermato nell’indice canonico
 Questo non equivale a una scansione completa di tutti i link interni.
 
 Restavano fuori dal controllo completo i link fra singoli documenti, gli anchor e i materiali legacy.
-
-### 15.3 Materiale legacy
-
-Il checkpoint identificò materiale legacy esplicitamente non canonico.
-
-Non emerse una ragione per usarlo come fonte dello stato corrente.
-
-Regola:
-
-```txt
-materiale legacy non canonico
-→ non usarlo come fonte dello stato corrente
-→ verificare consumer e contenuti prima della rimozione
-→ archiviare o rimuovere solo dopo verifiche dedicate
-```
-
-I documenti Replay e Market Reactions Journal sono invece proposte future esplicite, non implementazioni abbandonate.
 
 ## WORKFLOW-002 — Todo e registro analitico non erano allineati
 
@@ -132,7 +113,7 @@ Gli ID esistenti non sono stati rinumerati.
 
 ---
 
-## 15.4 Test e validazioni
+## 15.3 Test e validazioni
 
 L’audit distingue definitivamente:
 
@@ -161,7 +142,7 @@ IMPL-003
 
 ---
 
-## 15.5 Classificazione finale delle correzioni documentali
+## 15.4 Classificazione finale delle correzioni documentali
 
 ### Correzioni documentali indipendenti dal codice
 
@@ -223,40 +204,7 @@ Market Reactions Journal
 
 Devono restare esclusi dalla descrizione dello stato corrente.
 
----
-
-## 15.6 Struttura documentale risultante
-
-```txt
-index e current state sintetico
-
-architecture
-→ confini e flussi trasversali
-
-api
-→ contratto HTTP
-
-modules
-→ owner del comportamento
-
-operations
-→ procedure correnti
-
-reference
-→ mappe e matrice test
-
-archive/validations
-→ prove storiche
-
-roadmap
-→ soltanto futuro esplicito
-```
-
-Ogni regola dettagliata deve avere un solo owner.
-
----
-
-## 15.7 Esito B6
+## 15.5 Esito B6
 
 ```txt
 audit documentazione B1–B6
@@ -277,5 +225,3 @@ Todo e registri
 prossimo blocco
 → ricontrollo task dichiarate completate
 ```
-
----

@@ -29,15 +29,14 @@ Il progetto contiene `scripts/check_documentation_links.py`.
 
 Il checker è read-only e:
 
-- scansiona sorgenti `.md` e `.mdx`;
+- scansiona i documenti supportati;
 - non riscrive i file;
 - riporta file sorgente, riga e target;
 - distingue `target_missing`, `anchor_missing` e `anchor_unverifiable`;
-- tratta i link `.mdx` come warning oppure come errore con `--forbid-mdx-links`;
 - esclude per default directory di build/runtime e materiali `legacy`, salvo opzione esplicita;
 - può produrre output testuale o JSON.
 
-`scripts/validation/test-manifest.json` registra inoltre `documentation-link-check` nei profili `fast` e `full-offline`, con `--forbid-mdx-links`.
+`scripts/validation/test-manifest.json` registra inoltre `documentation-link-check` nei profili `fast` e `full-offline`.
 
 La voce descrive quindi una capacità corrente, read-only e verificabile di controllo dei collegamenti documentali.
 

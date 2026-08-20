@@ -8,7 +8,7 @@ Conserva la navigazione verso i due blocchi che in origine erano raccolti nello 
 
 | Modulo                                                               | Perimetro                                                                 | Owner storici                               |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------- |
-| [Rilievi iniziali](01-rilievi-iniziali-e-api/01-rilievi-iniziali.md) | checkpoint B1, sezioni 9–10, inclusa la checklist iniziale                | `DOC-001…003, DOC-006…007, WORKFLOW-001`    |
+| [Rilievi iniziali](01-rilievi-iniziali-e-api/01-rilievi-iniziali.md) | checkpoint B1, sezioni 9–10, inclusa la checklist iniziale                | `DOC-001…003, DOC-006…007`                  |
 | [Checkpoint API](01-rilievi-iniziali-e-api/02-api.md)                | checkpoint B2, sezione 11, SHA `b277bd9b7373dfd8702e65446c88bab7a0f64dcc` | `DOC-009…013`; richiamo storico a `DOC-003` |
 
 ## Regole di lettura

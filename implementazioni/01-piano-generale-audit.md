@@ -136,35 +136,6 @@ Valutare almeno:
 - separazione fra stato corrente e storico delle validazioni;
 - strumenti per aggiornare Todo e registro senza divergenze.
 
-### BLOCCO G — Integrazione del metodo dell’altro progetto
-
-Materiali da acquisire o ricontrollare:
-
-- ruoli delle chat;
-- regole dei prompt esecutivi;
-- formato dei report;
-- gestione degli artefatti temporanei;
-- gestione task e Todo;
-- revisione locale;
-- collaudo indipendente;
-- workflow Git e GitHub;
-- branch, commit, push e pull request;
-- criteri di chiusura.
-
-L’adattamento deve preservare le esigenze specifiche di Tennis Decision UI:
-
-- runtime locale Windows;
-- backend Node;
-- frontend React/Vite;
-- package Python;
-- Chrome CDP;
-- persistenza canonica;
-- dati live;
-- validazioni reali difficili da riprodurre;
-- distinzione tra test automatici e collaudo live.
-
----
-
 ## 8.1 Stato dopo il checkpoint B6
 
 Baseline dell’audit concluso:
@@ -262,46 +233,7 @@ Ordine successivo:
 ```txt
 decisioni utente strettamente necessarie
 → raggruppamento dei rilievi in task
-→ preparazione prompt esecutivi
 → correzioni prioritarie
 ```
 
 Il ricontrollo D1–D18 non ha eseguito suite, collaudi live o modifiche al prodotto.
-
----
-
-## 8.3 Stato dopo decisioni e workflow
-
-Metadata dello snapshot: data della verifica `non registrato`; SHA verificato `non registrato`; commit di registrazione `non registrato`; fonte `registro locale storico`. Un eventuale commit che ha aggiunto questo testo non viene assunto come baseline verificata.
-
-Completato:
-
-```txt
-decisioni CODE-001, CODE-003, EVIDENCE-001 e CLEANUP-001
-→ chiuse
-
-workflow Props24 adattato
-→ Chat Analisi
-→ Chat Esecutore
-→ Desktop Esecutore
-→ Desktop Collaudatore
-→ utente owner di commit e push
-
-Decisione di sequenza:
-
-```txt
-checkpoint registri
-→ push su main eseguito dall’utente
-→ verifica del nuovo SHA
-→ seconda lettura del codice per precisione, robustezza e utilità
-→ preparazione task separate
-```
-
-Non sono comprese in questo checkpoint:
-
-- modifiche al codice;
-- rimozione Strategy o debug-last;
-- modifica Evidence;
-- cleanup frontend;
-- nuova UI persistence;
----

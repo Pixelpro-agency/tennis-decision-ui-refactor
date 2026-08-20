@@ -1,6 +1,6 @@
 # Tennis Decision UI — Audit della documentazione — rilievi iniziali
 
-Questo modulo conserva il checkpoint storico B1 dell’audit documentale: rilievi iniziali, owner `DOC-001…003`, `DOC-006…007`, `WORKFLOW-001` e checklist generale del checkpoint.
+Questo modulo conserva il checkpoint storico B1 dell’audit documentale: rilievi iniziali, owner `DOC-001…003`, `DOC-006…007` e checklist generale del checkpoint.
 
 Gli stati correnti servono esclusivamente a riconciliare quei rilievi con la documentazione successiva senza riscrivere retroattivamente il checkpoint.
 
@@ -321,86 +321,6 @@ Data lifecycle:
 **Criterio di chiusura del finding storico**
 
 Ogni contratto dettagliato deve avere un owner unico; i documenti architetturali devono collegarlo senza ripeterlo integralmente.
-
----
-
-### WORKFLOW-001 — Il documento di context selection contiene più responsabilità
-
-**Stato corrente:** `RISOLTO LATO DOCUMENTAZIONE`. `01-context-selection.md` è ora limitato alla selezione del contesto e delega esplicitamente ciclo esecutivo, diagnosi/modularizzazione e artefatti rispettivamente a `03-workflow-esecutivo.md`, `04-diagnosi-e-modularizzazione.md` e `05-artefatti-esecutivi.md`.
-
-**Stato nel checkpoint:** `CONFERMATO`
-**Priorità nel checkpoint:** alta per il nuovo workflow
-**Area:** metodologia operativa e contesto AI
-
-**Documento coinvolto nel checkpoint:** documento di context selection.
-
-**Osservazione**
-
-Il documento include insieme:
-
-- selezione del contesto;
-- file autorizzati;
-- regola dei tre tentativi;
-- gestione dei test falliti;
-- divieto di leggere test non autorizzati;
-- generazione di `fileModificati.md`;
-- uso di Repomix;
-- template completo del prompt;
-- formato del report;
-- esempio esecutivo Source Identity;
-- esclusioni di sicurezza.
-
-**Motivo**
-
-Non è più un singolo documento di “context selection”. Mescola:
-
-```txt
-policy del contesto
-+ ruolo dell’esecutore
-+ protocollo di test
-+ protocollo degli artefatti
-+ template prompt
-+ regole di fallimento
-```
-
-Questo rende difficile distinguere con precisione le responsabilità tra analisi, esecuzione e collaudo.
-
-**Cosa mantenere**
-
-- principio del minimo contesto sufficiente;
-- file modificabili e consultabili separati;
-- documento owner pertinente;
-- nessun dump o dato sensibile;
-- massimo tre tentativi ragionati;
-- artefatto post-task;
-- stop dopo il terzo fallimento.
-
-**Proposta di separazione registrata nel checkpoint**
-
-Proposta:
-
-```txt
-workflow/
-├── 01-ruoli-e-responsabilita.md
-├── 02-regole-prompt-esecutivi.md
-├── 03-test-tentativi-e-stop.md
-├── 04-report-e-file-modificati.md
-└── 05-selezione-contesto.md
-```
-
-La collocazione definitiva deve essere decisa in base agli owner documentali effettivi.
-
-**Verifiche lasciate aperte nel checkpoint**
-
-- quali regole sono ancora approvate;
-- distinzione fra responsabilità di analisi, esecuzione e collaudo;
-- compatibilità con gli strumenti esecutivi utilizzati;
-- se `fileModificati.md` resta l’unico artefatto;
-- se la regola di non leggere test invariati deve valere soltanto per l’esecutore.
-
-**Criterio di chiusura del finding storico**
-
-Ogni regola operativa deve avere un owner chiaro e non deve essere confusa con la documentazione dell’architettura applicativa.
 
 ---
 

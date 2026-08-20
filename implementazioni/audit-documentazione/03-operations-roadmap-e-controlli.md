@@ -4,11 +4,9 @@ Questo documento è la facade stabile del record storico dei checkpoint B5 e B6.
 
 Nello stato corrente del progetto:
 
-- l’indice e gli owner canonici correnti usano `.md`;
-- le validazioni storiche restano separate dagli owner del comportamento runtime corrente;
 - il journal dei commit pending usa `backend/match_history/.pending_commits/`;
 - esiste il runner locale `scripts/validation/run.mjs`; il manifest non copre ancora ogni test legacy e i profili persistence, benchmark e live non sono implementati;
-- replay offline canonico, backtesting e Market Reactions Journal persistito restano non implementati; le specifiche storiche ancora utili sono conservate nei registri correnti.
+- replay offline canonico, backtesting e Market Reactions Journal persistito restano non implementati.
 
 I due checkpoint restano record di provenance storica; restano preservate la distinzione fra test letti ed eseguiti e la baseline dichiarata in B6.
 

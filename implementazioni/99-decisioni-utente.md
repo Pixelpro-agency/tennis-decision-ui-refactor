@@ -24,63 +24,11 @@ documentazione e codice
 → task esecutive
 ```
 
-## DEC-003 — Git sotto controllo dell’utente
-
-**Stato:** approvata.
-
-Commit e push vengono eseguiti materialmente soltanto dall’utente dopo revisione.
-
-## DEC-004 — Documentazione tecnica in Markdown
-
-**Stato:** approvata.
-
-```txt
-nuovi documenti: .md
-non creare nuovi .mdx
-```
-
-Usare Markdown ordinario. Non usare frontmatter per default.
-
 ## DEC-005 — Planning come fonte separata
 
 **Stato:** approvata ed eseguita sui materiali accessibili.
 
 Planning e report storici non prevalgono sul codice corrente.
-
-## DEC-006 — Consegna con file completi
-
-**Stato:** approvata.
-
-Preferire file completi o ZIP con manifest. Patch/script/comandi sono ammessi quando più adatti.
-
-## DEC-007 — Metadata dei nuovi `.md`
-
-**Stato:** approvata.
-
-```txt
-nessun export const meta
-nessun JSX/MDX
-nessun frontmatter predefinito
-ordine tramite nomi numerici e indice
-```
-
-Introdurre frontmatter soltanto se un consumer tecnico reale lo richiede.
-
-## DEC-008 — Rimozione Strategy
-
-**Stato:** approvata.
-
-Rimuovere le tre card Strategy e il relativo runtime/polling/backend esclusivo.
-
-Preservare:
-
-- Market Reactions;
-- Field → Market;
-- Market → Field;
-- Evidence;
-- Source Identity.
-
-Le strategie future verranno studiate con strumenti autonomi offline (`IMPL-010`).
 
 ## DEC-009 — Rimozione `debug-last`
 
@@ -148,19 +96,6 @@ Usare:
 - recheck metadata;
 - nessun kill-by-port.
 
-## DEC-016 — Quattro ruoli operativi
-
-**Stato:** approvata.
-
-```txt
-Chat Analisi
-Chat Esecutore
-Desktop Esecutore
-Desktop Collaudatore
-```
-
-La Chat Esecutore legge GitHub in sola lettura e consegna file, ZIP, patch Python o comandi da applicare.
-
 ## DEC-017 — UI minore e responsive
 
 **Stato:** rinviata.
@@ -171,8 +106,6 @@ Registrare in Todo:
 - responsive completo.
 
 Non ampliare con questi lavori le prime task di robustezza.
-
-
 
 ## DEC-018 — Un solo backend writer
 
@@ -193,7 +126,6 @@ Non introdurre per ora:
 - backend secondario read-only;
 - kill-by-port;
 - autorità dedotta dalla sola porta.
-
 
 ## DEC-019 — Autorità end-to-end della sessione live
 
@@ -338,7 +270,6 @@ writer authority
 → eventuale evoluzione formato
 ```
 
-
 ## DEC-022 — Evidence e Market Reactions verificati del Punto 5
 
 **Stato:** approvata integralmente.
@@ -417,11 +348,7 @@ IMPL-018
 → TEST-031…043
 → Punto 6 Frontend
 → Punto 7 test e strutture mancanti
-→ definizione delle task esecutive prioritarie
 ```
-
-
-
 
 ## DEC-023 — Frontend session-scoped e UI integrity del Punto 6
 
@@ -502,7 +429,6 @@ IMPL-006
 → Punto 7
 ```
 
-
 ## DEC-024 — Sistema di validazione, fixture e baseline del Punto 7
 
 **Stato:** approvata integralmente.
@@ -522,10 +448,9 @@ IMPL-006
 13. creare fixture condivise soltanto per contratti riusati e lasciare locali le factory piccole;
 14. integrare `IMPL-008`, `IMPL-012` e `IMPL-013` come profili separati, senza fonderli in un mega-harness;
 15. produrre attraverso `IMPL-031` un result artifact JSON bounded e redatto per ogni profilo;
-16. mantenere `fileModificati.md` e il report umano dell’esecutore come output obbligatori quando previsti dal workflow;
-17. non introdurre CI prima che il runner locale e il manifest siano deterministici;
-18. non rendere il full lint un gate prima di avere una configurazione eseguibile e una baseline pulita;
-19. estendere `IMPL-005` per verificare SHA, range ID e stato sintetico dei cinque registri.
+16. non introdurre CI prima che il runner locale e il manifest siano deterministici;
+17. non rendere il full lint un gate prima di avere una configurazione eseguibile e una baseline pulita;
+18. estendere `IMPL-005` per verificare SHA, range ID e stato sintetico dei cinque registri.
 
 ### Confini
 
@@ -538,7 +463,6 @@ La decisione non introduce:
 - una migrazione massiva immediata dei test;
 - una percentuale di coverage inventata;
 - un unico mega-runner che incorpora fixture, replay, persistence e benchmark;
-- sostituzione del report umano con un JSON;
 - PASS automatici per TEST-ID soltanto documentati;
 - full lint obbligatorio sul codice legacy non classificato.
 
@@ -591,37 +515,4 @@ IMPL-005
 → IMPL-013
 → TEST-060…075
 → eventuale CI offline
-→ raggruppamento e priorità delle task Punti 1–7
 ```
-
-
-
-## DEC-025 — Coerenza della documentazione corrente
-
-**Stato:** approvata come regola strutturale corrente.
-
-1. la documentazione canonica descrive soltanto il comportamento realmente presente e verificato nel codice corrente;
-2. una decisione tecnica approvata ma non ancora implementata resta nei registri e non viene presentata come funzionalità esistente;
-3. le funzionalità future non vengono presentate come stato corrente e vengono documentate come tali soltanto quando implementate;
-4. i contenuti futuri o storici utili possono essere conservati come materiali non canonici con stato esplicito;
-5. ogni responsabilità documentale deve avere un solo owner canonico e gli altri documenti vi rimandano senza duplicarne l’intero contratto;
-6. i report di collaudo storico restano separati dai documenti owner correnti e vengono conservati nell’area dedicata alle evidenze di validazione quando costituiscono evidenza utile;
-7. elementi deprecati ancora presenti nel codice vengono documentati come tali finché esistono realmente;
-8. i documenti comportamentali vengono aggiornati insieme alle modifiche di codice che ne cambiano il contratto;
-9. evitare riscritture documentali massive o automatiche non revisionate;
-10. ogni modifica documentale deve essere verificata per contenuto, struttura e collegamenti prima della chiusura della relativa attività.
-
-## DEC-027 — Policy dei materiali non canonici preservati
-
-**Stato:** approvata come regola strutturale corrente.
-
-I materiali storici, planning, brief, fonti future o altri artefatti che l’utente decide esplicitamente di preservare restano non canonici e separati dalla documentazione tecnica corrente.
-
-Questi materiali:
-
-- non sono owner della documentazione tecnica corrente;
-- non costituiscono prova del comportamento attuale del prodotto;
-- non sostituiscono codice, registri, test o evidenze di validazione;
-- non vengono promossi automaticamente nella documentazione canonica;
-- non vengono eliminati mediante cleanup generici o automatici;
-- possono essere rimossi soltanto con un perimetro esplicito e dopo aver verificato l’eventuale contenuto unico da preservare.

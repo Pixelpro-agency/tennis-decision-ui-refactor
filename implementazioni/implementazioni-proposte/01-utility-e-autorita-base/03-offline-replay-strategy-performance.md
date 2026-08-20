@@ -81,7 +81,7 @@ La stessa fixture deve poter confrontare due versioni e produrre una differenza 
 
 Una modalità shadow può calcolare una versione candidata senza mostrarla nella dashboard live e senza modificare la persistenza canonica.
 
-### Requisiti futuri consolidati dalle fonti rimosse
+### Requisiti futuri consolidati
 
 Strategy Lab resta un'estensione offline di `IMPL-010` e dipende da
 `IMPL-012`. Input ammessi: timeline canoniche persistite, metadata e qualità,
@@ -109,7 +109,7 @@ startedAt / completedAt
 
 Le viste future di attività runner recente/cumulativa, rotazione, price drift, compressione, marker Sofa v2, snapshot derivati e grafico campo/mercato restano descrittive. Devono usare dati confrontabili, conservare volume ambiguo, mostrare qualità/reason e mantenere `causalityClaimed:false`.
 
-## 16. Implementazioni assorbite dal backlog operativo storico
+## 16. Implementazioni per replay, fixture e performance
 
 ### IMPL-012 — Fixture versionate e replay offline deterministico
 

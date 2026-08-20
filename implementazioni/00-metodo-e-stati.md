@@ -39,10 +39,6 @@ todo-list-tennis-decision-ui/*.md
 
 La facade è l’unico entry point operativo, ma non è l’unico file fisico. I moduli mostrano lo stato sintetico senza duplicare le rispettive authority. Motivazioni, evidenze, rischi, dipendenze e criteri di chiusura restano nelle singole schede owner.
 
-Il processo documentale usa Markdown ordinario. Restano operative la separazione fra storico e stato corrente, la verifica semantica, il controllo dei link e la coerenza dei registri.
-
----
-
 ## 2. Baseline e autorità temporale
 
 Baseline storiche della revisione:
@@ -145,7 +141,7 @@ Prefissi stabili:
 | `PYTHON-`   | Concorrenza, task asincrone e comportamento interno dei package Python      |
 | `SECURITY-` | Redazione, superfici pubbliche, path locali e dati potenzialmente sensibili |
 | `CLEANUP-`  | File legacy, codice morto, duplicazioni e materiali non canonici            |
-| `WORKFLOW-` | Metodo operativo, ruoli, prompt, Git e revisione                            |
+| `WORKFLOW-` | Metodo, processo di revisione e coerenza operativa dei registri             |
 | `IMPL-`     | Implementazione utile individuata durante l’audit                           |
 | `FUTURE-`   | Evoluzione non ancora autorizzata o dipendente da altre fasi                |
 
@@ -211,9 +207,6 @@ orientamento
 → classificazione dei rilievi
 → decisioni dell’utente
 → task esecutive separate
-→ revisione delle modifiche
-→ eventuale collaudo indipendente
-→ pubblicazione Git eseguita dall’utente
 ```
 
 ### 7.2 Regole minime
@@ -221,13 +214,7 @@ orientamento
 - una sola area o task verificabile per volta;
 - nessun refactor fuori scope;
 - nessuna modifica automatica durante l’audit;
-- massimo tre tentativi ragionati per ogni prompt esecutivo;
-- file modificabili e file consultabili separati;
 - test tecnici mirati;
-- report finale obbligatorio;
-- nessun commit o push eseguito dall’esecutore;
-- commit e push effettuati dall’utente dopo revisione;
-- branch e pull request soltanto quando approvati;
 - non dichiarare una task completata soltanto perché esiste un file o un test;
 - non modificare flussi funzionanti senza una ragione dimostrata;
 - non inventare payload, dati live, risultati o copertura;
@@ -242,7 +229,6 @@ Quando emergono:
 - più soluzioni tecnicamente valide;
 - trade-off strutturali;
 - scelte di prodotto;
-- differenze fra il metodo di Tennis Decision UI e quello dell’altro progetto;
 
 la revisione deve:
 
@@ -254,39 +240,11 @@ la revisione deve:
 
 Non scegliere arbitrariamente.
 
+### 7.4 Trattamento delle fonti storiche
 
-### 7.4 Formato standard dei documenti tecnici
+Le fonti storiche non costituiscono prova dello stato corrente del prodotto e non sostituiscono codice, registri, test o validazioni.
 
-I documenti tecnici del progetto usano Markdown ordinario con estensione `.md`.
-
-Regole:
-
-- non creare nuovi documenti tecnici `.mdx`;
-- non usare `export const meta`, JSX, import o componenti MDX nei documenti Markdown;
-- non usare frontmatter salvo esistenza di un consumer tecnico che lo richieda esplicitamente;
-- verificare loader, generatori o altri consumer quando una modifica interessa il sistema che legge `docs/`;
-- preservare titolo, ordine e navigazione secondo la struttura documentale corrente;
-- mantenere i link interni coerenti con i percorsi effettivi;
-- evitare copie canoniche parallele dello stesso documento.
-
-### 7.5 Trattamento delle fonti storiche
-
-`docs/archive/` è una radice non canonica destinata a materiali storici, planning, brief o fonti future esplicitamente preservati. Il suo contenuto non prova lo stato corrente del prodotto e non sostituisce codice, registri, test o validazioni.
-
-Regola:
-
-```txt
-fonte storica
-→ confronto con codice e registri
-→ classificazione del contenuto ancora utile
-→ eventuale assorbimento nei documenti pertinenti
-→ controllo dei riferimenti
-→ eventuale rimozione soltanto con perimetro e autorizzazione espliciti
-```
-
-Le fonti storiche non devono essere lette in blocco nella fase iniziale di una
-task, né considerate prova di comportamento corrente. Un report con evidenza
-irripetibile può restare in `docs/validations/`; un backlog duplicato no.
+Non devono essere lette in blocco nella fase iniziale di una task.
 
 Ordine standard di consultazione:
 
@@ -321,43 +279,7 @@ Una fonte storica o progettuale non canonica non è fonte primaria dello stato a
 
 La lettura deve avvenire per gruppi tematici e non come caricamento indiscriminato dell’intera cartella.
 
-
-### 7.6 Modalità di riscrittura e consegna dei documenti
-
-Per la riscrittura di un documento, la modalità preferita è:
-
-```txt
-file completo sostitutivo
-→ download
-→ inserimento manuale dell’utente
-→ verifica
-→ eventuale sostituzione o rimozione del vecchio file soltanto dopo il controllo
-```
-
-Evitare, quando possibile:
-
-- patch parziali molto grandi;
-- comandi terminale che modificano decine di documenti;
-- sostituzioni regex non revisionate;
-- rinomine o spostamenti massivi non revisionati;
-- richieste esecutive che devono ricostruire il contenuto completo da frammenti.
-
-Per una singola area, la consegna deve includere soltanto gli artefatti richiesti dal perimetro:
-
-```txt
-file .md completi
-+ elenco dei percorsi interessati, se necessario
-+ link da aggiornare, se presenti
-+ controlli eseguiti e limiti
-```
-
-L’utente resta responsabile dell’inserimento nel repository e delle operazioni Git.
-
-Ogni sostituzione o rimozione documentale richiede la revisione del contenuto completo e dei link prima di modificare o rimuovere file esistenti.
-
----
-
-### 7.7 Coerenza obbligatoria dei registri
+### 7.5 Coerenza obbligatoria dei registri
 
 Il checkpoint B6 ha dimostrato che un rilievo può essere presente nel registro analitico ma mancare dalla vista sintetica.
 
@@ -415,7 +337,7 @@ Contratto effettivo del checker corrente:
 
 Il checker non prova la correttezza semantica del codice o dei documenti, non esegue le task, non valida ogni campo dello schema esteso, non pretende l'identità letterale di tutti gli stati e non sostituisce link checker, test o audit manuale.
 
-### 7.8 Owner canonico, note e addendum
+### 7.6 Owner canonico, note e addendum
 
 Ogni ID può avere una sola scheda owner riconoscibile dalla forma:
 
@@ -441,5 +363,3 @@ Regole:
 - nessun ID viene rinumerato o riutilizzato;
 - la normalizzazione non elimina contenuti sostanziali; modifica soltanto ownership e navigazione;
 - `scripts/check_registry_consistency.py` deve restituire zero `duplicate_owner_card` prima della pubblicazione.
-
----
